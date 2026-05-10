@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Caesar's English II 拉丁词根大作战</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #E85D04;
+    --gold: #C9A961;
+    --bg: #FAF7F2;
+    --text: #2C2C2C;
+    --light-gold: rgba(201, 169, 97, 0.15);
+    --success: #4CAF50;
+    --danger: #E53935;
+    --card-bg: #ffffff;
+    --shadow: 0 4px 20px rgba(0,0,0,0.08);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Noto Serif SC', Georgia, serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+    overflow-x: hidden;
+  }
+  .container { max-width: 800px; margin: 0 auto; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* 粒子画布 */
+  #particles {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 9999;
+  }
+
+  /* 通用按钮 */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 12px 28px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: inherit; font-size: 1em; font-weight: 600;
+    transition: all 0.25s ease; user-select: none;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary), #F4A261);
+    color: white; box-shadow: 0 4px 12px rgba(232, 93, 4, 0.3);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(232, 93, 4, 0.4); }
+  .btn-gold {
+    background: linear-gradient(135deg, var(--gold), #E8D5A3);
+    color: #4A3C1A; box-shadow: 0 4px 12px rgba(201, 169, 97, 0.3);
+  }
+  .btn-gold:hover { transform: translateY(-2px); }
+  .btn-outline {
+    background: transparent; border: 2px solid var(--gold); color: var(--gold);
+  }
+  .btn-outline:hover { background: var(--light-gold); }
+  .btn-small { padding: 8px 16px; font-size: 0.9em; }
+
+  /* 屏幕切换 */
+  .screen { display: none; animation: fadeIn 0.4s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* ===== 开始界面 ===== */
+  .start-screen { text-align: center; padding-top: 60px; }
+  .game-logo {
+    font-size: 2.4em; font-weight: 700; color: var(--primary);
+    margin-bottom: 8px; letter-spacing: 2px;
+  }
+  .game-subtitle {
+    font-size: 1.1em; color: var(--gold); font-weight: 600; margin-bottom: 30px;
+  }
+  .start-stats {
+    display: flex; justify-content: center; gap: 30px; margin: 30px 0;
+  }
+  .stat-box {
+    background: var(--card-bg); padding: 16px 24px; border-radius: 12px;
+    box-shadow: var(--shadow); min-width: 120px;
+  }
+  .stat-value { font-size: 1.8em; font-weight: 700; color: var(--primary); }
+  .stat-label { font-size: 0.8em; color: #888; margin-top: 4px; }
+
+  /* ===== 关卡地图 ===== */
+  .level-map { padding: 20px 0; }
+  .level-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px;
+  }
+  .level-card {
+    background: var(--card-bg); border-radius: 14px; padding: 18px 12px;
+    box-shadow: var(--shadow); cursor: pointer; text-align: center;
+    transition: all 0.3s ease; position: relative; border: 2px solid transparent;
+  }
+  .level-card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(0,0,0,0.12); }
+  .level-card.locked { opacity: 0.5; cursor: not-allowed; filter: grayscale(0.6); }
+  .level-card.completed { border-color: var(--success); }
+  .level-card.perfect { border-color: var(--gold); background: linear-gradient(180deg, #fff, #FFFDF5); }
+  .level-num {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--light-gold); color: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; margin: 0 auto 10px; font-size: 1.1em;
+  }
+  .level-card.completed .level-num { background: var(--success); color: white; }
+  .level-card.perfect .level-num {
+    background: linear-gradient(135deg, var(--gold), #E8D5A3); color: #4A3C1A;
+  }
+  .level-title { font-weight: 600; font-size: 0.95em; margin-bottom: 4px; }
+  .level-desc { font-size: 0.8em; color: #888; }
+  .level-stars { margin-top: 8px; font-size: 1.1em; letter-spacing: 2px; }
+
+  /* ===== 游戏界面 ===== */
+  .game-header {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--card-bg); padding: 12px 18px; border-radius: 12px;
+    box-shadow: var(--shadow); margin-bottom: 16px; flex-wrap: wrap; gap: 8px;
+  }
+  .score-display {
+    display: flex; align-items: center; gap: 16px;
+  }
+  .score-pill {
+    background: linear-gradient(135deg, var(--primary), #F4A261);
+    color: white; padding: 6px 14px; border-radius: 20px;
+    font-weight: 700; font-size: 0.95em;
+  }
+  .combo-display {
+    display: flex; align-items: center; gap: 4px;
+    color: var(--gold); font-weight: 700; font-size: 0.95em;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .combo-display.active { opacity: 1; animation: comboPop 0.4s ease; }
+  @keyframes comboPop { 0% { transform: scale(0.8); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+
+  .progress-bar {
+    width: 100%; height: 6px; background: #eee; border-radius: 3px; margin-top: 8px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--primary), var(--gold));
+    border-radius: 3px; transition: width 0.4s ease;
+  }
+
+  .question-card {
+    background: var(--card-bg); border-radius: 16px; padding: 24px;
+    box-shadow: var(--shadow); margin-bottom: 16px; animation: slideUp 0.35s ease;
+  }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .question-type {
+    display: inline-block; background: var(--light-gold); color: var(--gold);
+    padding: 3px 10px; border-radius: 6px; font-size: 0.8em; font-weight: 600; margin-bottom: 12px;
+  }
+  .question-text { font-size: 1.15em; font-weight: 600; margin-bottom: 16px; line-height: 1.7; }
+  .question-text .blank-inline {
+    display: inline-block; min-width: 60px; border-bottom: 2px solid var(--gold);
+    margin: 0 4px; text-align: center; color: var(--primary); font-weight: 700;
+  }
+
+  /* 输入框 */
+  .answer-input {
+    width: 100%; padding: 14px 16px; border: 2px solid #E8E0D5;
+    border-radius: 10px; font-family: inherit; font-size: 1.05em;
+    background: #FDFBF7; transition: all 0.25s; outline: none;
+  }
+  .answer-input:focus { border-color: var(--gold); background: #fff; box-shadow: 0 0 0 3px var(--light-gold); }
+  .answer-input.correct { border-color: var(--success); background: #F1F8E9; }
+  .answer-input.wrong { border-color: var(--danger); background: #FFEBEE; animation: shake 0.4s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+
+  /* 选项按钮 */
+  .options-grid {
+    display: grid; gap: 10px;
+  }
+  .option-btn {
+    padding: 14px 16px; border: 2px solid #E8E0D5; border-radius: 10px;
+    background: #FDFBF7; cursor: pointer; font-family: inherit; font-size: 1em;
+    text-align: left; transition: all 0.2s; display: flex; align-items: center; gap: 10px;
+  }
+  .option-btn:hover { border-color: var(--gold); background: #FFFDF5; }
+  .option-btn.correct { border-color: var(--success); background: #F1F8E9; }
+  .option-btn.wrong { border-color: var(--danger); background: #FFEBEE; }
+  .option-btn .opt-label {
+    width: 28px; height: 28px; border-radius: 50%; background: var(--light-gold);
+    color: var(--gold); display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.85em; flex-shrink: 0;
+  }
+  .option-btn.correct .opt-label { background: var(--success); color: white; }
+  .option-btn.wrong .opt-label { background: var(--danger); color: white; }
+
+  /* 配对题 */
+  .match-pairs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .match-select {
+    padding: 10px 12px; border: 2px solid #E8E0D5; border-radius: 8px;
+    font-family: inherit; font-size: 0.95em; background: #FDFBF7; cursor: pointer;
+  }
+  .match-select:focus { border-color: var(--gold); outline: none; }
+
+  /* 反馈区 */
+  .feedback-area {
+    margin-top: 16px; padding: 14px 16px; border-radius: 10px; display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .feedback-area.show { display: block; }
+  .feedback-correct { background: #F1F8E9; color: #2E7D32; border-left: 4px solid var(--success); }
+  .feedback-wrong { background: #FFEBEE; color: #C62828; border-left: 4px solid var(--danger); }
+  .feedback-area .fb-title { font-weight: 700; margin-bottom: 4px; }
+  .feedback-area .fb-detail { font-size: 0.9em; }
+
+  /* 连击浮层 */
+  .combo-popup {
+    position: fixed; top: 20%; left: 50%; transform: translate(-50%, -50%) scale(0);
+    background: linear-gradient(135deg, var(--gold), #E8D5A3);
+    color: #4A3C1A; padding: 20px 40px; border-radius: 16px;
+    font-size: 1.6em; font-weight: 700; z-index: 10000;
+    box-shadow: 0 12px 40px rgba(201, 169, 97, 0.4); pointer-events: none;
+    text-align: center;
+  }
+  .combo-popup.show { animation: comboFloat 1s ease forwards; }
+  @keyframes comboFloat {
+    0% { transform: translate(-50%, -50%) scale(0.3); opacity: 0; }
+    40% { transform: translate(-50%, -60%) scale(1.1); opacity: 1; }
+    100% { transform: translate(-50%, -80%) scale(1); opacity: 0; }
+  }
+  .combo-popup .combo-num { font-size: 2em; display: block; }
+
+  /* ===== 结算界面 ===== */
+  .result-screen { text-align: center; padding-top: 40px; }
+  .result-emoji { font-size: 4em; margin-bottom: 10px; }
+  .result-title { font-size: 1.6em; font-weight: 700; margin-bottom: 8px; }
+  .result-subtitle { color: #888; margin-bottom: 24px; }
+  .result-stars { font-size: 2.5em; letter-spacing: 8px; margin: 16px 0; }
+  .result-stats-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px;
+    max-width: 400px; margin: 20px auto;
+  }
+  .result-stat {
+    background: var(--card-bg); padding: 16px; border-radius: 12px; box-shadow: var(--shadow);
+  }
+  .result-stat .rs-value { font-size: 1.6em; font-weight: 700; color: var(--primary); }
+  .result-stat .rs-label { font-size: 0.8em; color: #888; margin-top: 4px; }
+
+  /* 新勋章 */
+  .badge-popup {
+    position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0);
+    background: var(--card-bg); padding: 30px 40px; border-radius: 20px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2); z-index: 10001; text-align: center;
+    border: 3px solid var(--gold);
+  }
+  .badge-popup.show { animation: badgeAppear 0.8s ease forwards; }
+  @keyframes badgeAppear {
+    0% { transform: translate(-50%, -50%) scale(0); opacity: 0; }
+    50% { transform: translate(-50%, -50%) scale(1.1); opacity: 1; }
+    70% { transform: translate(-50%, -50%) scale(0.95); }
+    100% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  }
+  .badge-icon { font-size: 3.5em; margin-bottom: 10px; }
+  .badge-name { font-size: 1.3em; font-weight: 700; color: var(--gold); margin-bottom: 6px; }
+  .badge-desc { color: #888; font-size: 0.9em; }
+
+  /* 遮罩 */
+  .overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.4); z-index: 9998; display: none;
+  }
+  .overlay.show { display: block; }
+
+  /* 成就墙 */
+  .badge-wall {
+    display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; margin: 16px 0;
+  }
+  .badge-item {
+    background: var(--card-bg); border-radius: 10px; padding: 10px 14px;
+    box-shadow: var(--shadow); font-size: 0.85em; display: flex; align-items: center; gap: 6px;
+    border: 2px solid transparent;
+  }
+  .badge-item.earned { border-color: var(--gold); background: linear-gradient(180deg, #fff, #FFFDF5); }
+  .badge-item.locked { opacity: 0.4; filter: grayscale(1); }
+
+  /* 排行榜 */
+  .leaderboard { margin-top: 20px; }
+  .lb-row {
+    display: flex; align-items: center; gap: 12px; padding: 10px 14px;
+    background: var(--card-bg); border-radius: 10px; margin-bottom: 8px;
+    box-shadow: var(--shadow);
+  }
+  .lb-rank { font-weight: 700; color: var(--gold); width: 28px; text-align: center; }
+  .lb-score { margin-left: auto; font-weight: 700; color: var(--primary); }
+
+  /* 响应式 */
+  @media (max-width: 600px) {
+    .level-grid { grid-template-columns: repeat(2, 1fr); }
+    .result-stats-grid { grid-template-columns: 1fr; }
+    .game-header { flex-direction: column; align-items: flex-start; }
+    .match-pairs { grid-template-columns: 1fr; }
+    .question-text { font-size: 1em; }
+  }
+</style>
+</head>
+
+<body>
+<canvas id="particles"></canvas>
+<div class="combo-popup" id="comboPopup"><span class="combo-num">x3</span>连击！</div>
+<div class="overlay" id="overlay"></div>
+<div class="badge-popup" id="badgePopup">
+  <div class="badge-icon" id="badgeIcon">🏆</div>
+  <div class="badge-name" id="badgeName">勋章名称</div>
+  <div class="badge-desc" id="badgeDesc">描述</div>
+</div>
+
+<div class="container">
+
+<!-- ========== 开始界面 ========== -->
+<div class="screen active" id="startScreen">
+  <div class="start-screen">
+    <div class="game-logo">Caesar's English II</div>
+    <div class="game-subtitle">拉丁词根大作战</div>
+    <div class="gold-line" style="width:80px; height:3px; background:var(--gold); margin:12px auto;"></div>
+    <p style="color:#666; margin-bottom:30px;">共 6 关 · 60 题 · 挑战你的词根力量！</p>
+    
+    <div class="start-stats">
+      <div class="stat-box">
+        <div class="stat-value" id="totalScore">0</div>
+        <div class="stat-label">总积分</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="totalStars">0</div>
+        <div class="stat-label">总星数</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value" id="badgeCount">0</div>
+        <div class="stat-label">勋章</div>
+      </div>
+    </div>
+    
+    <div style="margin: 20px 0;">
+      <button class="btn btn-primary" onclick="showScreen('levelScreen')" style="font-size:1.1em; padding:14px 36px;">🎮 开始挑战</button>
+    </div>
+    <div style="display:flex; gap:10px; justify-content:center; flex-wrap:wrap;">
+      <button class="btn btn-outline btn-small" onclick="showScreen('badgeScreen')">🏅 成就墙</button>
+      <button class="btn btn-outline btn-small" onclick="showScreen('lbScreen')">🏆 排行榜</button>
+      <button class="btn btn-outline btn-small" onclick="resetProgress()">🔄 重置进度</button>
+    </div>
+    <p style="margin-top:30px; font-size:0.8em; color:#aaa;">v1.0 · 自动保存进度 · 建议用耳机体验音效</p>
+  </div>
+</div>
+
+<!-- ========== 关卡地图 ========== -->
+<div class="screen" id="levelScreen">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:10px;">
+    <button class="btn btn-outline btn-small" onclick="showScreen('startScreen')">← 返回</button>
+    <h2 style="font-size:1.3em;">选择关卡</h2>
+  </div>
+  <div class="level-map">
+    <div class="level-grid" id="levelGrid"></div>
+  </div>
+</div>
+
+<!-- ========== 游戏界面 ========== -->
+<div class="screen" id="gameScreen">
+  <div class="game-header">
+    <div>
+      <div style="font-weight:700; font-size:1.05em;" id="levelTitle">关卡标题</div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+    <div class="score-display">
+      <div class="combo-display" id="comboDisplay">⚡ x1</div>
+      <div class="score-pill" id="scorePill">0 分</div>
+    </div>
+  </div>
+  <div id="questionArea"></div>
+</div>
+
+<!-- ========== 结算界面 ========== -->
+<div class="screen" id="resultScreen">
+  <div class="result-screen">
+    <div class="result-emoji" id="resultEmoji">🎉</div>
+    <div class="result-title" id="resultTitle">关卡完成！</div>
+    <div class="result-subtitle" id="resultSubtitle">你是词根小达人！</div>
+    <div class="result-stars" id="resultStars">⭐⭐⭐</div>
+    <div class="result-stats-grid">
+      <div class="result-stat"><div class="rs-value" id="rsScore">0</div><div class="rs-label">得分</div></div>
+      <div class="result-stat"><div class="rs-value" id="rsCombo">0</div><div class="rs-label">最高连击</div></div>
+      <div class="result-stat"><div class="rs-value" id="rsAccuracy">0%</div><div class="rs-label">正确率</div></div>
+    </div>
+    <div id="newBadges" style="margin:16px 0;"></div>
+    <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-top:20px;">
+      <button class="btn btn-primary" onclick="nextLevel()">下一关 →</button>
+      <button class="btn btn-outline" onclick="retryLevel()">🔄 再试一次</button>
+      <button class="btn btn-gold" onclick="showScreen('startScreen')">🏠 主页</button>
+    </div>
+  </div>
+</div>
+
+<!-- ========== 成就墙 ========== -->
+<div class="screen" id="badgeScreen">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+    <button class="btn btn-outline btn-small" onclick="showScreen('startScreen')">← 返回</button>
+    <h2 style="font-size:1.3em;">🏅 成就墙</h2>
+  </div>
+  <div class="badge-wall" id="badgeWall"></div>
+</div>
+
+<!-- ========== 排行榜 ========== -->
+<div class="screen" id="lbScreen">
+  <div style="display:flex; align-items:center; gap:12px; margin-bottom:16px;">
+    <button class="btn btn-outline btn-small" onclick="showScreen('startScreen')">← 返回</button>
+    <h2 style="font-size:1.3em;">🏆 词根排行榜</h2>
+  </div>
+  <div class="leaderboard" id="leaderboard"></div>
+  <div style="text-align:center; margin-top:20px; color:#888; font-size:0.85em;">
+    只记录当前设备最高得分
+  </div>
+</div>
+
+</div>
+
+<script>
+// ==================== 题目数据 ====================
+const LEVELS = [
+  {
+    id: 1, title: "词根拼写", subtitle: "补全词根 1-10", type: "fill",
+    questions: [
+      { q: "_ _ m = together（一起）", a: "com", hint: "如 combine, company" },
+      { q: "_ _ t _ a = within（在…之内）", a: "intra", hint: "如 intramural" },
+      { q: "c _ _ t = one hundred（一百）", a: "cent", hint: "如 century, percent" },
+      { q: "_ d = to（向）", a: "ad", hint: "如 advance, adhere" },
+      { q: "f _ r = carry（携带）", a: "fer", hint: "如 transfer, refer" },
+      { q: "v _ t _ = life（生命）", a: "vita", hint: "如 vital, vitamin" },
+      { q: "v _ d = look（看）", a: "vid", hint: "如 video, evident" },
+      { q: "p _ t _ r = father（父亲）", a: "pater", hint: "如 paternal, patriot" },
+      { q: "m _ t _ i = mother（母亲）", a: "matri", hint: "如 maternal, matrimony" },
+      { q: "p _ p = people（人民）", a: "pop", hint: "如 popular, population" }
+    ]
+  },
+  {
+    id: 2, title: "例词逆向", subtitle: "找出词根 11-20", type: "find",
+    questions: [
+      { q: "locomotive", stem: "loco", meaning: "place", a: "loco", hint: "loco = place" },
+      { q: "surface", stem: "sur", meaning: "over", a: "sur", hint: "sur = over" },
+      { q: "alternative", stem: "alter", meaning: "other", a: "alter", hint: "alter = other" },
+      { q: "contradict", stem: "contra", meaning: "against", a: "contra", hint: "contra = against" },
+      { q: "interstellar", stem: "stell", meaning: "star", a: "stell", hint: "stell = star" },
+      { q: "amateur", stem: "amat", meaning: "love", a: "amat", hint: "amat = love" },
+      { q: "sublunar", stem: "luna", meaning: "moon", a: "luna", hint: "luna = moon" },
+      { q: "segregate", stem: "greg", meaning: "group", a: "greg", hint: "greg = group" },
+      { q: "exclamation", stem: "clam", meaning: "cry out", a: "clam", hint: "clam = cry out" },
+      { q: "intangible", stem: "tang", meaning: "touch", a: "tang", hint: "tang = touch" }
+    ]
+  },
+  {
+    id: 3, title: "词根配对", subtitle: "词根与例词连线 21-30", type: "match",
+    questions: [
+      { stem: "mar (sea)", word: "marine", id: 0 },
+      { stem: "junct (join)", word: "conjunction", id: 1 },
+      { stem: "luc (light)", word: "translucent", id: 2 },
+      { stem: "medi (middle)", word: "medium", id: 3 },
+      { stem: "tempor (time)", word: "contemporary", id: 4 },
+      { stem: "grat (pleasing)", word: "ingratiate", id: 5 },
+      { stem: "curr (run)", word: "recurrent", id: 6 },
+      { stem: "trans (across)", word: "transfusion", id: 7 },
+      { stem: "migr (wander)", word: "migrate", id: 8 },
+      { stem: "rupt (break)", word: "disrupt", id: 9 }
+    ]
+  },
+  {
+    id: 4, title: "真假判断", subtitle: "判断词根含义 31-40", type: "tf",
+    questions: [
+      { q: "clud = close（关闭）", a: true, explain: "clude, exclude, include" },
+      { q: "se = together（一起）", a: false, correct: "apart（分开）", explain: "separate, segregate" },
+      { q: "plu = more（更多）", a: true, explain: "plural, plus" },
+      { q: "germ = break（打破）", a: false, correct: "vital（生命的）", explain: "germination, Germany" },
+      { q: "fus = pour（倾倒）", a: true, explain: "fusion, confuse, refuse" },
+      { q: "culp = blame（责备）", a: true, explain: "culprit, exculpate" },
+      { q: "pugn = fight（战斗）", a: true, explain: "pugnacious, impugn" },
+      { q: "urb = sea（海洋）", a: false, correct: "city（城市）", explain: "urban, suburb" },
+      { q: "numer = number（数字）", a: true, explain: "numeral, numerous, enumerate" },
+      { q: "acr = sharp（尖锐）", a: true, explain: "acrid, acrobat, acrimony" }
+    ]
+  },
+  {
+    id: 5, title: "构词工坊", subtitle: "组合推断单词 41-50", type: "build",
+    questions: [
+      { parts: "per (through) + colate", word: "percolate", meaning: "to filter through", a: "percolate", meaning_a: "to filter through", hint: "滤过，渗透" },
+      { parts: "magn (great) + anim (mind)", word: "magnanimous", meaning: "generous", a: "magnanimous", meaning_a: "generous", hint: "宽宏大量的" },
+      { parts: "re (back) + tort (twist)", word: "retort", meaning: "a quick reply", a: "retort", meaning_a: "a quick, clever reply", hint: "反驳，巧妙回答" },
+      { parts: "sanct (holy) + ion", word: "sanction", meaning: "official approval", a: "sanction", meaning_a: "official approval", hint: "批准，制裁" },
+      { parts: "voc (voice) + iferous (carry)", word: "vociferous", meaning: "loud", a: "vociferous", meaning_a: "loud and noisy", hint: "大声叫嚷的" },
+      { parts: "punct (point) + ual", word: "punctual", meaning: "on time", a: "punctual", meaning_a: "on time", hint: "准时的" },
+      { parts: "con (together) + trib (pay)", word: "contribute", meaning: "to give", a: "contribute", meaning_a: "to give together", hint: "贡献，捐献" },
+      { parts: "cap (take) + ture", word: "capture", meaning: "to take", a: "capture", meaning_a: "to take by force", hint: "俘获，捕获" },
+      { parts: "pre (before) + ponder", word: "preponderance", meaning: "greater weight", a: "preponderance", meaning_a: "greater weight", hint: "优势，主导" },
+      { parts: "cor (together) + rect (right)", word: "correct", meaning: "right", a: "correct", meaning_a: "right", hint: "正确的" }
+    ]
+  },
+  {
+    id: 6, title: "极速配对", subtitle: "20 个词根综合复习", type: "speed",
+    stems: [
+      { num:1, stem:"per", meaning:"through" }, { num:2, stem:"anim", meaning:"mind" },
+      { num:3, stem:"tort", meaning:"twist" }, { num:4, stem:"sanct", meaning:"holy" },
+      { num:5, stem:"voc", meaning:"voice" }, { num:6, stem:"punct", meaning:"point" },
+      { num:7, stem:"trib", meaning:"pay" }, { num:8, stem:"cap", meaning:"take" },
+      { num:9, stem:"pond", meaning:"weight" }, { num:10, stem:"rect", meaning:"right" },
+      { num:11, stem:"com", meaning:"together" }, { num:12, stem:"fer", meaning:"carry" },
+      { num:13, stem:"luna", meaning:"moon" }, { num:14, stem:"medi", meaning:"middle" },
+      { num:15, stem:"rupt", meaning:"break" }, { num:16, stem:"trans", meaning:"across" },
+      { num:17, stem:"numer", meaning:"number" }, { num:18, stem:"pugn", meaning:"fight" },
+      { num:19, stem:"stell", meaning:"star" }, { num:20, stem:"vid", meaning:"look" }
+    ]
+  }
+];
+
+// ==================== 音效系统 (Web Audio API) ====================
+const AudioCtx = window.AudioContext || window.webkitAudioContext;
+let audioCtx = null;
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new AudioCtx();
+  if (audioCtx.state === 'suspended') audioCtx.resume();
+}
+function playTone(freq, duration, type='sine', vol=0.3) {
+  ensureAudio();
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+  gain.gain.setValueAtTime(vol, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  osc.connect(gain); gain.connect(audioCtx.destination);
+  osc.start(); osc.stop(audioCtx.currentTime + duration);
+}
+function playCorrect() {
+  playTone(523, 0.1, 'sine', 0.25);
+  setTimeout(() => playTone(659, 0.1, 'sine', 0.25), 80);
+  setTimeout(() => playTone(784, 0.2, 'sine', 0.25), 160);
+}
+function playWrong() {
+  playTone(200, 0.25, 'sawtooth', 0.15);
+  setTimeout(() => playTone(150, 0.3, 'sawtooth', 0.15), 120);
+}
+function playCombo() {
+  playTone(880, 0.1, 'sine', 0.2);
+  setTimeout(() => playTone(1109, 0.1, 'sine', 0.2), 60);
+  setTimeout(() => playTone(1319, 0.2, 'sine', 0.25), 120);
+}
+function playLevelComplete() {
+  [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, 0.25, 'sine', 0.2), i * 120));
+}
+function playBadge() {
+  [392, 523, 659, 784, 1047].forEach((f, i) => setTimeout(() => playTone(f, 0.15, 'triangle', 0.2), i * 100));
+}
+
+// ==================== 游戏状态 ====================
+let gameState = {
+  busy: false,
+  currentLevel: 0,
+  currentQ: 0,
+  score: 0,
+  combo: 0,
+  maxCombo: 0,
+  correctCount: 0,
+  wrongCount: 0,
+  answers: [],
+  levelProgress: {}, // levelId -> {score, stars, completed, perfect}
+  totalScore: 0,
+  badges: [],
+  history: [] // {date, score, level}
+};
+const BADGES = [
+  { id: 'first_blood', name: '初露锋芒', icon: '⚔️', desc: '完成第一个关卡' },
+  { id: 'perfect_1', name: '完美开局', icon: '🌟', desc: '首次全对通关' },
+  { id: 'combo_5', name: '连击高手', icon: '⚡', desc: '达成5连击' },
+  { id: 'combo_10', name: '无敌连击', icon: '🔥', desc: '达成10连击' },
+  { id: 'score_500', name: '词根学者', icon: '📚', desc: '累计达到500分' },
+  { id: 'score_1000', name: '词根大师', icon: '🏆', desc: '累计达到1000分' },
+  { id: 'all_levels', name: '通关王', icon: '👑', desc: '完成所有关卡' },
+  { id: 'all_perfect', name: '完美主义', icon: '💎', desc: '所有关卡全对' }
+];
+
+// ==================== 持久化 ====================
+function loadProgress() {
+  try {
+    const s = localStorage.getItem('ce2_progress');
+    if (s) {
+      const p = JSON.parse(s);
+      gameState.levelProgress = p.levelProgress || {};
+      gameState.totalScore = p.totalScore || 0;
+      gameState.badges = p.badges || [];
+      gameState.history = p.history || [];
+    }
+  } catch(e) {}
+}
+function saveProgress() {
+  try {
+    localStorage.setItem('ce2_progress', JSON.stringify({
+      levelProgress: gameState.levelProgress,
+      totalScore: gameState.totalScore,
+      badges: gameState.badges,
+      history: gameState.history
+    }));
+  } catch(e) {}
+}
+function resetProgress() {
+  if (!confirm('确定要重置所有进度吗？积分、勋章和通关记录将清零。')) return;
+  gameState.levelProgress = {}; gameState.totalScore = 0; gameState.badges = []; gameState.history = [];
+  saveProgress(); updateStartStats(); renderLevels(); renderBadges(); renderLeaderboard();
+}
+
+// ==================== 工具函数 ====================
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if (id === 'startScreen') { updateStartStats(); }
+  if (id === 'levelScreen') { renderLevels(); }
+  if (id === 'badgeScreen') { renderBadges(); }
+  if (id === 'lbScreen') { renderLeaderboard(); }
+}
+function normalizeAnswer(s) {
+  return s.toLowerCase().replace(/[^a-z]/g, '').trim();
+}
+function checkMatch(a, b) {
+  return normalizeAnswer(a) === normalizeAnswer(b);
+}
+
+// ==================== 粒子动画 ====================
+function spawnParticles(x, y, color) {
+  const canvas = document.getElementById('particles');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+  const particles = [];
+  for (let i = 0; i < 24; i++) {
+    particles.push({
+      x: x, y: y,
+      vx: (Math.random() - 0.5) * 10, vy: (Math.random() - 0.5) * 10 - 3,
+      life: 1, decay: 0.02 + Math.random() * 0.02,
+      size: 3 + Math.random() * 4, color: color || '#C9A961'
+    });
+  }
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    particles.forEach(p => {
+      if (p.life <= 0) return;
+      alive = true;
+      p.x += p.vx; p.y += p.vy; p.vy += 0.2;
+      p.life -= p.decay;
+      ctx.globalAlpha = p.life;
+      ctx.fillStyle = p.color;
+      ctx.beginPath(); ctx.arc(p.x, p.y, p.size * p.life, 0, Math.PI * 2); ctx.fill();
+    });
+    ctx.globalAlpha = 1;
+    if (alive) requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+// ==================== 关卡渲染 ====================
+function renderLevels() {
+  const grid = document.getElementById('levelGrid');
+  grid.innerHTML = '';
+  LEVELS.forEach((lv, idx) => {
+    const prog = gameState.levelProgress[lv.id] || {};
+    const prev = idx === 0 || (gameState.levelProgress[LEVELS[idx-1].id]?.completed);
+    const el = document.createElement('div');
+    el.className = 'level-card ' + (prog.perfect ? 'perfect' : prog.completed ? 'completed' : '') + (!prev ? ' locked' : '');
+    const stars = prog.stars || 0;
+    el.innerHTML = `
+      <div class="level-num">${prog.completed ? '✓' : lv.id}</div>
+      <div class="level-title">${lv.title}</div>
+      <div class="level-desc">${lv.subtitle}</div>
+      <div class="level-stars">${stars >= 1 ? '⭐' : '☆'}${stars >= 2 ? '⭐' : '☆'}${stars >= 3 ? '⭐' : '☆'}</div>
+    `;
+    if (prev) el.onclick = () => startLevel(lv.id);
+    grid.appendChild(el);
+  });
+}
+function startLevel(lid) {
+  ensureAudio();
+  gameState.currentLevel = lid;
+  gameState.currentQ = 0;
+  gameState.score = 0;
+  gameState.combo = 0;
+  gameState.maxCombo = 0;
+  gameState.correctCount = 0;
+  gameState.wrongCount = 0;
+  gameState.answers = [];
+  const lv = LEVELS.find(l => l.id === lid);
+  document.getElementById('levelTitle').textContent = lv.title + ' · ' + lv.subtitle;
+  updateProgress();
+  showScreen('gameScreen');
+  renderQuestion();
+}
+
+function updateProgress() {
+  const lv = LEVELS.find(l => l.id === gameState.currentLevel);
+  const total = lv.type === 'speed' ? lv.stems.length : lv.questions.length;
+  const pct = total ? (gameState.currentQ / total) * 100 : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('scorePill').textContent = gameState.score + ' 分';
+  const cd = document.getElementById('comboDisplay');
+  if (gameState.combo >= 2) { cd.textContent = '⚡ x' + gameState.combo; cd.classList.add('active'); }
+  else { cd.classList.remove('active'); }
+}
+
+// ==================== 题目渲染 ====================
+function renderQuestion() {
+  gameState.busy = false;
+  const lv = LEVELS.find(l => l.id === gameState.currentLevel);
+  const area = document.getElementById('questionArea');
+  area.innerHTML = '';
+
+  if (lv.type === 'fill') {
+    const q = lv.questions[gameState.currentQ];
+    if (!q) { finishLevel(); return; }
+    area.innerHTML = `
+      <div class="question-card">
+        <span class="question-type">补全词根 · ${gameState.currentQ + 1}/${lv.questions.length}</span>
+        <div class="question-text">${q.q.replace(/_+/g, '<span class="blank-inline">?</span>')}</div>
+        <input type="text" class="answer-input" id="ansInput" placeholder="输入完整词根..." autocomplete="off" onkeydown="if(event.key==='Enter')submitAnswer()">
+        <div class="feedback-area" id="feedback"></div>
+        <div style="margin-top:14px; display:flex; gap:10px;">
+          <button class="btn btn-primary" onclick="submitAnswer()">确认答案</button>
+          <button class="btn btn-outline btn-small" onclick="showHint('${q.hint}')">💡 提示</button>
+        </div>
+      </div>
+    `;
+    setTimeout(() => document.getElementById('ansInput').focus(), 100);
+  }
+
+  else if (lv.type === 'find') {
+    const q = lv.questions[gameState.currentQ];
+    if (!q) { finishLevel(); return; }
+    area.innerHTML = `
+      <div class="question-card">
+        <span class="question-type">找出词根 · ${gameState.currentQ + 1}/${lv.questions.length}</span>
+        <div class="question-text">单词 <span style="color:var(--primary)">${q.q}</span> 中包含的词根是什么？</div>
+        <input type="text" class="answer-input" id="ansInput" placeholder="输入词根..." autocomplete="off" onkeydown="if(event.key==='Enter')submitAnswer()">
+        <div class="feedback-area" id="feedback"></div>
+        <div style="margin-top:14px; display:flex; gap:10px;">
+          <button class="btn btn-primary" onclick="submitAnswer()">确认答案</button>
+          <button class="btn btn-outline btn-small" onclick="showHint('${q.hint}')">💡 提示</button>
+        </div>
+      </div>
+    `;
+    setTimeout(() => document.getElementById('ansInput').focus(), 100);
+  }
+
+  else if (lv.type === 'match') {
+    // 配对题：显示所有词根，下拉选择对应例词
+    if (gameState.currentQ === 0) {
+      // 初始化配对状态
+      gameState.matchState = lv.questions.map((q, i) => ({ ...q, selected: null, order: i }));
+      // 打乱顺序
+      gameState.matchOrder = [...lv.questions].sort(() => Math.random() - 0.5);
+    }
+    if (gameState.matchState.every(m => m.selected !== null)) {
+      // 检查结果
+      checkAllMatches(); return;
+    }
+    const current = gameState.matchState.find(m => m.selected === null);
+    const idx = gameState.matchState.indexOf(current);
+    const options = gameState.matchOrder;
+    area.innerHTML = `
+      <div class="question-card">
+        <span class="question-type">词根配对 · ${idx + 1}/${lv.questions.length}</span>
+        <div class="question-text">请为词根 <span style="color:var(--primary)">${current.stem}</span> 选择对应的例词：</div>
+        <div class="options-grid" id="matchOptions"></div>
+        <div class="feedback-area" id="feedback"></div>
+      </div>
+    `;
+    const opts = document.getElementById('matchOptions');
+    options.forEach((opt, i) => {
+      const btn = document.createElement('button');
+      btn.className = 'option-btn';
+      const used = gameState.matchState.some(m => m.selected === opt.word && m.selected !== '__WRONG__');
+      if (used) btn.style.opacity = '0.4';
+      btn.innerHTML = `<span class="opt-label">${String.fromCharCode(65 + i)}</span><span>${opt.word}</span>`;
+      btn.onclick = () => { if (!used) selectMatch(current, opt.word); };
+      opts.appendChild(btn);
+    });
+  }
+
+  else if (lv.type === 'tf') {
+    const q = lv.questions[gameState.currentQ];
+    if (!q) { finishLevel(); return; }
+    area.innerHTML = `
+      <div class="question-card">
+        <span class="question-type">真假判断 · ${gameState.currentQ + 1}/${lv.questions.length}</span>
+        <div class="question-text">${q.q}</div>
+        <div class="options-grid" style="grid-template-columns:1fr 1fr;">
+          <button class="option-btn" onclick="submitTF(true)">
+            <span class="opt-label">T</span><span>正确 True</span>
+          </button>
+          <button class="option-btn" onclick="submitTF(false)">
+            <span class="opt-label">F</span><span>错误 False</span>
+          </button>
+        </div>
+        <div class="feedback-area" id="feedback"></div>
+      </div>
+    `;
+  }
+
+  else if (lv.type === 'build') {
+    const q = lv.questions[gameState.currentQ];
+    if (!q) { finishLevel(); return; }
+    area.innerHTML = `
+      <div class="question-card">
+        <span class="question-type">构词工坊 · ${gameState.currentQ + 1}/${lv.questions.length}</span>
+        <div class="question-text">根据构词成分写出单词：<br><span style="color:#888; font-size:0.9em;">${q.parts}</span></div>
+        <input type="text" class="answer-input" id="ansInput" placeholder="输入组合后的单词..." autocomplete="off" onkeydown="if(event.key==='Enter')submitAnswer()">
+        <div class="feedback-area" id="feedback"></div>
+        <div style="margin-top:14px; display:flex; gap:10px;">
+          <button class="btn btn-primary" onclick="submitAnswer()">确认答案</button>
+          <button class="btn btn-outline btn-small" onclick="showHint('${q.hint || ''}')">💡 提示</button>
+        </div>
+      </div>
+    `;
+    setTimeout(() => document.getElementById('ansInput').focus(), 100);
+  }
+
+  else if (lv.type === 'speed') {
+    // 极速配对：一次性显示所有配对
+    if (gameState.currentQ === 0) {
+      gameState.speedState = lv.stems.map(s => ({ ...s, answer: '' }));
+      gameState.speedOrder = [...lv.stems].sort(() => Math.random() - 0.5);
+    }
+    if (gameState.currentQ >= lv.stems.length) {
+      checkAllSpeed(); return;
+    }
+    const cur = gameState.speedState[gameState.currentQ];
+    area.innerHTML = `
+      <div class="question-card">
+        <span class="question-type">极速配对 · ${gameState.currentQ + 1}/${lv.stems.length}</span>
+        <div class="question-text">词根 <span style="color:var(--primary)">${cur.stem}</span> 的含义是？</div>
+        <div class="options-grid" id="speedOptions"></div>
+        <div class="feedback-area" id="feedback"></div>
+      </div>
+    `;
+    const opts = document.getElementById('speedOptions');
+    gameState.speedOrder.forEach((opt, i) => {
+      const used = gameState.speedState.some(s => s.answer === opt.meaning && s.answer !== '__WRONG__' && s.num !== cur.num);
+      const btn = document.createElement('button');
+      btn.className = 'option-btn';
+      if (used) btn.style.opacity = '0.4';
+      btn.innerHTML = `<span class="opt-label">${String.fromCharCode(65 + i)}</span><span>${opt.meaning}</span>`;
+      btn.onclick = () => { if (!used) selectSpeed(cur.num, opt.meaning); };
+      opts.appendChild(btn);
+    });
+  }
+}
+
+// ==================== 答题验证 ====================
+function showHint(hint) {
+  const fb = document.getElementById('feedback');
+  fb.className = 'feedback-area show feedback-correct';
+  fb.innerHTML = '<div class="fb-title">💡 提示</div><div class="fb-detail">' + hint + '</div>';
+}
+
+function submitAnswer() {
+  if (gameState.busy) return;
+  const lv = LEVELS.find(l => l.id === gameState.currentLevel);
+  const input = document.getElementById('ansInput');
+  if (!input) return;
+  const val = input.value.trim();
+  if (!val) { input.focus(); return; }
+
+  const q = lv.questions[gameState.currentQ];
+  const correct = checkMatch(val, q.a);
+  handleResult(correct, q.a, q.hint);
+}
+
+function submitTF(answer) {
+  if (gameState.busy) return;
+  const lv = LEVELS.find(l => l.id === gameState.currentLevel);
+  const q = lv.questions[gameState.currentQ];
+  const correct = answer === q.a;
+  const correctText = q.a ? '正确（True）' : '错误（False），正确答案是 ' + q.correct;
+  handleResult(correct, correctText, q.explain);
+}
+
+function selectMatch(item, word) {
+  if (gameState.busy) return;
+  const correct = item.word === word;
+  if (correct) {
+    gameState.busy = true;
+    item.selected = word;
+    playCorrect();
+    gameState.answers.push({ q: item.stem, a: word, correct: true });
+    gameState.correctCount++; addScore(true);
+    gameState.currentQ++; updateProgress(); renderQuestion();
+    setTimeout(() => { gameState.busy = false; }, 100);
+  } else {
+    playWrong();
+    gameState.combo = 0; updateProgress();
+    const fb = document.getElementById('feedback');
+    if (fb) {
+      fb.className = 'feedback-area show feedback-wrong';
+      fb.innerHTML = '<div class="fb-title">❌ 不对哦</div><div class="fb-detail">正确答案是 <strong>' + item.word + '</strong>，请重新选择。</div>';
+    }
+  }
+}
+function checkAllMatches() {
+  const lv = LEVELS.find(l => l.id === gameState.currentLevel);
+  const allCorrect = gameState.matchState.every(m => m.selected === m.word);
+  // 配对题每对算10分
+  finishLevel();
+}
+
+function selectSpeed(num, meaning) {
+  if (gameState.busy) return;
+  const item = gameState.speedState.find(s => s.num === num);
+  const correct = item.meaning === meaning;
+  if (correct) {
+    gameState.busy = true;
+    item.answer = meaning;
+    playCorrect();
+    gameState.answers.push({ q: item.stem, a: meaning, correct: true });
+    gameState.correctCount++; addScore(true);
+    gameState.currentQ++; updateProgress(); renderQuestion();
+    setTimeout(() => { gameState.busy = false; }, 100);
+  } else {
+    playWrong();
+    gameState.combo = 0; updateProgress();
+    const fb = document.getElementById('feedback');
+    if (fb) {
+      fb.className = 'feedback-area show feedback-wrong';
+      fb.innerHTML = '<div class="fb-title">❌ 不对哦</div><div class="fb-detail">正确答案是 <strong>' + item.meaning + '</strong>，请重新选择。</div>';
+    }
+  }
+}
+function checkAllSpeed() {
+  finishLevel();
+}
+
+function handleResult(correct, correctAnswer, explain) {
+  if (gameState.busy) return;
+  gameState.busy = true;
+  const input = document.getElementById('ansInput');
+  const fb = document.getElementById('feedback');
+  const lv = LEVELS.find(l => l.id === gameState.currentLevel);
+  const q = lv.questions[gameState.currentQ];
+
+  gameState.answers.push({ q: q.q || q.parts || q.stem || q.word, a: input ? input.value : '', correct });
+
+  if (correct) {
+    playCorrect();
+    if (input) { input.classList.add('correct'); input.disabled = true; }
+    gameState.correctCount++;
+    addScore(true);
+    fb.className = 'feedback-area show feedback-correct';
+    fb.innerHTML = '<div class="fb-title">🎉 答对了！</div><div class="fb-detail">' + (explain || '太棒了！继续保持！') + '</div>';
+    // 粒子效果
+    const rect = input ? input.getBoundingClientRect() : { left: window.innerWidth/2, top: window.innerHeight/2 };
+    spawnParticles(rect.left + rect.width/2, rect.top, '#4CAF50');
+    setTimeout(() => { nextQuestion(); }, 900);
+  } else {
+    playWrong();
+    if (input) { input.classList.add('wrong'); input.value = ''; input.focus(); }
+    gameState.wrongCount++;
+    gameState.combo = 0;
+    updateProgress();
+    fb.className = 'feedback-area show feedback-wrong';
+    fb.innerHTML = '<div class="fb-title">❌ 再试一次</div><div class="fb-detail">正确答案：<strong>' + correctAnswer + '</strong>' + (explain ? '<br>' + explain : '') + '</div>';
+    if (input) setTimeout(() => input.classList.remove('wrong'), 500);
+  }
+}
+
+function addScore(isCorrect) {
+  if (!isCorrect) return;
+  gameState.combo++;
+  if (gameState.combo > gameState.maxCombo) gameState.maxCombo = gameState.combo;
+  const base = 10;
+  const comboBonus = Math.min(gameState.combo - 1, 5); // 最多5连击加成
+  const points = base + comboBonus * 5;
+  gameState.score += points;
+  updateProgress();
+
+  // 连击浮层
+  if (gameState.combo >= 3 && gameState.combo % 3 === 0) {
+    playCombo();
+    const popup = document.getElementById('comboPopup');
+    popup.querySelector('.combo-num').textContent = 'x' + gameState.combo;
+    popup.classList.add('show');
+    setTimeout(() => popup.classList.remove('show'), 1000);
+    // 大量粒子
+    spawnParticles(window.innerWidth/2, window.innerHeight/2, '#C9A961');
+  }
+}
+
+function nextQuestion() {
+  gameState.busy = false;
+  gameState.currentQ++;
+  updateProgress();
+  renderQuestion();
+}
+
+// ==================== 关卡结算 ====================
+function finishLevel() {
+  playLevelComplete();
+  const lv = LEVELS.find(l => l.id === gameState.currentLevel);
+  const totalQ = lv.type === 'speed' ? lv.stems.length : lv.questions.length;
+  const accuracy = totalQ ? Math.round((gameState.correctCount / totalQ) * 100) : 0;
+
+  // 星级：3星=全对，2星=正确率80%+，1星=完成
+  let stars = 1;
+  if (accuracy >= 100) stars = 3;
+  else if (accuracy >= 80) stars = 2;
+
+  // 更新关卡进度
+  const prev = gameState.levelProgress[lv.id];
+  const bestStars = Math.max(stars, prev?.stars || 0);
+  const bestScore = Math.max(gameState.score, prev?.score || 0);
+  gameState.levelProgress[lv.id] = {
+    completed: true, perfect: accuracy >= 100,
+    stars: bestStars, score: bestScore
+  };
+  gameState.totalScore += gameState.score;
+  gameState.history.push({ date: new Date().toISOString(), score: gameState.score, level: lv.id });
+
+  // 检查勋章
+  const newBadges = checkBadges();
+
+  saveProgress();
+
+  // 显示结算
+  document.getElementById('resultEmoji').textContent = accuracy >= 100 ? '🌟' : accuracy >= 80 ? '🎉' : '👍';
+  document.getElementById('resultTitle').textContent = accuracy >= 100 ? '完美通关！' : accuracy >= 80 ? '关卡完成！' : '挑战结束';
+  document.getElementById('resultSubtitle').textContent = accuracy >= 100 ? '全对！你是词根大师！' : accuracy >= 80 ? '表现不错，继续加油！' : '继续练习，你会更强！';
+  document.getElementById('resultStars').textContent = (stars >= 1 ? '⭐' : '☆') + (stars >= 2 ? '⭐' : '☆') + (stars >= 3 ? '⭐' : '☆');
+  document.getElementById('rsScore').textContent = gameState.score;
+  document.getElementById('rsCombo').textContent = gameState.maxCombo;
+  document.getElementById('rsAccuracy').textContent = accuracy + '%';
+
+  const nb = document.getElementById('newBadges');
+  if (newBadges.length) {
+    nb.innerHTML = '<div style="color:var(--gold); font-weight:700; margin-bottom:8px;">🎊 获得新勋章！</div>' +
+      newBadges.map(b => '<span style="display:inline-block; background:var(--light-gold); padding:6px 12px; border-radius:8px; margin:4px;">' + b.icon + ' ' + b.name + '</span>').join('');
+  } else { nb.innerHTML = ''; }
+
+  showScreen('resultScreen');
+}
+
+function retryLevel() { startLevel(gameState.currentLevel); }
+function nextLevel() {
+  const idx = LEVELS.findIndex(l => l.id === gameState.currentLevel);
+  if (idx + 1 < LEVELS.length) startLevel(LEVELS[idx + 1].id);
+  else showScreen('startScreen');
+}
+
+// ==================== 勋章系统 ====================
+function checkBadges() {
+  const earned = [];
+  const has = id => gameState.badges.includes(id);
+  const add = id => { if (!has(id)) { gameState.badges.push(id); earned.push(BADGES.find(b => b.id === id)); playBadge(); } };
+
+  const completedLevels = Object.values(gameState.levelProgress).filter(p => p.completed).length;
+  const perfectLevels = Object.values(gameState.levelProgress).filter(p => p.perfect).length;
+
+  if (completedLevels >= 1) add('first_blood');
+  if (perfectLevels >= 1) add('perfect_1');
+  if (gameState.maxCombo >= 5) add('combo_5');
+  if (gameState.maxCombo >= 10) add('combo_10');
+  if (gameState.totalScore >= 500) add('score_500');
+  if (gameState.totalScore >= 1000) add('score_1000');
+  if (completedLevels >= LEVELS.length) add('all_levels');
+  if (perfectLevels >= LEVELS.length) add('all_perfect');
+
+  if (earned.length) {
+    showBadgePopup(earned[0]);
+    if (earned.length > 1) {
+      let i = 1;
+      const showNext = () => { if (i < earned.length) { showBadgePopup(earned[i]); i++; setTimeout(showNext, 2000); } };
+      setTimeout(showNext, 2000);
+    }
+  }
+  return earned;
+}
+
+function showBadgePopup(badge) {
+  const overlay = document.getElementById('overlay');
+  const popup = document.getElementById('badgePopup');
+  document.getElementById('badgeIcon').textContent = badge.icon;
+  document.getElementById('badgeName').textContent = badge.name;
+  document.getElementById('badgeDesc').textContent = badge.desc;
+  overlay.classList.add('show'); popup.classList.add('show');
+  setTimeout(() => { overlay.classList.remove('show'); popup.classList.remove('show'); }, 2500);
+}
+
+function renderBadges() {
+  const wall = document.getElementById('badgeWall');
+  wall.innerHTML = BADGES.map(b => {
+    const earned = gameState.badges.includes(b.id);
+    return '<div class="badge-item ' + (earned ? 'earned' : 'locked') + '"><span>' + b.icon + '</span><div><div style="font-weight:700;">' + b.name + '</div><div style="font-size:0.85em; color:#888;">' + b.desc + '</div></div></div>';
+  }).join('');
+}
+
+// ==================== 排行榜 ====================
+function renderLeaderboard() {
+  const lb = document.getElementById('leaderboard');
+  const entries = [...gameState.history].sort((a, b) => b.score - a.score).slice(0, 10);
+  if (!entries.length) {
+    lb.innerHTML = '<div style="text-align:center; color:#aaa; padding:40px;">暂无记录，快去挑战吧！</div>';
+    return;
+  }
+  lb.innerHTML = entries.map((e, i) => {
+    const d = new Date(e.date);
+    const dateStr = (d.getMonth()+1) + '/' + d.getDate() + ' ' + d.getHours() + ':' + String(d.getMinutes()).padStart(2,'0');
+    return '<div class="lb-row"><div class="lb-rank">#' + (i+1) + '</div><div>第' + e.level + '关</div><div style="color:#888; font-size:0.85em;">' + dateStr + '</div><div class="lb-score">' + e.score + '分</div></div>';
+  }).join('');
+}
+
+function updateStartStats() {
+  document.getElementById('totalScore').textContent = gameState.totalScore;
+  const totalStars = Object.values(gameState.levelProgress).reduce((s, p) => s + (p.stars || 0), 0);
+  document.getElementById('totalStars').textContent = totalStars;
+  document.getElementById('badgeCount').textContent = gameState.badges.length + '/' + BADGES.length;
+}
+
+// ==================== 初始化 ====================
+loadProgress();
+updateStartStats();
+</script>
+</body>
+</html>
