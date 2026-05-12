@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>词汇练习 - Caesar's English II - 20260512</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root { --primary: #E85D04; --gold: #C9A961; --bg: #FAF7F2; --text: #2C2C2C; --light-gold: rgba(201, 169, 97, 0.12); --card-bg: #FFFFFF; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Noto Serif SC', Georgia, serif; background: var(--bg); color: var(--text); line-height: 1.8; font-size: 16px; }
+  
+  /* ── Cover ── */
+  .cover { text-align: center; padding: 60px 20px 50px; border-bottom: 2px solid var(--gold); }
+  .cover .label { font-size: 0.85em; color: var(--gold); font-weight: 600; letter-spacing: 3px; text-transform: uppercase; margin-bottom: 12px; }
+  .cover h1 { font-size: 2.2em; font-weight: 700; color: var(--text); margin-bottom: 10px; letter-spacing: 2px; }
+  .cover .subtitle { font-size: 1em; color: var(--gold); font-weight: 600; margin-bottom: 8px; }
+  .gold-line { width: 80px; height: 2px; background: var(--gold); margin: 18px auto; }
+  .cover .meta { font-size: 0.85em; color: #aaa; margin-top: 20px; }
+  
+  /* ── Module Nav ── */
+  .back-link { max-width: 900px; margin: 20px auto 0; padding: 0 20px; }
+  .back-link a { color: var(--gold); text-decoration: none; font-size: 0.9em; border-bottom: 1px dotted var(--gold); }
+  .back-link a:hover { color: var(--primary); }
+  
+  /* ── Lesson Grid (Home) ── */
+  .container { max-width: 900px; margin: 0 auto; padding: 40px 20px; }
+  .section-title { font-size: 1.5em; font-weight: 700; margin: 50px 0 25px; padding-bottom: 12px; border-bottom: 2px solid var(--gold); color: var(--text); }
+  .section-title:first-of-type { margin-top: 0; }
+  
+  .lesson-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 16px; }
+  .lesson-card { background: var(--card-bg); border-radius: 10px; padding: 20px; text-decoration: none; color: var(--text); box-shadow: 0 2px 8px rgba(0,0,0,0.06); border-left: 4px solid var(--gold); transition: all 0.2s; display: block; }
+  .lesson-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.1); border-left-color: var(--primary); }
+  .lesson-card .l-num { font-size: 0.8em; color: var(--gold); font-weight: 700; margin-bottom: 4px; }
+  .lesson-card .l-title { font-size: 1em; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+  .lesson-card .l-type { font-size: 0.8em; color: #888; }
+  .lesson-card .l-count { font-size: 0.78em; color: var(--primary); margin-top: 6px; font-weight: 600; }
+  
+  /* ── Practice View ── */
+  .practice-header { background: linear-gradient(135deg, var(--light-gold), transparent); padding: 24px 28px; border-radius: 10px; margin-bottom: 30px; border-left: 5px solid var(--gold); }
+  .practice-header h2 { font-size: 1.4em; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+  .practice-header .lesson-sub { font-size: 0.9em; color: var(--gold); font-weight: 600; }
+  .back-btn { display: inline-block; margin-bottom: 20px; color: var(--gold); text-decoration: none; font-size: 0.9em; border-bottom: 1px dotted var(--gold); }
+  .back-btn:hover { color: var(--primary); }
+  
+  /* ── Exercise Sections ── */
+  .ex-section { background: var(--card-bg); border-radius: 10px; padding: 28px; margin-bottom: 24px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .ex-section h3 { font-size: 1.15em; font-weight: 700; color: var(--primary); margin-bottom: 18px; padding-bottom: 10px; border-bottom: 1px dashed var(--gold); }
+  
+  /* ── Matching Exercise ── */
+  .matching-container { display: flex; gap: 30px; flex-wrap: wrap; justify-content: center; }
+  .matching-col { flex: 1; min-width: 200px; max-width: 320px; }
+  .matching-col h4 { font-size: 0.85em; color: var(--gold); font-weight: 700; margin-bottom: 10px; text-align: center; text-transform: uppercase; letter-spacing: 1px; }
+  .match-item { padding: 10px 14px; margin-bottom: 8px; border-radius: 6px; background: var(--light-gold); cursor: pointer; font-size: 0.95em; transition: all 0.15s; border: 2px solid transparent; user-select: none; }
+  .match-item:hover { border-color: var(--gold); }
+  .match-item.selected { border-color: var(--primary); background: rgba(232, 93, 4, 0.1); }
+  .match-item.matched { border-color: #4CAF50; background: rgba(76, 175, 80, 0.12); cursor: default; }
+  .match-item.wrong { border-color: #f44336; background: rgba(244, 67, 54, 0.1); animation: shake 0.3s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-4px)} 75%{transform:translateX(4px)} }
+  
+  /* ── MCQ (Context/Synonym/Antonym) ── */
+  .mcq-item { margin-bottom: 22px; padding-bottom: 18px; border-bottom: 1px dotted #eee; }
+  .mcq-item:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .mcq-q { font-weight: 600; margin-bottom: 10px; color: #444; font-size: 0.98em; line-height: 1.7; }
+  .mcq-opts { display: flex; flex-wrap: wrap; gap: 10px; }
+  .mcq-opt { padding: 8px 16px; border-radius: 6px; border: 2px solid #e0d8cc; background: var(--bg); cursor: pointer; font-size: 0.92em; transition: all 0.15s; min-width: 80px; text-align: center; user-select: none; }
+  .mcq-opt:hover { border-color: var(--gold); }
+  .mcq-opt.correct { border-color: #4CAF50; background: rgba(76,175,80,0.15); color: #2E7D32; }
+  .mcq-opt.wrong { border-color: #f44336; background: rgba(244,67,54,0.12); color: #C62828; }
+  .mcq-opt.disabled { cursor: default; opacity: 0.6; }
+  
+  /* ── Answer Reveal ── */
+  .reveal-btn { display: block; margin: 0 auto 24px; padding: 12px 36px; background: var(--gold); color: white; border: none; border-radius: 8px; font-family: inherit; font-size: 1em; font-weight: 600; cursor: pointer; transition: background 0.2s; }
+  .reveal-btn:hover { background: var(--primary); }
+  .answer-key { background: var(--light-gold); border-radius: 8px; padding: 20px 24px; margin-bottom: 24px; border-left: 4px solid var(--gold); }
+  .answer-key h4 { font-size: 1em; color: var(--gold); font-weight: 700; margin-bottom: 10px; }
+  .answer-key .row { display: flex; gap: 20px; flex-wrap: wrap; margin-bottom: 6px; font-size: 0.9em; }
+  .answer-key .row .label { font-weight: 600; color: var(--text); min-width: 60px; }
+  .answer-key .row .val { color: #555; }
+  
+  /* ── Score Bar ── */
+  .score-bar { background: var(--card-bg); border-radius: 10px; padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+  .score-bar .score-label { font-weight: 600; color: var(--text); font-size: 0.95em; }
+  .score-bar .progress { flex: 1; height: 10px; background: #eee; border-radius: 5px; overflow: hidden; }
+  .score-bar .progress-fill { height: 100%; background: linear-gradient(90deg, var(--gold), var(--primary)); border-radius: 5px; transition: width 0.4s ease; }
+  .score-bar .score-num { font-weight: 700; color: var(--primary); font-size: 1.1em; min-width: 50px; text-align: right; }
+  
+  /* ── Footer ── */
+  footer { text-align: center; padding: 40px 20px; color: #aaa; font-size: 0.85em; border-top: 1px solid #e8e0d0; margin-top: 60px; }
+  footer a { color: var(--gold); text-decoration: none; }
+  
+  /* ── Hidden ── */
+  .hidden { display: none !important; }
+  
+  /* ── Toast ── */
+  .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: var(--text); color: white; padding: 12px 28px; border-radius: 30px; font-size: 0.9em; opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 999; }
+  .toast.show { opacity: 1; }
+  
+  @media (max-width: 600px) {
+    .lesson-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+    .ex-section { padding: 20px 16px; }
+    .practice-header { padding: 18px 20px; }
+    .matching-container { flex-direction: column; }
+    .matching-col { max-width: 100%; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ HOME VIEW ═══ -->
+<div id="home-view">
+  <div class="cover">
+    <div class="label">Caesar's English II</div>
+    <h1>词汇练习</h1>
+    <div class="subtitle">Interactive Vocabulary Quiz</div>
+    <div class="gold-line"></div>
+    <div class="meta">生成日期: 2026-05-12 · 20 Lessons · 4 Exercise Types</div>
+  </div>
+  
+  <div class="back-link"><a href="index.html">← 返回学习中心首页</a></div>
+  
+  <div class="container">
+    <h2 class="section-title">选择单元开始练习</h2>
+    <p style="color:#888; margin-bottom:25px; font-size:0.95em;">每个单元包含：连线题 · 上下文选词 · 同义词 · 反义词</p>
+    
+    <div class="lesson-grid" id="lesson-grid">
+      <!-- Populated by JS -->
+    </div>
+  </div>
+  
+  <footer>
+    <p>LatinFun · Caesar's English II 词汇练习中心</p>
+    <p style="margin-top:6px;">Michelle 学习进度 · 每日练习</p>
+  </footer>
+</div>
+
+<!-- ═══ PRACTICE VIEW ═══ -->
+<div id="practice-view" class="hidden">
+  <div class="cover" style="padding: 40px 20px 35px;">
+    <div class="label">Caesar's English II</div>
+    <h1 style="font-size:1.6em;">词汇练习</h1>
+    <div class="subtitle" id="practice-lesson-title">Lesson I — LATIN STEMS</div>
+    <div class="gold-line"></div>
+  </div>
+  
+  <div class="container">
+    <a href="#" class="back-btn" onclick="showHome(); return false;">← 返回单元列表</a>
+    
+    <div class="score-bar">
+      <span class="score-label">本节得分</span>
+      <div class="progress"><div class="progress-fill" id="progress-fill" style="width:0%"></div></div>
+      <span class="score-num" id="score-num">0%</span>
+    </div>
+    
+    <div id="exercise-container">
+      <!-- Exercises rendered here -->
+    </div>
+    
+    <button class="reveal-btn" onclick="revealAnswers()">显示答案键</button>
+    <div class="answer-key hidden" id="answer-key">
+      <h4>答案键</h4>
+      <div class="row"><span class="label">连线</span><span class="val" id="ak-matching"></span></div>
+      <div class="row"><span class="label">上下文</span><span class="val" id="ak-context"></span></div>
+      <div class="row"><span class="label">同义</span><span class="val" id="ak-synonym"></span></div>
+      <div class="row"><span class="label">反义</span><span class="val" id="ak-antonym"></span></div>
+    </div>
+  </div>
+  
+  <footer>
+    <p>LatinFun · Caesar's English II 词汇练习中心</p>
+  </footer>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="vocab_practice_data.js"></script>
+<script>
+// ─── Data ───
+const LESSONS = Object.keys(VOCAB_DATA);
+
+// ─── State ───
+let currentLesson = null;
+let totalQuestions = 0;
+let correctCount = 0;
+
+// ─── Home View ───
+function renderHome() {
+  const grid = document.getElementById('lesson-grid');
+  grid.innerHTML = '';
+  LESSONS.forEach((key, i) => {
+    const data = VOCAB_DATA[key];
+    const isLatin = data.name.includes('LATIN');
+    const type = isLatin ? 'Latin Stems' : 'Classic Words';
+    const matchCount = data.matching.length;
+    const mcqCount = data.context.length + data.synonym.length + data.antonym.length;
+    
+    const card = document.createElement('a');
+    card.href = '#';
+    card.className = 'lesson-card';
+    card.onclick = () => { startLesson(key); return false; };
+    card.innerHTML = `
+      <div class="l-num">Lesson ${i+1}</div>
+      <div class="l-title">${type}</div>
+      <div class="l-count">${matchCount} 连线 + ${mcqCount} 选择</div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+// ─── Practice View ───
+function startLesson(lessonKey) {
+  currentLesson = lessonKey;
+  correctCount = 0;
+  
+  const data = VOCAB_DATA[lessonKey];
+  document.getElementById('practice-lesson-title').textContent = data.name.replace(' 练习题', '');
+  
+  // Count total questions
+  totalQuestions = data.matching.length + data.context.length + data.synonym.length + data.antonym.length;
+  
+  // Render exercises
+  const container = document.getElementById('exercise-container');
+  container.innerHTML = '';
+  
+  // Matching
+  if (data.matching.length > 0) {
+    container.innerHTML += `
+      <div class="ex-section">
+        <h3>练习一：连线题 — 英文释义 ↔ 单词匹配</h3>
+        <div class="matching-container" id="matching-area">
+          <div class="matching-col">
+            <h4>英文释义</h4>
+            ${data.matching.map((p, i) => `<div class="match-item" data-role="def" data-id="${i}">${p[0]}</div>`).join('')}
+          </div>
+          <div class="matching-col">
+            <h4>单词</h4>
+            ${shuffle(data.matching.map((p, i) => `<div class="match-item" data-role="word" data-id="${i}">${p[1]}</div>`)).join('')}
+          </div>
+        </div>
+      </div>
+    `;
+  }
+  
+  // Context
+  if (data.context.length > 0) {
+    container.innerHTML += `<div class="ex-section"><h3>练习二：上下文选词题</h3><div id="context-area"></div></div>`;
+    const ctxArea = document.getElementById('context-area');
+    data.context.forEach((q, i) => {
+      ctxArea.innerHTML += renderMCQ(`ctx-${i}`, q.question, q.options);
+    });
+  }
+  
+  // Synonym
+  if (data.synonym.length > 0) {
+    container.innerHTML += `<div class="ex-section"><h3>练习三：同义词选择题</h3><div id="synonym-area"></div></div>`;
+    const synArea = document.getElementById('synonym-area');
+    data.synonym.forEach((q, i) => {
+      synArea.innerHTML += renderMCQ(`syn-${i}`, q.question, q.options);
+    });
+  }
+  
+  // Antonym
+  if (data.antonym.length > 0) {
+    container.innerHTML += `<div class="ex-section"><h3>练习四：反义词选择题</h3><div id="antonym-area"></div></div>`;
+    const antArea = document.getElementById('antonym-area');
+    data.antonym.forEach((q, i) => {
+      antArea.innerHTML += renderMCQ(`ant-${i}`, q.question, q.options);
+    });
+  }
+  
+  // Setup matching drag/click
+  setupMatching();
+  
+  // Setup MCQ click handlers
+  setupMCQ(data);
+  
+  // Render answer key
+  const ak = document.getElementById('answer-key');
+  ak.classList.add('hidden');
+  document.getElementById('ak-matching').textContent = data.answers['连线'] || '';
+  document.getElementById('ak-context').textContent = data.answers['上下文'] || '';
+  document.getElementById('ak-synonym').textContent = data.answers['同义'] || '';
+  document.getElementById('ak-antonym').textContent = data.answers['反义'] || '';
+  
+  // Update score
+  updateScore();
+  
+  // Switch view
+  document.getElementById('home-view').classList.add('hidden');
+  document.getElementById('practice-view').classList.remove('hidden');
+  window.scrollTo(0, 0);
+}
+
+function renderMCQ(id, question, options) {
+  const letters = ['a', 'b', 'c', 'd'];
+  const optsHtml = options.map((opt, i) => {
+    const letter = letters[i] || String.fromCharCode(97+i);
+    return `<div class="mcq-opt" data-id="${id}" data-opt="${letter}">${opt}</div>`;
+  }).join('');
+  return `
+    <div class="mcq-item">
+      <div class="mcq-q">${question}</div>
+      <div class="mcq-opts">${optsHtml}</div>
+    </div>
+  `;
+}
+
+function setupMCQ(data) {
+  document.querySelectorAll('.mcq-opt').forEach(btn => {
+    btn.addEventListener('click', function() {
+      const id = this.dataset.id;
+      const opt = this.dataset.opt;
+      const parent = this.closest('.mcq-opts');
+      
+      // Already answered?
+      if (parent.querySelector('.correct') || parent.querySelector('.wrong')) return;
+      
+      // Determine correct answer letter from options
+      const qIndex = parseInt(id.split('-')[1]);
+      const qType = id.split('-')[0];
+      let correctLetter;
+      
+      if (qType === 'ctx') {
+        const ansStr = data.answers['上下文'] || '';
+        const parts = ansStr.split(',')[qIndex];
+        if (parts) correctLetter = parts.trim().split('.')[1];
+      } else if (qType === 'syn') {
+        const ansStr = data.answers['同义'] || '';
+        const parts = ansStr.split(',')[qIndex];
+        if (parts) correctLetter = parts.trim().split('.')[1];
+      } else if (qType === 'ant') {
+        const ansStr = data.answers['反义'] || '';
+        const parts = ansStr.split(',')[qIndex];
+        if (parts) correctLetter = parts.trim().split('.')[1];
+      }
+      
+      const isCorrect = opt === correctLetter;
+      
+      // Disable all opts in this group
+      parent.querySelectorAll('.mcq-opt').forEach(b => b.classList.add('disabled'));
+      
+      if (isCorrect) {
+        this.classList.add('correct');
+        correctCount++;
+        showToast('✓ 正确！');
+      } else {
+        this.classList.add('wrong');
+        // Highlight correct one
+        parent.querySelectorAll('.mcq-opt').forEach(b => {
+          if (b.dataset.opt === correctLetter) b.classList.add('correct');
+        });
+        showToast('✗ 再接再厉');
+      }
+      
+      updateScore();
+    });
+  });
+}
+
+// ─── Matching Game ───
+let selectedDef = null;
+
+function setupMatching() {
+  document.querySelectorAll('.match-item[data-role="def"]').forEach(item => {
+    item.addEventListener('click', function() {
+      if (this.classList.contains('matched')) return;
+      
+      // Deselect previous
+      document.querySelectorAll('.match-item').forEach(m => m.classList.remove('selected'));
+      
+      this.classList.add('selected');
+      selectedDef = this;
+      
+      // Check if there's a selected word
+      const selectedWord = document.querySelector('.match-item[data-role="word"].selected');
+      if (selectedWord) {
+        checkMatch(selectedDef, selectedWord);
+      }
+    });
+  });
+  
+  document.querySelectorAll('.match-item[data-role="word"]').forEach(item => {
+    item.addEventListener('click', function() {
+      if (this.classList.contains('matched')) return;
+      
+      document.querySelectorAll('.match-item').forEach(m => m.classList.remove('selected'));
+      this.classList.add('selected');
+      
+      if (selectedDef) {
+        checkMatch(selectedDef, this);
+      }
+    });
+  });
+}
+
+function checkMatch(defEl, wordEl) {
+  const defId = defEl.dataset.id;
+  const wordId = wordEl.dataset.id;
+  
+  if (defId === wordId) {
+    // Correct match
+    defEl.classList.remove('selected');
+    defEl.classList.add('matched');
+    wordEl.classList.remove('selected');
+    wordEl.classList.add('matched');
+    correctCount++;
+    showToast('✓ 连线正确！');
+    updateScore();
+  } else {
+    // Wrong
+    defEl.classList.remove('selected');
+    wordEl.classList.remove('selected');
+    defEl.classList.add('wrong');
+    wordEl.classList.add('wrong');
+    setTimeout(() => {
+      defEl.classList.remove('wrong');
+      wordEl.classList.remove('wrong');
+    }, 500);
+    showToast('✗ 不匹配，再试');
+  }
+  selectedDef = null;
+}
+
+function shuffle(arr) {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+// ─── Score ───
+function updateScore() {
+  const pct = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('score-num').textContent = pct + '%';
+}
+
+// ─── Reveal Answers ───
+function revealAnswers() {
+  const ak = document.getElementById('answer-key');
+  ak.classList.remove('hidden');
+  ak.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+// ─── Toast ───
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 1500);
+}
+
+// ─── Navigation ───
+function showHome() {
+  document.getElementById('practice-view').classList.add('hidden');
+  document.getElementById('home-view').classList.remove('hidden');
+  window.scrollTo(0, 0);
+}
+
+// ─── Init ───
+renderHome();
+</script>
+</body>
+</html>
