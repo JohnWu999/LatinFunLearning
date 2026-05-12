@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>单词闯关 - LatinFun 拉丁词根挑战</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --primary: #E85D04;
+    --gold: #C9A961;
+    --bg: #FAF7F2;
+    --text: #2C2C2C;
+    --light-gold: rgba(201, 169, 97, 0.15);
+    --success: #4CAF50;
+    --danger: #E53935;
+    --card-bg: #ffffff;
+    --shadow: 0 4px 20px rgba(0,0,0,0.08);
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Noto Serif SC', Georgia, serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+    overflow-x: hidden;
+  }
+  .container { max-width: 800px; margin: 0 auto; padding: 20px; min-height: 100vh; display: flex; flex-direction: column; }
+
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 12px 28px; border-radius: 8px; border: none; cursor: pointer;
+    font-family: inherit; font-size: 1em; font-weight: 600;
+    transition: all 0.25s ease; user-select: none;
+  }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--primary), #F4A261);
+    color: white; box-shadow: 0 4px 12px rgba(232, 93, 4, 0.3);
+  }
+  .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(232, 93, 4, 0.4); }
+  .btn-gold {
+    background: linear-gradient(135deg, var(--gold), #E8D5A3);
+    color: #4A3C1A; box-shadow: 0 4px 12px rgba(201, 169, 97, 0.3);
+  }
+  .btn-gold:hover { transform: translateY(-2px); }
+  .btn-outline {
+    background: transparent; border: 2px solid var(--gold); color: var(--gold);
+  }
+  .btn-outline:hover { background: var(--light-gold); }
+  .btn-small { padding: 8px 16px; font-size: 0.9em; }
+
+  .screen { display: none; animation: fadeIn 0.4s ease; }
+  .screen.active { display: block; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* 开始界面 */
+  .start-screen { text-align: center; padding-top: 60px; }
+  .game-logo {
+    font-size: 2.4em; font-weight: 700; color: var(--primary);
+    margin-bottom: 8px; letter-spacing: 2px;
+  }
+  .game-subtitle {
+    font-size: 1.1em; color: var(--gold); font-weight: 600; margin-bottom: 30px;
+  }
+  .start-stats {
+    display: flex; justify-content: center; gap: 30px; margin: 30px 0;
+  }
+  .stat-box {
+    background: var(--card-bg); padding: 16px 24px; border-radius: 12px;
+    box-shadow: var(--shadow); min-width: 120px;
+  }
+  .stat-value { font-size: 1.8em; font-weight: 700; color: var(--primary); }
+  .stat-label { font-size: 0.8em; color: #888; margin-top: 4px; }
+
+  /* 关卡地图 */
+  .level-map { padding: 20px 0; }
+  .level-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 20px;
+  }
+  .level-card {
+    background: var(--card-bg); border-radius: 14px; padding: 18px 12px;
+    box-shadow: var(--shadow); cursor: pointer; text-align: center;
+    transition: all 0.3s ease; position: relative; border: 2px solid transparent;
+  }
+  .level-card:hover { transform: translateY(-4px); box-shadow: 0 8px 28px rgba(0,0,0,0.12); }
+  .level-card.locked { opacity: 0.5; cursor: not-allowed; filter: grayscale(0.6); }
+  .level-card.completed { border-color: var(--success); }
+  .level-card.perfect { border-color: var(--gold); background: linear-gradient(180deg, #fff, #FFFDF5); }
+  .level-card.has-wrong { border-color: var(--danger); }
+  .level-num {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: var(--light-gold); color: var(--gold);
+    display: flex; align-items: center; justify-content: center;
+    font-weight: 700; margin: 0 auto 10px; font-size: 1.1em;
+  }
+  .level-card.completed .level-num { background: var(--success); color: white; }
+  .level-card.perfect .level-num {
+    background: linear-gradient(135deg, var(--gold), #E8D5A3); color: #4A3C1A;
+  }
+  .level-title { font-weight: 600; font-size: 0.95em; margin-bottom: 4px; }
+  .level-desc { font-size: 0.8em; color: #888; }
+  .level-stars { margin-top: 8px; font-size: 1.1em; letter-spacing: 2px; }
+  .wrong-count {
+    position: absolute; top: 8px; right: 8px;
+    background: var(--danger); color: white;
+    font-size: 0.72em; font-weight: 700;
+    padding: 2px 7px; border-radius: 10px;
+    cursor: pointer;
+  }
+  .wrong-count:hover { background: #c62828; }
+  .practice-wrong-btn {
+    display: block; margin: 8px auto 0;
+    padding: 6px 14px; border-radius: 8px;
+    background: var(--danger); color: white;
+    border: none; font-family: inherit;
+    font-size: 0.8em; font-weight: 600;
+    cursor: pointer; transition: background 0.2s;
+  }
+  .practice-wrong-btn:hover { background: #c62828; }
+
+  /* 游戏界面 */
+  .game-header {
+    display: flex; justify-content: space-between; align-items: center;
+    background: var(--card-bg); padding: 12px 18px; border-radius: 12px;
+    box-shadow: var(--shadow); margin-bottom: 16px; flex-wrap: wrap; gap: 8px;
+  }
+  .score-display { display: flex; align-items: center; gap: 16px; }
+  .score-pill {
+    background: linear-gradient(135deg, var(--primary), #F4A261);
+    color: white; padding: 6px 14px; border-radius: 20px;
+    font-weight: 700; font-size: 0.95em;
+  }
+  .combo-display {
+    display: flex; align-items: center; gap: 4px;
+    color: var(--gold); font-weight: 700; font-size: 0.95em;
+    opacity: 0; transition: opacity 0.3s;
+  }
+  .combo-display.active { opacity: 1; animation: comboPop 0.4s ease; }
+  @keyframes comboPop { 0% { transform: scale(0.8); } 50% { transform: scale(1.15); } 100% { transform: scale(1); } }
+
+  .progress-bar {
+    width: 100%; height: 6px; background: #eee; border-radius: 3px; margin-top: 8px; overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%; background: linear-gradient(90deg, var(--primary), var(--gold));
+    border-radius: 3px; transition: width 0.4s ease;
+  }
+
+  .question-card {
+    background: var(--card-bg); border-radius: 16px; padding: 24px;
+    box-shadow: var(--shadow); margin-bottom: 16px; animation: slideUp 0.35s ease;
+  }
+  @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+  .question-type {
+    display: inline-block; background: var(--light-gold); color: var(--gold);
+    padding: 3px 10px; border-radius: 6px; font-size: 0.8em; font-weight: 600; margin-bottom: 12px;
+  }
+  .question-text { font-size: 1.15em; font-weight: 600; margin-bottom: 16px; line-height: 1.7; }
+
+  .answer-input {
+    width: 100%; padding: 14px 16px; border: 2px solid #E8E0D5;
+    border-radius: 10px; font-family: inherit; font-size: 1.05em;
+    background: #FDFBF7; transition: all 0.25s; outline: none;
+  }
+  .answer-input:focus { border-color: var(--gold); background: #fff; box-shadow: 0 0 0 3px var(--light-gold); }
+  .answer-input.correct { border-color: var(--success); background: #F1F8E9; }
+  .answer-input.wrong { border-color: var(--danger); background: #FFEBEE; animation: shake 0.4s; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%{transform:translateX(-8px)} 40%{transform:translateX(8px)} 60%{transform:translateX(-4px)} 80%{transform:translateX(4px)} }
+
+  .options-grid { display: grid; gap: 10px; }
+  .option-btn {
+    padding: 14px 16px; border: 2px solid #E8E0D5; border-radius: 10px;
+    background: #FDFBF7; cursor: pointer; font-family: inherit; font-size: 1em;
+    text-align: left; transition: all 0.2s; display: flex; align-items: center; gap: 10px;
+  }
+  .option-btn:hover { border-color: var(--gold); background: #FFFDF5; }
+  .option-btn.correct { border-color: var(--success); background: #F1F8E9; }
+  .option-btn.wrong { border-color: var(--danger); background: #FFEBEE; }
+  .option-btn .opt-label {
+    width: 28px; height: 28px; border-radius: 50%; background: var(--light-gold);
+    color: var(--gold); display: flex; align-items: center; justify-content: center;
+    font-weight: 700; font-size: 0.85em; flex-shrink: 0;
+  }
+  .option-btn.correct .opt-label { background: var(--success); color: white; }
+  .option-btn.wrong .opt-label { background: var(--danger); color: white; }
+
+  .feedback-area {
+    margin-top: 16px; padding: 14px 16px; border-radius: 10px; display: none;
+    animation: fadeIn 0.3s ease;
+  }
+  .feedback-area.correct { background: #E8F5E9; color: #2E7D32; display: block; }
+  .feedback-area.wrong { background: #FFEBEE; color: #C62828; display: block; }
+  .feedback-area .fb-title { font-weight: 700; margin-bottom: 4px; }
+
+  .game-actions { display: flex; justify-content: center; gap: 12px; margin-top: 20px; }
+
+  /* 结算界面 */
+  .result-screen { text-align: center; padding-top: 40px; }
+  .result-card {
+    background: var(--card-bg); border-radius: 20px; padding: 40px 30px;
+    box-shadow: var(--shadow); max-width: 480px; margin: 0 auto;
+  }
+  .result-stars { font-size: 3em; margin: 20px 0; letter-spacing: 8px; }
+  .result-score { font-size: 3em; font-weight: 700; color: var(--primary); margin: 10px 0; }
+  .result-stats {
+    display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;
+    margin: 24px 0;
+  }
+  .result-stat { background: var(--light-gold); padding: 14px; border-radius: 10px; }
+  .result-stat .rs-value { font-size: 1.5em; font-weight: 700; color: var(--primary); }
+  .result-stat .rs-label { font-size: 0.8em; color: #888; margin-top: 4px; }
+
+  /* 返回按钮 */
+  .back-link {
+    display: inline-flex; align-items: center; gap: 6px;
+    color: var(--gold); text-decoration: none; font-size: 0.9em;
+    margin-bottom: 16px; cursor: pointer;
+  }
+  .back-link:hover { color: var(--primary); }
+
+  /* 颜色标签 */
+  .tag {
+    display: inline-block; padding: 2px 10px; border-radius: 12px;
+    font-size: 0.75em; font-weight: 600; margin-right: 6px;
+  }
+  .tag-stem { background: rgba(232, 93, 4, 0.1); color: var(--primary); }
+  .tag-meaning { background: rgba(201, 169, 97, 0.15); color: var(--gold); }
+
+  /* 滚动条美化 */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--gold); border-radius: 3px; }
+
+  @media (max-width: 600px) {
+    .game-logo { font-size: 1.9em; }
+    .start-screen { padding-top: 30px; }
+    .level-grid { grid-template-columns: repeat(2, 1fr); }
+    .result-stats { grid-template-columns: 1fr 1fr; }
+    .start-stats { flex-direction: column; align-items: center; gap: 12px; }
+  }
+
+  /* 烟花特效 */
+  .fireworks-overlay {
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    pointer-events: none; z-index: 9999;
+  }
+  .firework {
+    position: absolute; border-radius: 50%;
+    animation: fw-explode 1.2s ease-out forwards;
+  }
+  @keyframes fw-explode {
+    0% { transform: scale(0); opacity: 1; }
+    50% { opacity: 1; }
+    100% { transform: scale(1); opacity: 0; }
+  }
+  .confetti {
+    position: absolute; width: 10px; height: 10px;
+    animation: confetti-fall 3s ease-out forwards;
+  }
+  @keyframes confetti-fall {
+    0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+    100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+  }
+  .victory-banner {
+    position: fixed; top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: white; border-radius: 24px;
+    padding: 40px 60px; text-align: center;
+    box-shadow: 0 20px 80px rgba(0,0,0,0.3);
+    z-index: 10000; animation: bannerPop 0.6s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  @keyframes bannerPop {
+    0% { transform: translate(-50%, -50%) scale(0); }
+    100% { transform: translate(-50%, -50%) scale(1); }
+  }
+  .victory-banner h2 { color: var(--gold); font-size: 2em; margin-bottom: 8px; }
+  .victory-banner p { color: #666; font-size: 1.1em; margin-bottom: 20px; }
+  .victory-stars { font-size: 2.5em; letter-spacing: 10px; margin-bottom: 16px; }
+</style>
+</head>
+<body>
+<div class="container">
+
+<!-- 开始界面 -->
+<div class="screen active" id="startScreen">
+  <div class="start-screen">
+    <div class="game-logo">单词闯关</div>
+    <div class="game-subtitle">LatinFun · 拉丁词根挑战</div>
+    <div style="color:#888; font-size:0.95em; max-width:500px; margin:0 auto 30px; line-height:1.8;">
+      包含 Caesar's English II 全部 50 个拉丁词根，分为 5 个关卡。<br>
+      每关混合多种题型：词根识义、含义选词根、例词辨析、填空练习。
+    </div>
+    <div class="start-stats">
+      <div class="stat-box">
+        <div class="stat-value">5</div>
+        <div class="stat-label">关卡总数</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">50</div>
+        <div class="stat-label">词根总数</div>
+      </div>
+      <div class="stat-box">
+        <div class="stat-value">150+</div>
+        <div class="stat-label">题目总数</div>
+      </div>
+    </div>
+    <div style="margin-top:10px;">
+      <button class="btn btn-primary" onclick="showLevelMap()">🎮 开始挑战</button>
+    </div>
+  </div>
+</div>
+
+<!-- 关卡地图 -->
+<div class="screen" id="levelMapScreen">
+  <a class="back-link" onclick="showStartScreen()">← 返回首页</a>
+  <div class="level-map">
+    <h2 style="text-align:center; margin-bottom:8px; font-size:1.5em;">选择关卡</h2>
+    <p style="text-align:center; color:#888; font-size:0.9em; margin-bottom:10px;">每通过一关，下一关自动解锁</p>
+    <div class="level-grid" id="levelGrid"></div>
+  </div>
+</div>
+
+<!-- 游戏界面 -->
+<div class="screen" id="gameScreen">
+  <a class="back-link" onclick="quitGame()">← 退出当前关卡</a>
+  <div class="game-header">
+    <div>
+      <div style="font-weight:700; font-size:1.05em;" id="levelTitle"></div>
+      <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    </div>
+    <div class="score-display">
+      <div class="score-pill" id="scoreDisplay">0 分</div>
+      <div class="combo-display" id="comboDisplay">⚡ 连击 x<span id="comboValue">0</span></div>
+    </div>
+  </div>
+  <div id="questionArea"></div>
+  <div class="game-actions" id="gameActions">
+    <button class="btn btn-primary" id="submitBtn" onclick="checkAnswer()">确认答案</button>
+    <button class="btn btn-gold" id="nextBtn" style="display:none;" onclick="nextQuestion()">下一题 →</button>
+  </div>
+</div>
+
+<!-- 结算界面 -->
+<div class="screen" id="resultScreen">
+  <a class="back-link" onclick="showLevelMap()">← 返回关卡地图</a>
+  <div class="result-screen">
+    <div class="result-card">
+      <h2 style="font-size:1.6em; margin-bottom:8px;">关卡完成！</h2>
+      <div id="resultLevelTitle" style="color:#888; font-size:0.95em;"></div>
+      <div class="result-stars" id="resultStars"></div>
+      <div class="result-score" id="resultScore"></div>
+      <div class="result-stats">
+        <div class="result-stat">
+          <div class="rs-value" id="rsCorrect"></div>
+          <div class="rs-label">正确率</div>
+        </div>
+        <div class="result-stat">
+          <div class="rs-value" id="rsCombo"></div>
+          <div class="rs-label">最高连击</div>
+        </div>
+        <div class="result-stat">
+          <div class="rs-value" id="rsTotal"></div>
+          <div class="rs-label">总分</div>
+        </div>
+      </div>
+      <div style="display:flex; justify-content:center; gap:12px; flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="replayLevel()">🔄 重新挑战</button>
+        <button class="btn btn-gold" id="nextLevelBtn" onclick="goNextLevel()">下一关 →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div>
+
+<script>
+// 游戏数据
+const GAME_DATA = [{"id": 1, "title": "第1关", "subtitle": "词根 1-10", "stems": ["com", "intra", "cent", "ad", "fer", "vita", "vid", "pater", "matri", "pop"], "questions": [{"type": "stem-to-meaning", "stem": "fer", "question": "词根 <b>fer</b> 的含义是什么？", "options": ["over", "carry", "sharp", "mind"], "answer": "carry"}, {"type": "example-stem", "question": "单词 <b>adhere</b> (to stick to) 包含哪个词根？", "options": ["medi", "tempor", "ad", "stell"], "answer": "ad"}, {"type": "stem-to-meaning", "stem": "vita", "question": "词根 <b>vita</b> 的含义是什么？", "options": ["life", "city", "star", "pay"], "answer": "life"}, {"type": "input-meaning", "stem": "cent", "question": "请写出词根 <b>cent</b> 的含义：", "answer": "one hundred", "accept": ["one hundred"]}, {"type": "example-stem", "question": "单词 <b>intracellular</b> (within a cell) 包含哪个词根？", "options": ["loco", "intra", "clam", "stell"], "answer": "intra"}, {"type": "meaning-to-stem", "question": "含义为 \"people\" 的词根是什么？", "options": ["vita", "cap", "urb", "pop"], "answer": "pop"}, {"type": "meaning-to-stem", "question": "含义为 \"one hundred\" 的词根是什么？", "options": ["clud", "cent", "cap", "ad"], "answer": "cent"}, {"type": "input-meaning", "stem": "vid", "question": "请写出词根 <b>vid</b> 的含义：", "answer": "look", "accept": ["look"]}, {"type": "stem-to-meaning", "stem": "vid", "question": "词根 <b>vid</b> 的含义是什么？", "options": ["time", "look", "number", "run"], "answer": "look"}, {"type": "stem-to-meaning", "stem": "intra", "question": "词根 <b>intra</b> 的含义是什么？", "options": ["pay", "against", "fight", "within"], "answer": "within"}, {"type": "input-meaning", "stem": "com", "question": "请写出词根 <b>com</b> 的含义：", "answer": "together", "accept": ["together"]}, {"type": "stem-to-meaning", "stem": "cent", "question": "词根 <b>cent</b> 的含义是什么？", "options": ["pleasing", "father", "one hundred", "middle"], "answer": "one hundred"}, {"type": "input-meaning", "stem": "ad", "question": "请写出词根 <b>ad</b> 的含义：", "answer": "to", "accept": ["to"]}, {"type": "meaning-to-stem", "question": "含义为 \"within\" 的词根是什么？", "options": ["numer", "intra", "com", "clam"], "answer": "intra"}, {"type": "input-meaning", "stem": "pop", "question": "请写出词根 <b>pop</b> 的含义：", "answer": "people", "accept": ["people"]}, {"type": "example-stem", "question": "单词 <b>vital</b> (full of life) 包含哪个词根？", "options": ["pond", "pugn", "vita", "culp"], "answer": "vita"}, {"type": "stem-to-meaning", "stem": "pop", "question": "词根 <b>pop</b> 的含义是什么？", "options": ["people", "sea", "father", "time"], "answer": "people"}, {"type": "meaning-to-stem", "question": "含义为 \"life\" 的词根是什么？", "options": ["clud", "curr", "vita", "tort"], "answer": "vita"}, {"type": "meaning-to-stem", "question": "含义为 \"together\" 的词根是什么？", "options": ["com", "pond", "pater", "pop"], "answer": "com"}, {"type": "stem-to-meaning", "stem": "matri", "question": "词根 <b>matri</b> 的含义是什么？", "options": ["mother", "right", "other", "vital"], "answer": "mother"}, {"type": "example-stem", "question": "单词 <b>provide</b> (to supply) 包含哪个词根？", "options": ["migr", "fer", "acr", "vid"], "answer": "vid"}, {"type": "example-stem", "question": "单词 <b>popular</b> (liked by many) 包含哪个词根？", "options": ["sanct", "pugn", "pop", "se"], "answer": "pop"}, {"type": "input-meaning", "stem": "matri", "question": "请写出词根 <b>matri</b> 的含义：", "answer": "mother", "accept": ["mother"]}, {"type": "meaning-to-stem", "question": "含义为 \"father\" 的词根是什么？", "options": ["voc", "culp", "pater", "rect"], "answer": "pater"}, {"type": "meaning-to-stem", "question": "含义为 \"carry\" 的词根是什么？", "options": ["grat", "fer", "anim", "clam"], "answer": "fer"}, {"type": "example-stem", "question": "单词 <b>transfer</b> (to move across) 包含哪个词根？", "options": ["junct", "amat", "cent", "fer"], "answer": "fer"}, {"type": "stem-to-meaning", "stem": "com", "question": "词根 <b>com</b> 的含义是什么？", "options": ["mother", "together", "mind", "one hundred"], "answer": "together"}, {"type": "example-stem", "question": "单词 <b>centurion</b> (a Roman officer) 包含哪个词根？", "options": ["anim", "tang", "cent", "per"], "answer": "cent"}, {"type": "example-stem", "question": "单词 <b>combine</b> (to put together) 包含哪个词根？", "options": ["com", "cent", "stell", "vid"], "answer": "com"}, {"type": "example-stem", "question": "单词 <b>paternal</b> (of the father) 包含哪个词根？", "options": ["sur", "migr", "tang", "pater"], "answer": "pater"}]}, {"id": 2, "title": "第2关", "subtitle": "词根 11-20", "stems": ["loco", "sur", "alter", "contra", "stell", "amat", "luna", "greg", "clam", "tang"], "questions": [{"type": "stem-to-meaning", "stem": "greg", "question": "词根 <b>greg</b> 的含义是什么？", "options": ["moon", "group", "father", "mother"], "answer": "group"}, {"type": "input-meaning", "stem": "luna", "question": "请写出词根 <b>luna</b> 的含义：", "answer": "moon", "accept": ["moon"]}, {"type": "input-meaning", "stem": "stell", "question": "请写出词根 <b>stell</b> 的含义：", "answer": "star", "accept": ["star"]}, {"type": "example-stem", "question": "单词 <b>constellation</b> (a group of stars) 包含哪个词根？", "options": ["stell", "sanct", "numer", "urb"], "answer": "stell"}, {"type": "example-stem", "question": "单词 <b>tangent</b> (touching at one point) 包含哪个词根？", "options": ["tang", "amat", "voc", "contra"], "answer": "tang"}, {"type": "meaning-to-stem", "question": "含义为 \"star\" 的词根是什么？", "options": ["luna", "stell", "numer", "urb"], "answer": "stell"}, {"type": "example-stem", "question": "单词 <b>dislocate</b> (to put out of place) 包含哪个词根？", "options": ["tort", "vid", "ad", "loco"], "answer": "loco"}, {"type": "stem-to-meaning", "stem": "stell", "question": "词根 <b>stell</b> 的含义是什么？", "options": ["voice", "sharp", "star", "carry"], "answer": "star"}, {"type": "stem-to-meaning", "stem": "tang", "question": "词根 <b>tang</b> 的含义是什么？", "options": ["blame", "touch", "people", "point"], "answer": "touch"}, {"type": "stem-to-meaning", "stem": "loco", "question": "词根 <b>loco</b> 的含义是什么？", "options": ["place", "against", "look", "across"], "answer": "place"}, {"type": "stem-to-meaning", "stem": "clam", "question": "词根 <b>clam</b> 的含义是什么？", "options": ["mind", "cry out", "life", "wander"], "answer": "cry out"}, {"type": "example-stem", "question": "单词 <b>declaim</b> (speak against) 包含哪个词根？", "options": ["migr", "pugn", "clam", "trib"], "answer": "clam"}, {"type": "stem-to-meaning", "stem": "amat", "question": "词根 <b>amat</b> 的含义是什么？", "options": ["holy", "join", "love", "pay"], "answer": "love"}, {"type": "stem-to-meaning", "stem": "sur", "question": "词根 <b>sur</b> 的含义是什么？", "options": ["look", "over", "against", "moon"], "answer": "over"}, {"type": "example-stem", "question": "单词 <b>amorous</b> (showing love) 包含哪个词根？", "options": ["clud", "per", "amat", "com"], "answer": "amat"}, {"type": "example-stem", "question": "单词 <b>contrary</b> (the opposite) 包含哪个词根？", "options": ["loco", "ad", "contra", "fus"], "answer": "contra"}, {"type": "example-stem", "question": "单词 <b>surface</b> (the outer face) 包含哪个词根？", "options": ["pugn", "sur", "vid", "rupt"], "answer": "sur"}, {"type": "stem-to-meaning", "stem": "luna", "question": "词根 <b>luna</b> 的含义是什么？", "options": ["group", "moon", "vital", "mother"], "answer": "moon"}, {"type": "meaning-to-stem", "question": "含义为 \"touch\" 的词根是什么？", "options": ["tang", "migr", "matri", "cent"], "answer": "tang"}, {"type": "meaning-to-stem", "question": "含义为 \"cry out\" 的词根是什么？", "options": ["clam", "matri", "luc", "anim"], "answer": "clam"}, {"type": "stem-to-meaning", "stem": "contra", "question": "词根 <b>contra</b> 的含义是什么？", "options": ["against", "touch", "people", "other"], "answer": "against"}, {"type": "input-meaning", "stem": "loco", "question": "请写出词根 <b>loco</b> 的含义：", "answer": "place", "accept": ["place"]}, {"type": "meaning-to-stem", "question": "含义为 \"over\" 的词根是什么？", "options": ["sur", "matri", "migr", "alter"], "answer": "sur"}, {"type": "stem-to-meaning", "stem": "alter", "question": "词根 <b>alter</b> 的含义是什么？", "options": ["life", "moon", "other", "right"], "answer": "other"}, {"type": "input-meaning", "stem": "sur", "question": "请写出词根 <b>sur</b> 的含义：", "answer": "over", "accept": ["over"]}, {"type": "input-meaning", "stem": "amat", "question": "请写出词根 <b>amat</b> 的含义：", "answer": "love", "accept": ["love"]}, {"type": "input-meaning", "stem": "greg", "question": "请写出词根 <b>greg</b> 的含义：", "answer": "group", "accept": ["group"]}, {"type": "example-stem", "question": "单词 <b>congregate</b> (to gather together) 包含哪个词根？", "options": ["luna", "voc", "anim", "greg"], "answer": "greg"}, {"type": "meaning-to-stem", "question": "含义为 \"against\" 的词根是什么？", "options": ["contra", "junct", "ad", "pond"], "answer": "contra"}, {"type": "meaning-to-stem", "question": "含义为 \"group\" 的词根是什么？", "options": ["clam", "greg", "acr", "tang"], "answer": "greg"}]}, {"id": 3, "title": "第3关", "subtitle": "词根 21-30", "stems": ["mar", "junct", "luc", "medi", "tempor", "grat", "curr", "trans", "migr", "rupt"], "questions": [{"type": "meaning-to-stem", "question": "含义为 \"join\" 的词根是什么？", "options": ["tempor", "migr", "junct", "fer"], "answer": "junct"}, {"type": "stem-to-meaning", "stem": "junct", "question": "词根 <b>junct</b> 的含义是什么？", "options": ["one hundred", "pay", "moon", "join"], "answer": "join"}, {"type": "input-meaning", "stem": "migr", "question": "请写出词根 <b>migr</b> 的含义：", "answer": "wander", "accept": ["wander"]}, {"type": "input-meaning", "stem": "grat", "question": "请写出词根 <b>grat</b> 的含义：", "answer": "pleasing", "accept": ["pleasing"]}, {"type": "meaning-to-stem", "question": "含义为 \"light\" 的词根是什么？", "options": ["trans", "alter", "sanct", "luc"], "answer": "luc"}, {"type": "example-stem", "question": "单词 <b>adjunct</b> (an unessential addition) 包含哪个词根？", "options": ["pater", "cap", "junct", "tang"], "answer": "junct"}, {"type": "example-stem", "question": "单词 <b>contemporary</b> (of the same time) 包含哪个词根？", "options": ["urb", "trib", "alter", "tempor"], "answer": "tempor"}, {"type": "meaning-to-stem", "question": "含义为 \"pleasing\" 的词根是什么？", "options": ["sur", "punct", "stell", "grat"], "answer": "grat"}, {"type": "input-meaning", "stem": "tempor", "question": "请写出词根 <b>tempor</b> 的含义：", "answer": "time", "accept": ["time"]}, {"type": "meaning-to-stem", "question": "含义为 \"run\" 的词根是什么？", "options": ["rect", "amat", "curr", "anim"], "answer": "curr"}, {"type": "stem-to-meaning", "stem": "rupt", "question": "词根 <b>rupt</b> 的含义是什么？", "options": ["break", "more", "across", "group"], "answer": "break"}, {"type": "example-stem", "question": "单词 <b>in medias res</b> (in the middle of things) 包含哪个词根？", "options": ["clam", "medi", "vita", "germ"], "answer": "medi"}, {"type": "meaning-to-stem", "question": "含义为 \"wander\" 的词根是什么？", "options": ["tempor", "urb", "rect", "migr"], "answer": "migr"}, {"type": "input-meaning", "stem": "trans", "question": "请写出词根 <b>trans</b> 的含义：", "answer": "across", "accept": ["across"]}, {"type": "input-meaning", "stem": "curr", "question": "请写出词根 <b>curr</b> 的含义：", "answer": "run", "accept": ["run"]}, {"type": "example-stem", "question": "单词 <b>gratification</b> (pleasure) 包含哪个词根？", "options": ["clud", "grat", "matri", "sanct"], "answer": "grat"}, {"type": "input-meaning", "stem": "junct", "question": "请写出词根 <b>junct</b> 的含义：", "answer": "join", "accept": ["join"]}, {"type": "meaning-to-stem", "question": "含义为 \"break\" 的词根是什么？", "options": ["grat", "sanct", "rupt", "voc"], "answer": "rupt"}, {"type": "meaning-to-stem", "question": "含义为 \"sea\" 的词根是什么？", "options": ["luna", "numer", "mar", "sur"], "answer": "mar"}, {"type": "meaning-to-stem", "question": "含义为 \"time\" 的词根是什么？", "options": ["tempor", "se", "amat", "cent"], "answer": "tempor"}, {"type": "stem-to-meaning", "stem": "mar", "question": "词根 <b>mar</b> 的含义是什么？", "options": ["light", "blame", "sea", "voice"], "answer": "sea"}, {"type": "input-meaning", "stem": "medi", "question": "请写出词根 <b>medi</b> 的含义：", "answer": "middle", "accept": ["middle"]}, {"type": "example-stem", "question": "单词 <b>maritime</b> (of the sea) 包含哪个词根？", "options": ["migr", "mar", "junct", "cap"], "answer": "mar"}, {"type": "example-stem", "question": "单词 <b>incur</b> (to run into) 包含哪个词根？", "options": ["curr", "greg", "rupt", "amat"], "answer": "curr"}, {"type": "stem-to-meaning", "stem": "migr", "question": "词根 <b>migr</b> 的含义是什么？", "options": ["against", "run", "to", "wander"], "answer": "wander"}, {"type": "stem-to-meaning", "stem": "trans", "question": "词根 <b>trans</b> 的含义是什么？", "options": ["group", "love", "across", "join"], "answer": "across"}, {"type": "input-meaning", "stem": "rupt", "question": "请写出词根 <b>rupt</b> 的含义：", "answer": "break", "accept": ["break"]}, {"type": "stem-to-meaning", "stem": "medi", "question": "词根 <b>medi</b> 的含义是什么？", "options": ["against", "middle", "wander", "number"], "answer": "middle"}, {"type": "example-stem", "question": "单词 <b>migratory</b> (moving seasonally) 包含哪个词根？", "options": ["curr", "rect", "migr", "tempor"], "answer": "migr"}, {"type": "example-stem", "question": "单词 <b>transcendent</b> (going beyond) 包含哪个词根？", "options": ["contra", "curr", "fer", "trans"], "answer": "trans"}]}, {"id": 4, "title": "第4关", "subtitle": "词根 31-40", "stems": ["clud", "se", "plu", "germ", "fus", "culp", "pugn", "urb", "numer", "acr"], "questions": [{"type": "meaning-to-stem", "question": "含义为 \"apart\" 的词根是什么？", "options": ["se", "medi", "sanct", "fer"], "answer": "se"}, {"type": "input-meaning", "stem": "plu", "question": "请写出词根 <b>plu</b> 的含义：", "answer": "more", "accept": ["more"]}, {"type": "stem-to-meaning", "stem": "fus", "question": "词根 <b>fus</b> 的含义是什么？", "options": ["apart", "pour", "right", "fight"], "answer": "pour"}, {"type": "meaning-to-stem", "question": "含义为 \"city\" 的词根是什么？", "options": ["vid", "urb", "com", "pugn"], "answer": "urb"}, {"type": "input-meaning", "stem": "fus", "question": "请写出词根 <b>fus</b> 的含义：", "answer": "pour", "accept": ["pour"]}, {"type": "input-meaning", "stem": "acr", "question": "请写出词根 <b>acr</b> 的含义：", "answer": "sharp", "accept": ["sharp"]}, {"type": "meaning-to-stem", "question": "含义为 \"pour\" 的词根是什么？", "options": ["trib", "se", "tort", "fus"], "answer": "fus"}, {"type": "stem-to-meaning", "stem": "acr", "question": "词根 <b>acr</b> 的含义是什么？", "options": ["city", "wander", "touch", "sharp"], "answer": "sharp"}, {"type": "stem-to-meaning", "stem": "pugn", "question": "词根 <b>pugn</b> 的含义是什么？", "options": ["other", "weight", "against", "fight"], "answer": "fight"}, {"type": "stem-to-meaning", "stem": "germ", "question": "词根 <b>germ</b> 的含义是什么？", "options": ["vital", "within", "join", "apart"], "answer": "vital"}, {"type": "example-stem", "question": "单词 <b>acerbity</b> (sharpness of temper) 包含哪个词根？", "options": ["acr", "loco", "sanct", "vita"], "answer": "acr"}, {"type": "meaning-to-stem", "question": "含义为 \"close\" 的词根是什么？", "options": ["clud", "vid", "tang", "loco"], "answer": "clud"}, {"type": "meaning-to-stem", "question": "含义为 \"fight\" 的词根是什么？", "options": ["clam", "vid", "pugn", "alter"], "answer": "pugn"}, {"type": "input-meaning", "stem": "germ", "question": "请写出词根 <b>germ</b> 的含义：", "answer": "vital", "accept": ["vital"]}, {"type": "meaning-to-stem", "question": "含义为 \"sharp\" 的词根是什么？", "options": ["acr", "per", "vid", "pond"], "answer": "acr"}, {"type": "stem-to-meaning", "stem": "se", "question": "词根 <b>se</b> 的含义是什么？", "options": ["apart", "father", "sharp", "voice"], "answer": "apart"}, {"type": "input-meaning", "stem": "culp", "question": "请写出词根 <b>culp</b> 的含义：", "answer": "blame", "accept": ["blame"]}, {"type": "input-meaning", "stem": "clud", "question": "请写出词根 <b>clud</b> 的含义：", "answer": "close", "accept": ["close"]}, {"type": "meaning-to-stem", "question": "含义为 \"vital\" 的词根是什么？", "options": ["contra", "germ", "luc", "luna"], "answer": "germ"}, {"type": "example-stem", "question": "单词 <b>secede</b> (to withdraw) 包含哪个词根？", "options": ["trans", "vid", "medi", "se"], "answer": "se"}, {"type": "input-meaning", "stem": "urb", "question": "请写出词根 <b>urb</b> 的含义：", "answer": "city", "accept": ["city"]}, {"type": "stem-to-meaning", "stem": "culp", "question": "词根 <b>culp</b> 的含义是什么？", "options": ["close", "blame", "fight", "vital"], "answer": "blame"}, {"type": "stem-to-meaning", "stem": "plu", "question": "词根 <b>plu</b> 的含义是什么？", "options": ["across", "over", "more", "take"], "answer": "more"}, {"type": "input-meaning", "stem": "se", "question": "请写出词根 <b>se</b> 的含义：", "answer": "apart", "accept": ["apart"]}, {"type": "meaning-to-stem", "question": "含义为 \"blame\" 的词根是什么？", "options": ["luc", "culp", "punct", "rupt"], "answer": "culp"}, {"type": "meaning-to-stem", "question": "含义为 \"number\" 的词根是什么？", "options": ["pugn", "tang", "numer", "pop"], "answer": "numer"}, {"type": "stem-to-meaning", "stem": "numer", "question": "词根 <b>numer</b> 的含义是什么？", "options": ["pleasing", "number", "apart", "carry"], "answer": "number"}, {"type": "input-meaning", "stem": "pugn", "question": "请写出词根 <b>pugn</b> 的含义：", "answer": "fight", "accept": ["fight"]}, {"type": "input-meaning", "stem": "numer", "question": "请写出词根 <b>numer</b> 的含义：", "answer": "number", "accept": ["number"]}, {"type": "meaning-to-stem", "question": "含义为 \"more\" 的词根是什么？", "options": ["plu", "rupt", "trans", "cap"], "answer": "plu"}]}, {"id": 5, "title": "第5关", "subtitle": "词根 41-50", "stems": ["per", "anim", "tort", "sanct", "voc", "punct", "trib", "cap", "pond", "rect"], "questions": [{"type": "meaning-to-stem", "question": "含义为 \"holy\" 的词根是什么？", "options": ["rect", "migr", "sanct", "per"], "answer": "sanct"}, {"type": "input-meaning", "stem": "cap", "question": "请写出词根 <b>cap</b> 的含义：", "answer": "take", "accept": ["take"]}, {"type": "example-stem", "question": "单词 <b>animal</b> (a living creature) 包含哪个词根？", "options": ["anim", "clud", "luc", "curr"], "answer": "anim"}, {"type": "meaning-to-stem", "question": "含义为 \"take\" 的词根是什么？", "options": ["anim", "tempor", "cap", "tort"], "answer": "cap"}, {"type": "stem-to-meaning", "stem": "voc", "question": "词根 <b>voc</b> 的含义是什么？", "options": ["love", "through", "voice", "number"], "answer": "voice"}, {"type": "example-stem", "question": "单词 <b>ponderous</b> (heavy) 包含哪个词根？", "options": ["vita", "sanct", "junct", "pond"], "answer": "pond"}, {"type": "input-meaning", "stem": "rect", "question": "请写出词根 <b>rect</b> 的含义：", "answer": "right", "accept": ["right"]}, {"type": "meaning-to-stem", "question": "含义为 \"through\" 的词根是什么？", "options": ["numer", "cent", "per", "trans"], "answer": "per"}, {"type": "stem-to-meaning", "stem": "cap", "question": "词根 <b>cap</b> 的含义是什么？", "options": ["one hundred", "sea", "weight", "take"], "answer": "take"}, {"type": "meaning-to-stem", "question": "含义为 \"right\" 的词根是什么？", "options": ["cap", "vita", "stell", "rect"], "answer": "rect"}, {"type": "stem-to-meaning", "stem": "punct", "question": "词根 <b>punct</b> 的含义是什么？", "options": ["close", "run", "love", "point"], "answer": "point"}, {"type": "meaning-to-stem", "question": "含义为 \"pay\" 的词根是什么？", "options": ["luc", "culp", "junct", "trib"], "answer": "trib"}, {"type": "stem-to-meaning", "stem": "pond", "question": "词根 <b>pond</b> 的含义是什么？", "options": ["together", "vital", "weight", "break"], "answer": "weight"}, {"type": "stem-to-meaning", "stem": "per", "question": "词根 <b>per</b> 的含义是什么？", "options": ["pour", "group", "more", "through"], "answer": "through"}, {"type": "example-stem", "question": "单词 <b>tortuous</b> (twisted) 包含哪个词根？", "options": ["tort", "pater", "grat", "mar"], "answer": "tort"}, {"type": "meaning-to-stem", "question": "含义为 \"voice\" 的词根是什么？", "options": ["vita", "voc", "culp", "curr"], "answer": "voc"}, {"type": "stem-to-meaning", "stem": "trib", "question": "词根 <b>trib</b> 的含义是什么？", "options": ["city", "apart", "pay", "twist"], "answer": "pay"}, {"type": "stem-to-meaning", "stem": "tort", "question": "词根 <b>tort</b> 的含义是什么？", "options": ["place", "run", "join", "twist"], "answer": "twist"}, {"type": "example-stem", "question": "单词 <b>sanction</b> (official approval) 包含哪个词根？", "options": ["clam", "migr", "matri", "sanct"], "answer": "sanct"}, {"type": "stem-to-meaning", "stem": "rect", "question": "词根 <b>rect</b> 的含义是什么？", "options": ["sharp", "one hundred", "right", "pour"], "answer": "right"}, {"type": "stem-to-meaning", "stem": "anim", "question": "词根 <b>anim</b> 的含义是什么？", "options": ["fight", "right", "mind", "one hundred"], "answer": "mind"}, {"type": "example-stem", "question": "单词 <b>rectilinear</b> (in straight lines) 包含哪个词根？", "options": ["tang", "voc", "rect", "loco"], "answer": "rect"}, {"type": "meaning-to-stem", "question": "含义为 \"weight\" 的词根是什么？", "options": ["fer", "clud", "pond", "luna"], "answer": "pond"}, {"type": "input-meaning", "stem": "anim", "question": "请写出词根 <b>anim</b> 的含义：", "answer": "mind", "accept": ["mind"]}, {"type": "meaning-to-stem", "question": "含义为 \"point\" 的词根是什么？", "options": ["numer", "punct", "tempor", "alter"], "answer": "punct"}, {"type": "input-meaning", "stem": "pond", "question": "请写出词根 <b>pond</b> 的含义：", "answer": "weight", "accept": ["weight"]}, {"type": "stem-to-meaning", "stem": "sanct", "question": "词根 <b>sanct</b> 的含义是什么？", "options": ["run", "to", "holy", "other"], "answer": "holy"}, {"type": "input-meaning", "stem": "voc", "question": "请写出词根 <b>voc</b> 的含义：", "answer": "voice", "accept": ["voice"]}, {"type": "example-stem", "question": "单词 <b>percolate</b> (to filter through) 包含哪个词根？", "options": ["per", "stell", "voc", "vita"], "answer": "per"}, {"type": "example-stem", "question": "单词 <b>capture</b> (to take by force) 包含哪个词根？", "options": ["junct", "cap", "urb", "plu"], "answer": "cap"}]}];
+
+// 状态
+let currentLevel = null;
+let currentQuestion = 0;
+let score = 0;
+let combo = 0;
+let maxCombo = 0;
+let correctCount = 0;
+let answered = false;
+let progress = {};
+let wrongPracticeMode = false;   // 是否在错题练习模式
+let wrongQuestionsList = [];     // 当前错题列表（来自wrongQuestions数组的引用）
+let wrongCurrentIndex = 0;
+
+// 初始化
+function init() {
+  const saved = localStorage.getItem('latinfun-word-challenge');
+  if (saved) { progress = JSON.parse(saved); }
+  renderLevelMap();
+}
+
+// 显示开始界面
+function showStartScreen() {
+  switchScreen('startScreen');
+}
+
+// 显示关卡地图
+function showLevelMap() {
+  renderLevelMap();
+  switchScreen('levelMapScreen');
+}
+
+function switchScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// 渲染关卡地图
+function renderLevelMap() {
+  const grid = document.getElementById('levelGrid');
+  grid.innerHTML = '';
+  GAME_DATA.forEach((level, idx) => {
+    const unlocked = idx === 0 || (progress[idx] && progress[idx].unlocked);
+    const completed = progress[idx] && progress[idx].completed;
+    const perfect = progress[idx] && progress[idx].stars === 3;
+    const stars = progress[idx] ? progress[idx].stars || 0 : 0;
+    const wrongQuestions = progress[idx] ? (progress[idx].wrongQuestions || []) : [];
+    const wrongCount = wrongQuestions.length;
+
+    const card = document.createElement('div');
+    let extraClass = '';
+    if (completed) extraClass = perfect ? ' perfect' : ' completed';
+    if (wrongCount > 0) extraClass += ' has-wrong';
+    card.className = 'level-card' + (unlocked ? '' : ' locked') + extraClass;
+    card.innerHTML = `
+      <div class="level-num">${level.id}</div>
+      <div class="level-title">${level.title}</div>
+      <div class="level-desc">${level.subtitle}</div>
+      <div class="level-stars">${'⭐'.repeat(stars) + '☆'.repeat(3-stars)}</div>
+      ${wrongCount > 0 ? `<div class="wrong-count" onclick="event.stopPropagation(); startWrongPractice(${idx})" title="点击练习错题">❌ ${wrongCount}</div>` : ''}
+      ${wrongCount > 0 ? `<button class="practice-wrong-btn" onclick="event.stopPropagation(); startWrongPractice(${idx})">练习错题</button>` : ''}
+    `;
+    if (unlocked) {
+      card.onclick = () => startLevel(idx);
+    }
+    grid.appendChild(card);
+  });
+}
+
+// 开始关卡
+function startLevel(idx) {
+  currentLevel = idx;
+  currentQuestion = 0;
+  score = 0;
+  combo = 0;
+  maxCombo = 0;
+  correctCount = 0;
+  answered = false;
+  document.getElementById('scoreDisplay').textContent = '0 分';
+  document.getElementById('comboDisplay').classList.remove('active');
+  document.getElementById('levelTitle').textContent = GAME_DATA[idx].title + ' · ' + GAME_DATA[idx].subtitle;
+  renderQuestion();
+  switchScreen('gameScreen');
+}
+
+// 渲染题目
+function renderQuestion() {
+  const level = GAME_DATA[currentLevel];
+  const q = wrongPracticeMode ? wrongQuestionsList[wrongCurrentIndex] : level.questions[currentQuestion];
+  const total = wrongPracticeMode ? wrongQuestionsList.length : level.questions.length;
+  const idx = wrongPracticeMode ? wrongCurrentIndex : currentQuestion;
+  const pct = ((idx) / total * 100).toFixed(0);
+  document.getElementById('progressFill').style.width = pct + '%';
+
+  const area = document.getElementById('questionArea');
+
+  let typeLabel = '';
+  if (q.type === 'stem-to-meaning') typeLabel = '词根→含义';
+  else if (q.type === 'meaning-to-stem') typeLabel = '含义→词根';
+  else if (q.type === 'example-stem') typeLabel = '例词辨析';
+  else if (q.type === 'input-meaning') typeLabel = '填空练习';
+
+  let html = `
+    <div class="question-card">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+        <span class="question-type">${typeLabel}</span>
+        <span style="color:#aaa; font-size:0.85em;">${idx + 1} / ${total}</span>
+      </div>
+      <div class="question-text">${q.question}</div>
+  `;
+
+  if (q.type === 'input-meaning') {
+    html += `<input type="text" class="answer-input" id="answerInput" placeholder="请输入含义..." onkeydown="if(event.key==='Enter')checkAnswer()">`;
+  } else {
+    html += `<div class="options-grid">`;
+    const labels = ['A','B','C','D'];
+    q.options.forEach((opt, i) => {
+      html += `<button class="option-btn" onclick="selectOption(this, '${opt.replace(/'/g,"\'")}')" data-value="${opt}">
+        <span class="opt-label">${labels[i]}</span>
+        <span>${opt}</span>
+      </button>`;
+    });
+    html += `</div>`;
+  }
+
+  html += `<div class="feedback-area" id="feedbackArea"></div></div>`;
+  area.innerHTML = html;
+
+  document.getElementById('submitBtn').style.display = 'inline-flex';
+  document.getElementById('nextBtn').style.display = 'none';
+  answered = false;
+}
+
+let selectedOption = null;
+
+function selectOption(btn, value) {
+  if (answered) return;
+  document.querySelectorAll('.option-btn').forEach(b => b.style.borderColor = '#E8E0D5');
+  btn.style.borderColor = 'var(--gold)';
+  selectedOption = value;
+}
+
+function checkAnswer() {
+  if (answered) return;
+  const level = GAME_DATA[currentLevel];
+  const q = wrongPracticeMode
+    ? wrongQuestionsList[wrongCurrentIndex]
+    : level.questions[currentQuestion];
+  let userAnswer = '';
+
+  if (q.type === 'input-meaning') {
+    const input = document.getElementById('answerInput');
+    userAnswer = input.value.trim().toLowerCase();
+    const correct = q.accept.includes(userAnswer);
+    input.className = 'answer-input ' + (correct ? 'correct' : 'wrong');
+    showFeedback(correct, q.answer);
+    updateScore(correct);
+    if (!correct && !wrongPracticeMode) {
+      recordWrongQuestion(currentLevel, q);
+    }
+    answered = true;
+    document.getElementById('submitBtn').style.display = 'none';
+    document.getElementById('nextBtn').style.display = 'inline-flex';
+    return;
+  }
+
+  if (selectedOption === null) {
+    // 如果没选择，自动选择第一个
+    return;
+  }
+
+  const correct = selectedOption === q.answer;
+  const buttons = document.querySelectorAll('.option-btn');
+  buttons.forEach(btn => {
+    const val = btn.getAttribute('data-value');
+    if (val === q.answer) btn.classList.add('correct');
+    else if (val === selectedOption) btn.classList.add('wrong');
+    btn.disabled = true;
+    btn.style.cursor = 'default';
+  });
+
+  showFeedback(correct, q.answer);
+  updateScore(correct);
+  if (!correct && !wrongPracticeMode) {
+    recordWrongQuestion(currentLevel, q);
+  }
+  answered = true;
+  document.getElementById('submitBtn').style.display = 'none';
+  document.getElementById('nextBtn').style.display = 'inline-flex';
+}
+
+function showFeedback(correct, answer) {
+  const fb = document.getElementById('feedbackArea');
+  fb.className = 'feedback-area ' + (correct ? 'correct' : 'wrong');
+  fb.innerHTML = `
+    <div class="fb-title">${correct ? '🎉 答对了！' : '😢 答错了'}</div>
+    <div>正确答案：<b>${answer}</b></div>
+  `;
+}
+
+function updateScore(correct) {
+  if (correct) {
+    combo++;
+    if (combo > maxCombo) maxCombo = combo;
+    correctCount++;
+    const points = 10 + Math.min(combo - 1, 5) * 2;
+    score += points;
+    document.getElementById('comboValue').textContent = combo;
+    document.getElementById('comboDisplay').classList.add('active');
+  } else {
+    combo = 0;
+    document.getElementById('comboDisplay').classList.remove('active');
+  }
+  document.getElementById('scoreDisplay').textContent = score + ' 分';
+}
+
+function nextQuestion() {
+  if (wrongPracticeMode) {
+    wrongCurrentIndex++;
+    if (wrongCurrentIndex >= wrongQuestionsList.length) {
+      // 错题练习完成
+      wrongPracticeMode = false;
+      showWrongPracticeResult();
+      return;
+    }
+    selectedOption = null;
+    renderQuestion();
+    return;
+  }
+  currentQuestion++;
+  selectedOption = null;
+  const level = GAME_DATA[currentLevel];
+  if (currentQuestion >= level.questions.length) {
+    showResult();
+  } else {
+    renderQuestion();
+  }
+}
+
+function showResult() {
+  const level = GAME_DATA[currentLevel];
+  const total = level.questions.length;
+  const accuracy = Math.round(correctCount / total * 100);
+  const stars = accuracy >= 90 ? 3 : accuracy >= 70 ? 2 : accuracy >= 50 ? 1 : 0;
+
+  // 保存进度
+  progress[currentLevel] = {
+    unlocked: true,
+    completed: true,
+    stars: stars,
+    score: score,
+    accuracy: accuracy,
+    maxCombo: maxCombo
+  };
+  if (currentLevel + 1 < GAME_DATA.length) {
+    if (!progress[currentLevel + 1]) progress[currentLevel + 1] = {};
+    progress[currentLevel + 1].unlocked = true;
+  }
+  localStorage.setItem('latinfun-word-challenge', JSON.stringify(progress));
+
+  document.getElementById('resultLevelTitle').textContent = level.title + ' · ' + level.subtitle;
+  document.getElementById('resultStars').textContent = '⭐'.repeat(stars) + '☆'.repeat(3 - stars);
+  document.getElementById('resultScore').textContent = score + ' 分';
+  document.getElementById('rsCorrect').textContent = accuracy + '%';
+  document.getElementById('rsCombo').textContent = 'x' + maxCombo;
+  document.getElementById('rsTotal').textContent = correctCount + '/' + total;
+
+  const nextBtn = document.getElementById('nextLevelBtn');
+  if (currentLevel + 1 < GAME_DATA.length) {
+    nextBtn.style.display = 'inline-flex';
+    nextBtn.textContent = '下一关 →';
+  } else {
+    nextBtn.style.display = 'none';
+  }
+
+  switchScreen('resultScreen');
+}
+
+function replayLevel() {
+  startLevel(currentLevel);
+}
+
+function goNextLevel() {
+  if (currentLevel + 1 < GAME_DATA.length) {
+    startLevel(currentLevel + 1);
+  }
+}
+
+function quitGame() {
+  showLevelMap();
+}
+
+// 记录错题
+function recordWrongQuestion(levelIdx, q) {
+  if (!progress[levelIdx]) progress[levelIdx] = {};
+  if (!progress[levelIdx].wrongQuestions) progress[levelIdx].wrongQuestions = [];
+  // 用question文本去重
+  const exists = progress[levelIdx].wrongQuestions.some(wq => wq.question === q.question);
+  if (!exists) {
+    progress[levelIdx].wrongQuestions.push(q);
+    localStorage.setItem('latinfun-word-challenge', JSON.stringify(progress));
+  }
+}
+
+// 开始错题练习
+function startWrongPractice(levelIdx) {
+  if (!progress[levelIdx] || !progress[levelIdx].wrongQuestions || progress[levelIdx].wrongQuestions.length === 0) {
+    return;
+  }
+  wrongPracticeMode = true;
+  wrongQuestionsList = [...progress[levelIdx].wrongQuestions];
+  // 打乱顺序
+  wrongQuestionsList.sort(() => Math.random() - 0.5);
+  wrongCurrentIndex = 0;
+  currentLevel = levelIdx;
+  score = 0;
+  combo = 0;
+  maxCombo = 0;
+  correctCount = 0;
+  answered = false;
+  document.getElementById('scoreDisplay').textContent = '0 分';
+  document.getElementById('comboDisplay').classList.remove('active');
+  const level = GAME_DATA[levelIdx];
+  document.getElementById('levelTitle').textContent = '❌ 错题练习 · ' + level.title;
+  renderQuestion();
+  switchScreen('gameScreen');
+}
+
+// 错题练习完成
+function showWrongPracticeResult() {
+  const total = wrongQuestionsList.length;
+  const accuracy = total > 0 ? Math.round(correctCount / total * 100) : 0;
+  if (accuracy === 100) {
+    // 全部正确 → 清除错题 + 烟花庆祝
+    if (progress[currentLevel]) {
+      progress[currentLevel].wrongQuestions = [];
+      localStorage.setItem('latinfun-word-challenge', JSON.stringify(progress));
+    }
+    launchFireworks();
+    showVictoryBanner('🎉 全部正确！', '你已掌握所有错题，继续加油！', '⭐⭐⭐');
+  } else {
+    showVictoryBanner('📚 练习完成', `正确率 ${accuracy}%（${correctCount}/${total}）<br>答错的题已加入下一轮练习`, '⭐⭐');
+  }
+  renderLevelMap();
+}
+
+// 展示胜利横幅
+function showVictoryBanner(title, message, stars) {
+  const existing = document.querySelector('.victory-banner');
+  if (existing) existing.remove();
+  const banner = document.createElement('div');
+  banner.className = 'victory-banner';
+  banner.innerHTML = `
+    <h2>${title}</h2>
+    <div class="victory-stars">${stars}</div>
+    <p>${message}</p>
+    <button class="btn btn-primary" onclick="closeVictoryBanner(); showLevelMap();">返回关卡地图</button>
+  `;
+  document.body.appendChild(banner);
+}
+
+function closeVictoryBanner() {
+  const b = document.querySelector('.victory-banner');
+  if (b) b.remove();
+  const fw = document.querySelector('.fireworks-overlay');
+  if (fw) fw.remove();
+}
+
+// 烟花发射
+function launchFireworks() {
+  const existing = document.querySelector('.fireworks-overlay');
+  if (existing) existing.remove();
+  const overlay = document.createElement('div');
+  overlay.className = 'fireworks-overlay';
+  document.body.appendChild(overlay);
+
+  const colors = ['#E85D04', '#C9A961', '#FF6B35', '#FFD700', '#FF4081', '#00BCD4', '#4CAF50'];
+  const count = 40;
+  for (let i = 0; i < count; i++) {
+    setTimeout(() => {
+      const el = document.createElement('div');
+      el.className = 'confetti';
+      el.style.left = Math.random() * 100 + 'vw';
+      el.style.top = Math.random() * 60 + 'vh';
+      el.style.background = colors[Math.floor(Math.random() * colors.length)];
+      el.style.width = (Math.random() * 12 + 6) + 'px';
+      el.style.height = el.style.width;
+      el.style.borderRadius = Math.random() > 0.5 ? '50%' : '2px';
+      el.style.animationDuration = (Math.random() * 2 + 2) + 's';
+      overlay.appendChild(el);
+      setTimeout(() => el.remove(), 4000);
+    }, i * 80);
+  }
+  setTimeout(() => overlay.remove(), 5000);
+}
+
+// 启动
+init();
+</script>
+</body>
+</html>
