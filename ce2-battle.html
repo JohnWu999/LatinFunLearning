@@ -2,7 +2,7 @@
 <html lang="zh-CN"><head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Caesar's English II 拉丁词根闯关 - 20260510</title>
+<title>Caesar's English II 拉丁词根闯关 - 20260512</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -63,11 +63,16 @@
   .stars { color:var(--gold); letter-spacing:2px; } .stars.empty { color:#ddd; }
   .badge-lock { position:absolute; right:14px; top:14px; font-size:1.2em; }
   .boss-tag { position:absolute; right:14px; top:14px; background:var(--boss); color:#fff; font-size:0.7em; padding:2px 8px; border-radius:10px; }
+  .wrong-btn { position:absolute; right:14px; bottom:14px; background:var(--danger); color:#fff; border:none; padding:4px 10px; border-radius:10px; font-size:0.75em; cursor:pointer; font-family:inherit; transition:opacity .15s; }
+  .wrong-btn:hover { opacity:0.85; }
+  .wrong-btn.zero { background:#aaa; }
 
   /* ---- 游戏 HUD ---- */
   #game { padding:0; }
   .hud { background:var(--card-bg); padding:10px 16px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 6px rgba(0,0,0,0.06); position:sticky; top:0; z-index:50; }
   .hud.boss { background:linear-gradient(90deg,var(--boss),#a03030); color:#fff; }
+  .hud.wrong-mode { background:linear-gradient(90deg,#8B3A1E,#a04020); color:#fff; }
+  .hud.wrong-mode .hud-score { color:#ffd700; }
   .hud.boss .hud-score { color:#ffd700; } .hud.boss .hud-combo { color:#ffcc00; }
   .hud-left { display:flex; align-items:center; gap:14px; }
   .hud-score { font-weight:700; color:var(--primary); font-size:1.15em; }
@@ -78,6 +83,7 @@
   .hud-timer { font-weight:700; color:var(--text); }
   .hud-timer.warning { color:var(--danger); animation:pulse 1s infinite; }
   .hud.boss .hud-timer { color:#fff; }
+  .hud.wrong-mode .hud-timer { color:#ffd700; }
   .progress-bar { height:3px; background:#eee; width:100%; }
   .progress-bar.boss { background:rgba(255,255,255,0.2); }
   .progress-fill { height:100%; background:var(--gold); width:0%; transition:width .4s ease; }
@@ -139,6 +145,8 @@
   .btn-secondary:hover { border-color:var(--gold); }
   .boss-result .result-title { color:var(--boss); }
   .boss-result .result-score-big { color:var(--boss); }
+  .wrong-result .result-title { color:var(--danger); }
+  .wrong-result .result-score-big { color:var(--danger); }
 
   /* 排行榜 */
   .lb-row { display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid #f0f0f0; }
@@ -152,6 +160,19 @@
   .lb-score-detail { font-size:0.75em; color:#999; }
 
   .particle { position:fixed; width:6px; height:6px; border-radius:50%; background:var(--gold); pointer-events:none; z-index:99; }
+
+  /* ---- 烟花 ---- */
+  #fireworks { position:fixed; inset:0; pointer-events:none; z-index:999; }
+  .fw-particle { position:absolute; border-radius:50%; animation:fwFade 1.5s ease-out forwards; }
+  @keyframes fwFade {
+    0%   { transform:translate(0,0) scale(1); opacity:1; }
+    100% { transform:translate(var(--tx),var(--ty)) scale(0); opacity:0; }
+  }
+  @keyframes fwRise {
+    0%   { transform:translateY(0) scale(1); opacity:1; }
+    100% { transform:translateY(-120px) scale(0.3); opacity:0; }
+  }
+  .fw-rocket { position:absolute; width:4px; height:10px; border-radius:50% 50% 0 0; animation:fwRise 1s ease-out forwards; }
 
   @keyframes shake { 0%,100%{transform:translateX(0);} 20%{transform:translateX(-8px);} 40%{transform:translateX(8px);} 60%{transform:translateX(-6px);} 80%{transform:translateX(6px);} }
   @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.6;} }
@@ -278,6 +299,9 @@
 <!-- 反馈浮层 -->
 <div id="feedback" class="feedback-float"></div>
 
+<!-- 烟花层 -->
+<div id="fireworks"></div>
+
 <script>
 /* ================= 数据 ================= */
 const ALL_STEMS = [
@@ -395,7 +419,8 @@ const LEVELS = [
 let state = {
   currentUser:null, screen:'login', lv:null, score:0, combo:0, maxCombo:0,
   correct:0, wrong:0, qi:0, questions:[], timer:null, timeLeft:0, matchSel:null,
-  answering:false, matchState:{side:null,id:null,el:null}
+  answering:false, matchState:{side:null,id:null,el:null},
+  wrongMode:false, wrongLevelId:null
 };
 
 /* ================= 用户系统 ================= */
@@ -414,6 +439,20 @@ function addHistory(stemIndex,correct,level){
   const st=ALL_STEMS[stemIndex];
   data.history.push({stemIndex,stem:st.s,mean:st.m,correct,timestamp:Date.now(),level});
   saveUserData(state.currentUser,data);
+}
+function getWrongStemsForLevel(levelId){
+  const data=getUserData(state.currentUser);
+  const hist=data.history||[];
+  const wrongSet=new Map();
+  hist.forEach(h=>{
+    if(h.level!==levelId) return;
+    if(!h.correct){
+      if(!wrongSet.has(h.stemIndex)){
+        wrongSet.set(h.stemIndex,{stemIndex:h.stemIndex,stem:h.stem,mean:h.mean});
+      }
+    }
+  });
+  return Array.from(wrongSet.values());
 }
 function getWeakStems(){
   const data=getUserData(state.currentUser);
@@ -452,6 +491,10 @@ function sfxCombo(){ tone(1200,0.08); setTimeout(()=>tone(1500,0.12),60); }
 function sfxBossHit(){ tone(600,0.15); setTimeout(()=>tone(800,0.2),100); setTimeout(()=>tone(1000,0.3),220); }
 function sfxBossWin(){ [0,120,250,400].forEach((d,i)=>setTimeout(()=>tone(500+i*250,0.3),d)); }
 function sfxLevelUp(){ [0,100,200].forEach((d,i)=>setTimeout(()=>tone(660+i*110,0.25),d)); }
+function sfxFirework(){
+  const colors=[880,1100,1320,880,660,990];
+  colors.forEach((f,i)=>setTimeout(()=>tone(f,0.2,'sine',0.12),i*120));
+}
 
 /* ================= 导航 ================= */
 function showScreen(id){
@@ -483,21 +526,21 @@ function doLogin(){
   saveUserData(name,data);
   goCover();
 }
-function quickLogin(name){ 
-  state.currentUser=name; initAudio(); 
+function quickLogin(name){
+  state.currentUser=name; initAudio();
   const data=getUserData(name);
   if(!data.unlocked||data.unlocked.length===0){ data.unlocked=[1]; }
   if(!data.best) data.best={};
   if(!data.history) data.history=[];
   saveUserData(name,data);
-  goCover(); 
+  goCover();
 }
-function doLogout(){ 
+function doLogout(){
   localStorage.removeItem('ce2_last_user');
-  state.currentUser=null; 
-  document.getElementById('loginName').value=''; 
-  renderLogin(); 
-  showScreen('login'); 
+  state.currentUser=null;
+  document.getElementById('loginName').value='';
+  renderLogin();
+  showScreen('login');
 }
 
 /* ================= 自动恢复上次登录 ================= */
@@ -573,13 +616,35 @@ function renderLevelSelect(){
     const b=data.best[lv.id]; const stars=b?b.stars:0;
     const starStr='★'.repeat(stars)+'☆'.repeat(3-stars);
     const bossCls=lv.boss?'boss':'';
+    const wrongStems=getWrongStemsForLevel(lv.id);
+    const wrongCount=wrongStems.length;
+    const wrongBtnCls=wrongCount===0?'wrong-btn zero':'wrong-btn';
+    const wrongBtnLabel=wrongCount===0?'无错题':'错题 '+(state.currentUser?getUserData(state.currentUser).history.filter(h=>h.level===lv.id&&!h.correct).length:0)+'题';
     return `<div class="level-card ${unlocked?'':'locked'} ${bossCls}" onclick="${unlocked?`startLevel(${lv.id})`:''}">
       ${unlocked?(lv.boss?'<span class="boss-tag">魔王</span>':''):'<span class="badge-lock">🔒</span>'}
       <div class="lv-title">Level ${lv.id} ${lv.title}</div>
       <div class="lv-sub">${lv.subtitle} · ${lv.desc}</div>
-      <div class="lv-meta"><span class="stars ${stars?'':'empty'}">${starStr}</span><span>${b?b.score+' 分':'未挑战'}</span></div>
+      <div class="lv-meta">
+        <span class="stars ${stars?'':'empty'}">${starStr}</span>
+        <span>${b?b.score+' 分':'未挑战'}</span>
+      </div>
+      ${unlocked&&!lv.boss?'<button class="'+wrongBtnCls+'" onclick="event.stopPropagation();startWrongPractice('+lv.id+')">📝 '+wrongBtnLabel+'</button>':''}
     </div>`;
   }).join('');
+}
+
+/* ================= 错题练习入口 ================= */
+function startWrongPractice(levelId){
+  const lv=LEVELS.find(l=>l.id===levelId);
+  if(!lv) return;
+  const wrongStems=getWrongStemsForLevel(levelId);
+  if(wrongStems.length===0){
+    alert('本关还没有错题记录，继续加油！');
+    return;
+  }
+  state.wrongMode=true;
+  state.wrongLevelId=levelId;
+  startLevel(levelId);
 }
 
 /* ================= 题目生成 ================= */
@@ -589,6 +654,31 @@ function generateOptions(correctIdx){ const opts=[ALL_STEMS[correctIdx].s]; whil
 
 function generateQuestions(lv){
   const qs=[];
+
+  // 错题练习模式：只生成错题题目
+  if(state.wrongMode && state.wrongLevelId===lv.id){
+    const wrongStems=getWrongStemsForLevel(lv.id);
+    wrongStems.forEach((ws,i)=>{
+      const st=ALL_STEMS[ws.stemIndex];
+      if(!st) return;
+      const idx=ws.stemIndex;
+      const t=i%4;
+      if(t===0) qs.push({type:'fill',stem:st.s,mean:st.m,masked:maskStem(st.s),answer:st.s,index:idx,wrongMode:true});
+      else if(t===1){
+        const ex=st.ex[Math.floor(Math.random()*st.ex.length)];
+        qs.push({type:'find',stem:st.s,mean:st.m,exWord:ex,answer:st.s,index:idx,wrongMode:true});
+      }else if(t===2){
+        const fake=Math.random()>0.5;
+        qs.push({type:'tf',text:`${st.s} = ${fake?getWrongMean(idx):st.m}`,answer:!fake,stem:st.s,mean:st.m,index:idx,wrongMode:true});
+      }else{
+        qs.push({type:'blitz',mean:st.m,answer:st.s,options:generateOptions(idx),index:idx,wrongMode:true});
+      }
+    });
+    // 打乱顺序
+    qs.sort(()=>Math.random()-0.5);
+    return qs;
+  }
+
   if(lv.type==='fill'){ lv.indices.forEach(idx=>{ const st=ALL_STEMS[idx]; qs.push({type:'fill',stem:st.s,mean:st.m,masked:maskStem(st.s),answer:st.s,index:idx}); }); }
   else if(lv.type==='find'){ lv.indices.forEach(idx=>{ const st=ALL_STEMS[idx]; const ex=st.ex[Math.floor(Math.random()*st.ex.length)]; qs.push({type:'find',stem:st.s,mean:st.m,exWord:ex,answer:st.s,index:idx}); }); }
   else if(lv.type==='match'){
@@ -631,8 +721,9 @@ function startLevel(id){
   state.score=0; state.combo=0; state.maxCombo=0; state.correct=0; state.wrong=0; state.qi=0; state.questions=generateQuestions(state.lv);
   state.answering=false; state.matchState={side:null,id:null,el:null};
   const hud=document.getElementById('gameHud'); const bar=document.getElementById('gameProgressBar'); const fill=document.getElementById('gProgress');
+  hud.classList.remove('boss','wrong-mode'); bar.classList.remove('boss'); fill.classList.remove('boss');
   if(state.lv.boss){ hud.classList.add('boss'); bar.classList.add('boss'); fill.classList.add('boss'); }
-  else{ hud.classList.remove('boss'); bar.classList.remove('boss'); fill.classList.remove('boss'); }
+  else if(state.wrongMode){ hud.classList.add('wrong-mode'); }
   updateHUD(); showScreen('game'); renderQuestion();
   if(state.lv.time>0){ state.timeLeft=state.lv.time; startTimer(); }
   else{ state.timeLeft=0; document.getElementById('gTimer').textContent=''; }
@@ -656,24 +747,27 @@ function renderQuestion(){
   if(state.qi>=state.questions.length){ finishLevel(); return; }
   const q=state.questions[state.qi]; updateHUD();
   const bossCls=state.lv.boss?'boss':'';
+  const wrongModeLabel=state.wrongMode?'📝 错题练习':' ';
 
   if(q.type==='fill'){
-    body.innerHTML=`<div class="q-card ${bossCls}"><div class="q-type-label">LEVEL ${state.lv.id} · 拼写补全</div><div class="q-prompt">${q.masked}<span class="hint">= ${q.mean}</span></div><input type="text" class="q-input" id="ansInput" placeholder="输入完整词根" autocomplete="off" onkeydown="if(event.key==='Enter')checkFill()"><div><button class="btn-submit" onclick="checkFill()">确认</button></div></div>`;
+    const label=state.wrongMode?`📝 错题练习 · 拼写补全`:'LEVEL '+state.lv.id+' · 拼写补全';
+    body.innerHTML=`<div class="q-card ${bossCls}"><div class="q-type-label">${label}</div><div class="q-prompt">${q.masked}<span class="hint">= ${q.mean}</span></div><input type="text" class="q-input" id="ansInput" placeholder="输入完整词根" autocomplete="off" onkeydown="if(event.key==='Enter')checkFill()"><div><button class="btn-submit" onclick="checkFill()">确认</button></div></div>`;
     setTimeout(()=>document.getElementById('ansInput').focus(),50);
   }else if(q.type==='find'){
-    body.innerHTML=`<div class="q-card ${bossCls}"><div class="q-type-label">LEVEL ${state.lv.id} · 找出词根</div><div class="q-prompt">"${q.exWord}"<span class="hint">包含的词根是？</span></div><input type="text" class="q-input" id="ansInput" placeholder="输入词根" autocomplete="off" onkeydown="if(event.key==='Enter')checkFind()"><div><button class="btn-submit" onclick="checkFind()">确认</button></div></div>`;
+    const label=state.wrongMode?'📝 错题练习 · 找出词根':'LEVEL '+state.lv.id+' · 找出词根';
+    body.innerHTML=`<div class="q-card ${bossCls}"><div class="q-type-label">${label}</div><div class="q-prompt">"${q.exWord}"<span class="hint">包含的词根是？</span></div><input type="text" class="q-input" id="ansInput" placeholder="输入词根" autocomplete="off" onkeydown="if(event.key==='Enter')checkFind()"><div><button class="btn-submit" onclick="checkFind()">确认</button></div></div>`;
     setTimeout(()=>document.getElementById('ansInput').focus(),50);
   }else if(q.type==='match'){
     renderMatchQuestion(q,body);
   }else if(q.type==='tf'||q.type==='boss_tf'){
-    const label=q.type==='boss_tf'?'魔王·真假判断':`LEVEL ${state.lv.id} · 真假法庭`;
+    const label=state.wrongMode?'📝 错题练习 · 真假判断':(q.type==='boss_tf'?'魔王·真假判断':'LEVEL '+state.lv.id+' · 真假法庭');
     body.innerHTML=`<div class="q-card ${bossCls}"><div class="q-type-label">${label}</div><div class="q-prompt">${q.text}<span class="hint">这个对应关系正确吗？</span></div><div class="tf-grid"><button class="tf-btn" onclick="checkTF(true)">✓ 正确</button><button class="tf-btn" onclick="checkTF(false)">✗ 错误</button></div></div>`;
   }else if(q.type==='build'||q.type==='boss_build'){
-    const label=q.type==='boss_build'?'魔王· 构词工坊':`LEVEL ${state.lv.id} · 构词工坊`;
+    const label=state.wrongMode?'📝 错题练习 · 构词工坊':(q.type==='boss_build'?'魔王· 构词工坊':'LEVEL '+state.lv.id+' · 构词工坊');
     body.innerHTML=`<div class="q-card ${bossCls}"><div class="q-type-label">${label}</div><div class="q-prompt">${q.parts}<span class="hint">它们构成的单词是？</span></div><input type="text" class="q-input" id="ansInput" placeholder="输入单词" autocomplete="off" onkeydown="if(event.key==='Enter')checkBuild()"><div><button class="btn-submit" onclick="checkBuild()">确认</button></div></div>`;
     setTimeout(()=>document.getElementById('ansInput').focus(),50);
   }else if(q.type==='blitz'||q.type==='boss_pick'){
-    const label=q.type==='boss_pick'?'魔王·极速选择':`LEVEL ${state.lv.id} · 闪电战`;
+    const label=state.wrongMode?'📝 错题练习 · 极速选择':(q.type==='boss_pick'?'魔王·极速选择':'LEVEL '+state.lv.id+' · 闪电战');
     body.innerHTML=`<div class="q-card ${bossCls}"><div class="q-type-label">${label}</div><div class="q-prompt">"${q.mean}"<span class="hint">哪个词根表示这个意思？</span></div><div class="option-grid" id="blitzGrid"></div></div>`;
     const grid=document.getElementById('blitzGrid');
     q.options.forEach(opt=>{ const btn=document.createElement('button'); btn.className='option-btn'; btn.textContent=opt; btn.onclick=function(){ checkBlitz(opt,this); }; grid.appendChild(btn); });
@@ -723,7 +817,7 @@ function unlockAndNext(delay){
 }
 function checkFill(){
   if(!lockAndNext(()=>{
-    const inp=document.getElementById('ansInput'); 
+    const inp=document.getElementById('ansInput');
     if(!inp){ unlockAndNext(100); return; }
     const q=state.questions[state.qi];
     if(!q){ unlockAndNext(100); return; }
@@ -735,7 +829,7 @@ function checkFill(){
 }
 function checkFind(){
   if(!lockAndNext(()=>{
-    const inp=document.getElementById('ansInput'); 
+    const inp=document.getElementById('ansInput');
     if(!inp){ unlockAndNext(100); return; }
     const q=state.questions[state.qi];
     if(!q){ unlockAndNext(100); return; }
@@ -747,7 +841,7 @@ function checkFind(){
 }
 function checkTF(userAns){
   if(!lockAndNext(()=>{
-    const q=state.questions[state.qi]; 
+    const q=state.questions[state.qi];
     if(!q){ unlockAndNext(100); return; }
     const ok=userAns===q.answer;
     const btns=document.querySelectorAll('.tf-btn'); btns.forEach(b=>b.disabled=true);
@@ -758,7 +852,7 @@ function checkTF(userAns){
 }
 function checkBuild(){
   if(!lockAndNext(()=>{
-    const inp=document.getElementById('ansInput'); 
+    const inp=document.getElementById('ansInput');
     if(!inp){ unlockAndNext(100); return; }
     const q=state.questions[state.qi];
     if(!q){ unlockAndNext(100); return; }
@@ -770,7 +864,7 @@ function checkBuild(){
 }
 function checkBlitz(opt,btn){
   if(!lockAndNext(()=>{
-    const q=state.questions[state.qi]; 
+    const q=state.questions[state.qi];
     if(!q){ unlockAndNext(100); return; }
     const ok=opt===q.answer;
     const all=document.querySelectorAll('#blitzGrid .option-btn'); all.forEach(b=>b.disabled=true);
@@ -781,7 +875,7 @@ function checkBlitz(opt,btn){
 }
 function checkBossType(){
   if(!lockAndNext(()=>{
-    const inp=document.getElementById('ansInput'); 
+    const inp=document.getElementById('ansInput');
     if(!inp){ unlockAndNext(100); return; }
     const q=state.questions[state.qi];
     if(!q){ unlockAndNext(100); return; }
@@ -799,6 +893,7 @@ function handleCorrect(el){
     if(state.combo>state.maxCombo) state.maxCombo=state.combo;
     let add=10;
     if(state.lv.boss){ add=15; sfxBossHit(); showFeedback('击退!'); }
+    else if(state.wrongMode){ add=5; showFeedback('记住了!'); }
     else if(state.combo>=3){ add+=5; sfxCombo(); showFeedback('连击!'); }
     else if(state.combo>=2){ add+=3; showFeedback('很棒!'); }
     else { showFeedback('正确!'); }
@@ -809,12 +904,13 @@ function handleWrong(){
   try{
     state.combo=0; state.wrong++;
     if(state.lv.boss) showFeedback('魔王反击!');
+    else if(state.wrongMode) showFeedback('再想想!');
     updateHUD();
   }catch(e){ console.error('handleWrong error',e); }
 }
 function showFeedback(text){
   try{
-    const el=document.getElementById('feedback'); 
+    const el=document.getElementById('feedback');
     el.textContent=text;
     el.className='feedback-float positive';
     void el.offsetWidth;
@@ -827,7 +923,7 @@ function showFeedback(text){
 function spawnParticles(originEl){
   try{
     if(!originEl) return;
-    const rect=originEl.getBoundingClientRect(); 
+    const rect=originEl.getBoundingClientRect();
     if(!rect.width && !rect.height) return;
     const cx=rect.left+rect.width/2, cy=rect.top+rect.height/2;
     for(let i=0;i<12;i++){
@@ -843,12 +939,83 @@ function spawnParticles(originEl){
   }catch(e){ console.error('spawnParticles error',e); }
 }
 
+/* ================= 烟花特效 ================= */
+function launchFirework(x,y,color){
+  const fw=document.getElementById('fireworks');
+  // 火箭
+  const rocket=document.createElement('div');
+  rocket.className='fw-rocket';
+  rocket.style.left=x+'px';
+  rocket.style.top=y+'px';
+  rocket.style.background=color;
+  fw.appendChild(rocket);
+  setTimeout(()=>{ rocket.remove(); },1000);
+  // 爆炸粒子
+  setTimeout(()=>{
+    for(let i=0;i<60;i++){
+      const p=document.createElement('div');
+      p.className='fw-particle';
+      p.style.left=x+'px';
+      p.style.top=y+'px';
+      p.style.width=(3+Math.random()*5)+'px';
+      p.style.height=p.style.width;
+      const angle=Math.random()*Math.PI*2;
+      const dist=60+Math.random()*140;
+      const tx=Math.cos(angle)*dist, ty=Math.sin(angle)*dist;
+      p.style.setProperty('--tx',tx+'px');
+      p.style.setProperty('--ty',ty+'px');
+      p.style.background=color;
+      p.style.animationDuration=(0.8+Math.random()*0.7)+'s';
+      fw.appendChild(p);
+      setTimeout(()=>p.remove(),1500);
+    }
+  },900);
+}
+function triggerMassiveFireworks(){
+  const colors=['#FFD700','#FF6B35','#E85D04','#C9A961','#FF4081','#00BCD4','#76FF03','#FF1744'];
+  const w=window.innerWidth, h=window.innerHeight;
+  // 多波次烟花
+  for(let wave=0;wave<5;wave++){
+    setTimeout(()=>{
+      for(let i=0;i<8;i++){
+        const x=Math.random()*w;
+        const y=Math.random()*(h*0.5)+h*0.1;
+        const color=colors[Math.floor(Math.random()*colors.length)];
+        launchFirework(x,y,color);
+      }
+    },wave*600);
+  }
+  // 中心大文字
+  setTimeout(()=>{
+    const el=document.createElement('div');
+    el.style.cssText='position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);font-size:3em;font-weight:700;color:#FFD700;text-shadow:0 0 30px rgba(255,215,0,0.8);z-index:1001;pointer-events:none;animation:fwFade 2s ease-out forwards;';
+    el.textContent='🎉 全部掌握！太厉害了！';
+    document.body.appendChild(el);
+    setTimeout(()=>el.remove(),2000);
+  },500);
+}
+
 /* ================= 结束关卡 ================= */
 function finishLevel(){
   clearInterval(state.timer); const lv=state.lv; const totalQ=state.questions.length;
   const accuracy=totalQ>0?state.correct/totalQ:0;
   let stars=1; if(accuracy>=0.9) stars=3; else if(accuracy>=0.7) stars=2;
   if(lv.boss && state.wrong===0) stars=3;
+
+  // 保存错题练习模式状态（用于后续判断），然后重置
+  const wasWrongPractice=state.wrongMode && state.wrongLevelId===lv.id;
+  const wrongPracticeAllCorrect=wasWrongPractice && state.wrong===0;
+
+  if(wasWrongPractice){
+    if(state.wrong===0){
+      // 全对！清除该关卡本轮练习过的错题记录
+      const data=getUserData(state.currentUser);
+      const wrongStemIndices=new Set(getWrongStemsForLevel(lv.id).map(ws=>ws.stemIndex));
+      data.history=data.history.filter(h=>!(h.level===lv.id && wrongStemIndices.has(h.stemIndex) && !h.correct));
+      saveUserData(state.currentUser,data);
+    }
+    state.wrongMode=false; state.wrongLevelId=null;
+  }
 
   const data=getUserData(state.currentUser);
   const prev=data.best[lv.id];
@@ -861,16 +1028,29 @@ function finishLevel(){
   if(lv.boss) sfxBossWin(); else sfxLevelUp();
 
   const box=document.getElementById('resultBox');
-  if(lv.boss){ box.classList.add('boss-result'); } else { box.classList.remove('boss-result'); }
+  box.classList.remove('boss-result','wrong-result');
+  if(lv.boss){ box.classList.add('boss-result'); }
+  else if(wrongPracticeAllCorrect){ box.classList.add('wrong-result'); }
 
-  document.getElementById('rTitle').textContent=lv.boss?'🏆 魔王已被击败!':lv.title+' 完成！';
-  document.getElementById('rSubtitle').textContent=accuracy===1?(lv.boss?'完美击败魔王！':'太棒了！全部答对！'):accuracy>=0.8?'表现优秀！':'继续加油！';
+  if(wrongPracticeAllCorrect){
+    document.getElementById('rTitle').textContent='🎉 错题已全部掌握！';
+    document.getElementById('rSubtitle').textContent='太厉害了！本关错题已全部清除！';
+  }else{
+    document.getElementById('rTitle').textContent=lv.boss?'🏆 魔王已被击败!':lv.title+' 完成！';
+    document.getElementById('rSubtitle').textContent=accuracy===1?(lv.boss?'完美击败魔王！':'太棒了！全部答对！'):accuracy>=0.8?'表现优秀！':'继续加油！';
+  }
   document.getElementById('rScore').textContent=state.score;
   document.getElementById('rStars').textContent='★'.repeat(stars)+'☆'.repeat(3-stars);
   document.getElementById('rCorrect').textContent=state.correct;
   document.getElementById('rWrong').textContent=state.wrong;
   document.getElementById('rCombo').textContent=state.maxCombo;
   showScreen('result');
+
+  // 错题练习全对 → 巨大烟花庆祝
+  if(wrongPracticeAllCorrect){
+    setTimeout(()=>triggerMassiveFireworks(),300);
+    sfxFirework();
+  }
 }
 function retryLevel(){ startLevel(state.lv.id); }
 
@@ -920,5 +1100,4 @@ if(!loadLastUser()){
   showScreen('login');
 }
 </script>
-
 </body></html>
