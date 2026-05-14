@@ -1,0 +1,316 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  STUDENT
+  TEACHER
+  ADMIN
+}
+
+enum CourseStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum KnowledgePointType {
+  STEM
+  VOCABULARY
+  CONCEPT
+}
+
+enum ExerciseType {
+  MULTIPLE_CHOICE
+  MATCHING
+  FILL_BLANK
+  TRUE_FALSE
+  STEM_BUILDING
+}
+
+enum ProgressStatus {
+  NOT_STARTED
+  IN_PROGRESS
+  MASTERED
+  NEEDS_REVIEW
+}
+
+enum GenerationJobStatus {
+  QUEUED
+  RUNNING
+  NEEDS_REVIEW
+  COMPLETED
+  FAILED
+}
+
+model User {
+  id           String             @id @default(cuid())
+  email        String             @unique
+  name         String
+  passwordHash String
+  role         UserRole           @default(STUDENT)
+  profile      UserProfile?
+  attempts     AnswerAttempt[]
+  mistakes     MistakeRecord[]
+  progress     LearningProgress[]
+  createdAt    DateTime           @default(now())
+  updatedAt    DateTime           @updatedAt
+}
+
+model UserProfile {
+  id          String   @id @default(cuid())
+  userId      String   @unique
+  displayName String?
+  avatarUrl   String?
+  grade       String?
+  classroom   String?
+  bio         String?
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Course {
+  id             String                @id @default(cuid())
+  slug           String                @unique
+  title          String
+  subtitle       String?
+  description    String?
+  status         CourseStatus          @default(DRAFT)
+  units          CourseUnit[]
+  lessons        Lesson[]
+  knowledge      KnowledgePoint[]
+  vocabulary     VocabularyItem[]
+  exercises      Exercise[]
+  gameLevels     GameLevel[]
+  attempts       AnswerAttempt[]
+  mistakes       MistakeRecord[]
+  progress       LearningProgress[]
+  materials      UploadedMaterial[]
+  generationJobs GeneratedContentJob[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+}
+
+model CourseUnit {
+  id        String   @id @default(cuid())
+  courseId  String
+  title     String
+  slug      String
+  order     Int
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lessons   Lesson[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([courseId, slug])
+  @@index([courseId, order])
+}
+
+model Lesson {
+  id         String             @id @default(cuid())
+  courseId   String
+  unitId     String?
+  slug       String
+  title      String
+  kind       String?
+  order      Int
+  course     Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  unit       CourseUnit?        @relation(fields: [unitId], references: [id], onDelete: SetNull)
+  vocabulary VocabularyItem[]
+  exercises  Exercise[]
+  attempts   AnswerAttempt[]
+  mistakes   MistakeRecord[]
+  progress   LearningProgress[]
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @updatedAt
+
+  @@unique([courseId, slug])
+  @@index([courseId, order])
+}
+
+model KnowledgePoint {
+  id          String             @id @default(cuid())
+  courseId    String
+  type        KnowledgePointType
+  key         String
+  title       String?
+  meaning     String?
+  examples    Json?
+  sourceOrder Int?
+  metadata    Json?
+  course      Course             @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  exercises   Exercise[]
+  attempts    AnswerAttempt[]
+  mistakes    MistakeRecord[]
+  progress    LearningProgress[]
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  @@unique([courseId, type, key])
+  @@index([courseId, type])
+}
+
+model VocabularyItem {
+  id           String   @id @default(cuid())
+  courseId     String
+  lessonId     String?
+  word         String
+  ipa          String?
+  partOfSpeech String?
+  definition   String
+  category     String?
+  sourceOrder  Int?
+  metadata     Json?
+  course       Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson       Lesson?  @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([courseId, word])
+  @@index([courseId, lessonId])
+}
+
+model Exercise {
+  id               String          @id @default(cuid())
+  courseId         String
+  lessonId         String?
+  knowledgePointId String?
+  type             ExerciseType
+  prompt           String
+  options          Json?
+  correctAnswer    Json
+  explanation      String?
+  difficulty       Int             @default(1)
+  source           String?
+  group            String?
+  order            Int
+  metadata         Json?
+  course           Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson           Lesson?         @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  knowledgePoint   KnowledgePoint? @relation(fields: [knowledgePointId], references: [id], onDelete: SetNull)
+  attempts         AnswerAttempt[]
+  mistakes         MistakeRecord[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([courseId, lessonId, order])
+  @@index([courseId, type])
+}
+
+model GameLevel {
+  id               String   @id @default(cuid())
+  courseId         String
+  legacyId         Int?
+  title            String
+  subtitle         String?
+  type             String
+  description      String?
+  indices          Json?
+  timeLimitSeconds Int      @default(0)
+  isBoss           Boolean  @default(false)
+  order            Int
+  course           Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([courseId, order])
+}
+
+model LearningProgress {
+  id               String          @id @default(cuid())
+  userId           String
+  courseId         String
+  lessonId         String?
+  knowledgePointId String?
+  status           ProgressStatus  @default(NOT_STARTED)
+  masteryScore     Float           @default(0)
+  completedAt      DateTime?
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course           Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson           Lesson?         @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  knowledgePoint   KnowledgePoint? @relation(fields: [knowledgePointId], references: [id], onDelete: SetNull)
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@unique([userId, courseId, lessonId, knowledgePointId])
+  @@index([userId, courseId])
+}
+
+model AnswerAttempt {
+  id               String          @id @default(cuid())
+  userId           String
+  courseId         String
+  lessonId         String?
+  exerciseId       String?
+  knowledgePointId String?
+  answer           Json
+  isCorrect        Boolean
+  timeSpentMs      Int?
+  gameMode         String?
+  user             User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course           Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson           Lesson?         @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  exercise         Exercise?       @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
+  knowledgePoint   KnowledgePoint? @relation(fields: [knowledgePointId], references: [id], onDelete: SetNull)
+  createdAt        DateTime        @default(now())
+
+  @@index([userId, courseId, createdAt])
+  @@index([exerciseId])
+}
+
+model MistakeRecord {
+  id                     String          @id @default(cuid())
+  userId                 String
+  courseId               String
+  lessonId               String?
+  exerciseId             String?
+  knowledgePointId       String?
+  wrongCount             Int             @default(0)
+  correctAfterWrongCount Int             @default(0)
+  mastered               Boolean         @default(false)
+  lastSeenAt             DateTime        @default(now())
+  user                   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course                 Course          @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  lesson                 Lesson?         @relation(fields: [lessonId], references: [id], onDelete: SetNull)
+  exercise               Exercise?       @relation(fields: [exerciseId], references: [id], onDelete: SetNull)
+  knowledgePoint         KnowledgePoint? @relation(fields: [knowledgePointId], references: [id], onDelete: SetNull)
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+
+  @@unique([userId, courseId, exerciseId, knowledgePointId])
+  @@index([userId, courseId, mastered])
+}
+
+model UploadedMaterial {
+  id             String                @id @default(cuid())
+  courseId       String?
+  title          String
+  fileUrl        String
+  fileType       String
+  status         String                @default("UPLOADED")
+  metadata       Json?
+  course         Course?               @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  generationJobs GeneratedContentJob[]
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+}
+
+model GeneratedContentJob {
+  id         String              @id @default(cuid())
+  courseId   String?
+  materialId String?
+  status     GenerationJobStatus @default(QUEUED)
+  input      Json
+  output     Json?
+  error      String?
+  course     Course?             @relation(fields: [courseId], references: [id], onDelete: SetNull)
+  material   UploadedMaterial?   @relation(fields: [materialId], references: [id], onDelete: SetNull)
+  createdAt  DateTime            @default(now())
+  updatedAt  DateTime            @updatedAt
+}
