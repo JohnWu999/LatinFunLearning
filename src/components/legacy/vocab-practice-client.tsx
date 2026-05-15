@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useMemo, useState } from "react";
 
 type LegacyExercise = {
@@ -178,9 +179,9 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons 
         </section>
 
         <div className="legacy-container">
-          <a className="legacy-back" href={`/courses/${courseSlug}`}>
+          <Link className="legacy-back" href={`/courses/${courseSlug}`}>
             ← 返回学习中心首页
-          </a>
+          </Link>
           <h2 className="legacy-section-title">选择单元开始练习</h2>
           <p className="legacy-muted">每个单元包含：连线题 · 上下文选词 · 同义词 · 反义词</p>
           <div className="legacy-lesson-grid">

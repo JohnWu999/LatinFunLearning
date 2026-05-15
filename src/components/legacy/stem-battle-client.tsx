@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { DragEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -1303,9 +1304,9 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
 
   return (
     <main className="battle-page">
-      <a className="legacy-back battle-home-link" href={`/courses/${courseSlug}`} onClick={stopRootMatchMusic}>
+      <Link className="legacy-back battle-home-link" href={`/courses/${courseSlug}`} onClick={stopRootMatchMusic}>
         ← 返回学习中心首页
-      </a>
+      </Link>
 
       {screen === "cover" ? (
         <section className="battle-cover">
