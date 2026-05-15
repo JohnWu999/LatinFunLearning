@@ -7,6 +7,10 @@ export const dynamic = "force-dynamic";
 
 type CourseSummary = Prisma.CourseGetPayload<{
   include: {
+    knowledge: {
+      where: { type: "STEM" };
+      select: { id: true };
+    };
     _count: {
       select: {
         lessons: true;
@@ -35,6 +39,10 @@ export default async function DashboardPage() {
     courses = await prisma.course.findMany({
       where: { status: "PUBLISHED" },
       include: {
+        knowledge: {
+          where: { type: "STEM" },
+          select: { id: true }
+        },
         _count: {
           select: {
             lessons: true,
@@ -86,11 +94,26 @@ export default async function DashboardPage() {
         <section className="legacy-container">
           <h2 className="legacy-section-title">功能模块</h2>
           <div className="legacy-module-grid">
-            <Link href={`/courses/${primaryCourse.slug}/learning`} className="legacy-module-card">
+            <Link href={`/courses/${primaryCourse.slug}/latin-stems`} className="legacy-module-card">
+              <span>🌿</span>
+              <strong>Latin Stems</strong>
+              <p>集中查看全部拉丁词根、含义和现代英文例词，适合先建立词源地图。</p>
+              <em>词根 · {primaryCourse.knowledge.length} stems</em>
+            </Link>
+            <Link href={`/courses/${primaryCourse.slug}/classic-words`} className="legacy-module-card">
               <span>📚</span>
-              <strong>完整词汇资料</strong>
-              <p>包含全部拉丁词根、词汇表、近反义词对照、练习题与答案。适合系统学习与复习。</p>
-              <em>资料 · {primaryCourse._count.vocabulary} words</em>
+              <strong>Classic Words</strong>
+              <p>按单元学习经典词汇、读音、英文释义、文学出处，以及同义词和反义词。</p>
+              <em>词汇 · {primaryCourse._count.vocabulary} words</em>
+            </Link>
+            <Link href={`/courses/${primaryCourse.slug}/analogies-antonyms`} className="legacy-module-card">
+              <span className="analogy-module-icon" aria-hidden="true">
+                <i>A</i>
+                <b>A</b>
+              </span>
+              <strong>Analogies &amp; Antonyms</strong>
+              <p>汇总 Caesar&apos;s Analogies 和 Caesar&apos;s Antonyms，按课程顺序集中练习。</p>
+              <em>类比 · 反义词</em>
             </Link>
             <Link href={`/courses/${primaryCourse.slug}/workbook`} className="legacy-module-card">
               <span>✍️</span>
@@ -100,8 +123,8 @@ export default async function DashboardPage() {
             </Link>
             <Link href={`/courses/${primaryCourse.slug}/battle`} className="legacy-module-card">
               <span>🎮</span>
-              <strong>单词闯关</strong>
-              <p>拉丁词根互动闯关挑战，包含拼写补全、拆词、连线、真假、闪电战和 Boss 挑战。</p>
+              <strong>Stem Battle</strong>
+              <p>用拼写补全、连线、判断和闪电选择等玩法，反复训练 Latin Stems。</p>
               <em>互动游戏 · {primaryCourse._count.gameLevels} levels</em>
             </Link>
             <Link href={`/courses/${primaryCourse.slug}/vocab-practice`} className="legacy-module-card">
@@ -119,9 +142,11 @@ export default async function DashboardPage() {
         <div className="legacy-quick-links">
           {primaryCourse ? (
             <>
-              <Link href={`/courses/${primaryCourse.slug}/learning`}>完整词汇学习资料</Link>
+              <Link href={`/courses/${primaryCourse.slug}/latin-stems`}>Latin Stems</Link>
+              <Link href={`/courses/${primaryCourse.slug}/classic-words`}>Classic Words</Link>
+              <Link href={`/courses/${primaryCourse.slug}/analogies-antonyms`}>Analogies &amp; Antonyms</Link>
               <Link href={`/courses/${primaryCourse.slug}/workbook`}>精简练习册</Link>
-              <Link href={`/courses/${primaryCourse.slug}/battle`}>单词闯关（互动版）</Link>
+              <Link href={`/courses/${primaryCourse.slug}/battle`}>Stem Battle</Link>
               <Link href={`/courses/${primaryCourse.slug}/vocab-practice`}>词汇练习（互动版）</Link>
               <Link href={`/courses/${primaryCourse.slug}`}>课程数据总览</Link>
             </>

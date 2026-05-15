@@ -13,6 +13,10 @@ export default async function CoursePage({ params }: Props) {
   const course = await prisma.course.findFirst({
     where: { OR: [{ id: courseId }, { slug: courseId }] },
     include: {
+      knowledge: {
+        where: { type: "STEM" },
+        select: { id: true }
+      },
       lessons: { orderBy: { order: "asc" } },
       gameLevels: { orderBy: { order: "asc" } },
       _count: { select: { knowledge: true, vocabulary: true, exercises: true } }
@@ -34,11 +38,26 @@ export default async function CoursePage({ params }: Props) {
       <section className="legacy-container">
         <h2 className="legacy-section-title">功能模块</h2>
         <div className="legacy-module-grid">
-          <Link href={`/courses/${course.slug}/learning`} className="legacy-module-card">
+          <Link href={`/courses/${course.slug}/latin-stems`} className="legacy-module-card">
+            <span>🌿</span>
+            <strong>Latin Stems</strong>
+            <p>完整拉丁词根、词根含义和现代英文例词。</p>
+            <em>{course.knowledge.length} stems</em>
+          </Link>
+          <Link href={`/courses/${course.slug}/classic-words`} className="legacy-module-card">
             <span>📚</span>
-            <strong>完整词汇资料</strong>
-            <p>完整拉丁词根、词汇表、练习题与答案键。</p>
-            <em>资料全集</em>
+            <strong>Classic Words</strong>
+            <p>按单元查看经典词汇、读音、英文释义、文学出处和同反义词。</p>
+            <em>{course._count.vocabulary} words</em>
+          </Link>
+          <Link href={`/courses/${course.slug}/analogies-antonyms`} className="legacy-module-card">
+            <span className="analogy-module-icon" aria-hidden="true">
+              <i>A</i>
+              <b>A</b>
+            </span>
+            <strong>Analogies &amp; Antonyms</strong>
+            <p>按课整理 Caesar&apos;s Analogies 和 Caesar&apos;s Antonyms 练习题。</p>
+            <em>类比 · 反义词</em>
           </Link>
           <Link href={`/courses/${course.slug}/workbook`} className="legacy-module-card">
             <span>✍️</span>
@@ -48,9 +67,9 @@ export default async function CoursePage({ params }: Props) {
           </Link>
           <Link href={`/courses/${course.slug}/battle`} className="legacy-module-card">
             <span>🎮</span>
-            <strong>单词闯关</strong>
-            <p>复刻原词根闯关、Boss、错题练习和连击计分。</p>
-            <em>互动游戏</em>
+            <strong>Stem Battle</strong>
+            <p>通过多种互动题型反复训练 Latin Stems，逐步掌握词根、含义和例词。</p>
+            <em>词根闯关</em>
           </Link>
           <Link href={`/courses/${course.slug}/vocab-practice`} className="legacy-module-card">
             <span>✏️</span>

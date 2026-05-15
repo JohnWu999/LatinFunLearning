@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import legacyCourse from "../../../../../data/legacy/caesars-english-ii.course.json";
 import { StemBattleClient } from "@/components/legacy/stem-battle-client";
 import { getCurrentUser } from "@/lib/auth";
+import { latinStemLessons } from "@/lib/latin-stem-lessons";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -28,13 +29,16 @@ export default async function BattlePage({ params }: Props) {
 
   if (!course) notFound();
 
-  const stems = course.knowledge.map((item) => ({
-    id: item.id,
-    key: item.key,
-    meaning: item.meaning,
-    examples: Array.isArray(item.examples) ? item.examples.map(String) : [],
-    sourceOrder: item.sourceOrder
-  }));
+  const stems = Object.values(latinStemLessons).flatMap((lesson) => {
+    const lessonStems = [...lesson.newStems, ...lesson.reviewStems];
+    return lessonStems.map((item, index) => ({
+      id: `latin-stem-${lesson.lesson}-${item.stem}`,
+      key: item.stem,
+      meaning: item.meaning,
+      examples: item.examples,
+      sourceOrder: (lesson.lesson - 1) * 10 + index
+    }));
+  });
 
   return (
     <StemBattleClient
