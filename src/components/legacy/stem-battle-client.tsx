@@ -410,6 +410,24 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
   }, [best, unlocked, courseId]);
 
   useEffect(() => {
+    const isFamilyComplete =
+      screen === "build-word" &&
+      buildWordStage === "family" &&
+      buildFamilyBuilt &&
+      Object.keys(buildFamilyMatches).length === buildWordFamilyWords.length;
+
+    if (!isFamilyComplete) return;
+
+    const timer = window.setTimeout(() => {
+      setBuildWordStage("map");
+      setBuildFamilyFeedback("");
+      setSelectedFamilyWord(null);
+    }, 1600);
+
+    return () => window.clearTimeout(timer);
+  }, [screen, buildWordStage, buildFamilyBuilt, buildFamilyMatches]);
+
+  useEffect(() => {
     if (screen !== "game" || !activeLevel || questions.length === 0 || run.qi >= questions.length) return;
 
     const session: SavedBattleSession = {
@@ -1049,10 +1067,6 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
       setBuildFamilyFeedback("Macte! This stem family is complete.");
       playGroupCelebrationSound();
       setCompletedBuildStems((items) => items.includes("com") ? items : [...items, "com"]);
-      window.setTimeout(() => {
-        setBuildWordStage("map");
-        setBuildFamilyFeedback("");
-      }, 1600);
     } else {
       setBuildFamilyFeedback("Recte! Keep matching.");
       playAnswerCorrectSound();
