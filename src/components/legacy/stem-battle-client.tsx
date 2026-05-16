@@ -72,7 +72,7 @@ type JeopardyQuestion = {
   stemIndex: number;
   totalStems: number;
 };
-type BuildWordStage = "warmup" | "family";
+type BuildWordStage = "map" | "warmup" | "family";
 type BuildWordPart = { id: string; label: string };
 type BuildWordFamilyAnswer = Record<string, BuildWordPart[]>;
 type SavedBattleSession = {
@@ -916,7 +916,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
 
   function startBuildAWord() {
     stopRootMatchMusic();
-    setBuildWordStage("warmup");
+    setBuildWordStage("map");
     setBuildWordTiles(["mand", "eer", "com"]);
     setBuildWordAnswer([]);
     setBuildWordFeedback("");
@@ -928,6 +928,20 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
     setSelectedFamilyWord(null);
     setBuildFamilyMatches({});
     setScreen("build-word");
+  }
+
+  function startBuildWordStem() {
+    setBuildWordStage("warmup");
+    setBuildWordTiles(["mand", "eer", "com"]);
+    setBuildWordAnswer([]);
+    setBuildWordFeedback("");
+    setBuildFamilyTiles(initialBuildWordFamilyTiles);
+    setBuildFamilyAnswers(emptyBuildWordFamilyAnswers());
+    setBuildFamilyFeedback("");
+    setBuildFamilyBuilt(false);
+    setSelectedFamilyRow("common");
+    setSelectedFamilyWord(null);
+    setBuildFamilyMatches({});
   }
 
   function chooseBuildWordTile(tile: string) {
@@ -1510,11 +1524,33 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
               <h1>Build-a-Word</h1>
               <p>Build nonfiction words from Latin stems.</p>
             </div>
-            <strong>com</strong>
+            <strong>{buildWordStage === "map" ? "Lesson I" : "com"}</strong>
           </div>
 
           <div className="build-word-stage">
-            {buildWordStage === "warmup" ? (
+            {buildWordStage === "map" ? (
+              <div className="build-word-map">
+                <div className="build-word-map-intro">
+                  <span>Lesson I</span>
+                  <h2>Stem Family Map</h2>
+                  <p>Choose a stem node to build its word family.</p>
+                </div>
+                <div className="build-word-map-path" aria-hidden="true">
+                  <span />
+                  <span />
+                  <span />
+                </div>
+                <button className="build-word-stem-node available" onClick={startBuildWordStem} type="button">
+                  <strong>com</strong>
+                  <span>3 family words</span>
+                  <em>START</em>
+                </button>
+                <div className="build-word-map-note">
+                  <b>Coming next</b>
+                  <span>More Lesson I stems will unlock here after this prototype feels right.</span>
+                </div>
+              </div>
+            ) : buildWordStage === "warmup" ? (
               <>
                 <div className="build-word-fact">
                   <em>to officially take control of something</em>
