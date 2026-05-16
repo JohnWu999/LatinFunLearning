@@ -3090,6 +3090,13 @@ textarea {
   transform: translateY(-4px) scale(1.02);
 }
 
+.build-word-stem-node.completed {
+  border-color: rgba(40, 122, 75, 0.55);
+  background:
+    radial-gradient(circle at 50% 35%, rgba(255, 255, 255, 0.98), rgba(241, 251, 241, 0.94) 58%, rgba(95, 167, 108, 0.34));
+  box-shadow: 0 26px 52px rgba(40, 122, 75, 0.16), inset 0 0 0 12px rgba(255, 255, 255, 0.5);
+}
+
 .build-word-stem-node strong {
   color: #e85d04;
   font-family: "Palatino Linotype", Palatino, Georgia, serif;
@@ -3101,6 +3108,11 @@ textarea {
   color: #26465c;
   font-size: 16px;
   font-weight: 900;
+}
+
+.build-word-stem-node.completed strong,
+.build-word-stem-node.completed span {
+  color: #287a4b;
 }
 
 .build-word-stem-node em {
@@ -3138,6 +3150,47 @@ textarea {
   color: var(--legacy-muted);
   font-size: 14px;
   font-weight: 800;
+  line-height: 1.35;
+}
+
+.build-word-vault {
+  position: absolute;
+  right: 28px;
+  bottom: 28px;
+  display: grid;
+  gap: 6px;
+  max-width: 310px;
+  border: 2px solid rgba(40, 122, 75, 0.18);
+  border-radius: 16px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(95, 167, 108, 0.12), transparent 45%),
+    rgba(255, 255, 255, 0.78);
+  box-shadow: 0 16px 34px rgba(40, 122, 75, 0.12);
+  padding: 18px;
+  text-align: left;
+}
+
+.build-word-vault b {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  background: rgba(40, 122, 75, 0.12);
+  color: #287a4b;
+  font-size: 14px;
+  padding: 5px 11px;
+}
+
+.build-word-vault strong {
+  color: #287a4b;
+  font-family: "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.build-word-vault span {
+  color: var(--legacy-text);
+  font-size: 16px;
+  font-weight: 900;
   line-height: 1.35;
 }
 

@@ -363,6 +363,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
   const [selectedFamilyRow, setSelectedFamilyRow] = useState("common");
   const [selectedFamilyWord, setSelectedFamilyWord] = useState<string | null>(null);
   const [buildFamilyMatches, setBuildFamilyMatches] = useState<Record<string, string>>({});
+  const [completedBuildStems, setCompletedBuildStems] = useState<string[]>([]);
   const audioRef = useRef<AudioContext | null>(null);
   const musicTimerRef = useRef<number | null>(null);
   const fillRevealTimersRef = useRef<number[]>([]);
@@ -1047,6 +1048,11 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
     if (Object.keys(nextMatches).length === buildWordFamilyWords.length) {
       setBuildFamilyFeedback("Macte! This stem family is complete.");
       playGroupCelebrationSound();
+      setCompletedBuildStems((items) => items.includes("com") ? items : [...items, "com"]);
+      window.setTimeout(() => {
+        setBuildWordStage("map");
+        setBuildFamilyFeedback("");
+      }, 1600);
     } else {
       setBuildFamilyFeedback("Recte! Keep matching.");
       playAnswerCorrectSound();
@@ -1540,15 +1546,23 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
                   <span />
                   <span />
                 </div>
-                <button className="build-word-stem-node available" onClick={startBuildWordStem} type="button">
+                <button className={`build-word-stem-node ${completedBuildStems.includes("com") ? "completed" : "available"}`} onClick={startBuildWordStem} type="button">
                   <strong>com</strong>
-                  <span>3 family words</span>
-                  <em>START</em>
+                  <span>{completedBuildStems.includes("com") ? "family complete" : "3 family words"}</span>
+                  <em>{completedBuildStems.includes("com") ? "REPLAY" : "START"}</em>
                 </button>
-                <div className="build-word-map-note">
-                  <b>Coming next</b>
-                  <span>More Lesson I stems will unlock here after this prototype feels right.</span>
-                </div>
+                {completedBuildStems.includes("com") ? (
+                  <div className="build-word-vault">
+                    <b>Root Vault</b>
+                    <strong>com unlocked</strong>
+                    <span>{buildWordFamilyWords.map((item) => item.word).join(" · ")}</span>
+                  </div>
+                ) : (
+                  <div className="build-word-map-note">
+                    <b>Coming next</b>
+                    <span>More Lesson I stems will unlock here after this prototype feels right.</span>
+                  </div>
+                )}
               </div>
             ) : buildWordStage === "warmup" ? (
               <>
