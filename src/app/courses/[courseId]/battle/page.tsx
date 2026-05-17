@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import legacyCourse from "../../../../../data/legacy/caesars-english-ii.course.json";
 import { StemBattleClient } from "@/components/legacy/stem-battle-client";
 import { getCurrentUser } from "@/lib/auth";
@@ -28,6 +28,7 @@ export default async function BattlePage({ params }: Props) {
   ]);
 
   if (!course) notFound();
+  if (!user) redirect(`/login?next=/courses/${course.slug}/battle`);
 
   const stems = Object.values(latinStemLessons).flatMap((lesson) => {
     const lessonStems = [...lesson.newStems, ...lesson.reviewStems];
@@ -48,7 +49,8 @@ export default async function BattlePage({ params }: Props) {
       isLoggedIn={Boolean(user)}
       levels={course.gameLevels}
       stems={stems}
-      userName={user?.profile?.displayName ?? user?.name ?? "Guest"}
+      userId={user.id}
+      userName={user.profile?.displayName ?? user.name}
     />
   );
 }

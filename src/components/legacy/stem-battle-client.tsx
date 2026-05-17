@@ -44,6 +44,7 @@ type Props = {
   courseId: string;
   courseSlug: string;
   isLoggedIn: boolean;
+  userId: string;
   userName: string;
   stems: Stem[];
   levels: GameLevel[];
@@ -149,6 +150,13 @@ const buildAWordHubLevel: GameLevel = {
   isBoss: false,
   order: -11
 };
+
+function appPath(path: string) {
+  const asset = document.querySelector<HTMLScriptElement | HTMLLinkElement>('script[src*="/_next/"], link[href*="/_next/"]');
+  const source = asset instanceof HTMLScriptElement ? asset.src : asset?.href;
+  const prefix = source ? new URL(source, window.location.origin).pathname.split("/_next/")[0] : "";
+  return `${prefix}${path}`;
+}
 
 const buildWordChallenges: Record<string, BuildWordChallenge> = {
   com: {
@@ -970,7 +978,7 @@ function makeJeopardyQuestion(cell: JeopardyCell, stems: Stem[], stemIndex?: num
   };
 }
 
-export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, stems, levels, buildQuestions }: Props) {
+export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, userName, stems, levels, buildQuestions }: Props) {
   const [screen, setScreen] = useState<Screen>("cover");
   const [activeLevel, setActiveLevel] = useState<GameLevel | null>(null);
   const [questions, setQuestions] = useState<GameQuestion[]>([]);
@@ -1033,8 +1041,16 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
   const activeBuildMapStems = activeBuildMap.stems;
   const pendingUnlockMap = pendingUnlockMapIndex === null ? null : buildWordMaps[pendingUnlockMapIndex];
 
+  function userStorageKey(name: string) {
+    return `latinfun_${name}_${courseId}_${userId}`;
+  }
+
+  function battleProgressKey() {
+    return userStorageKey("battle");
+  }
+
   function savedSessionKey() {
-    return `latinfun_battle_session_${courseId}`;
+    return userStorageKey("battle_session");
   }
 
   function scheduleBuildWordMapReturn() {
@@ -1120,7 +1136,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
   }
 
   useEffect(() => {
-    const raw = window.localStorage.getItem(`latinfun_battle_${courseId}`);
+    const raw = window.localStorage.getItem(battleProgressKey());
     if (raw) {
       try {
         const parsed = JSON.parse(raw) as { best?: typeof best; unlocked?: number[] };
@@ -1130,7 +1146,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
         setBest({});
       }
     }
-  }, [courseId]);
+  }, [courseId, userId]);
 
   useEffect(() => {
     const raw = window.localStorage.getItem(savedSessionKey());
@@ -1145,11 +1161,11 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
       window.localStorage.removeItem(savedSessionKey());
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId]);
+  }, [courseId, userId]);
 
   useEffect(() => {
-    window.localStorage.setItem(`latinfun_battle_${courseId}`, JSON.stringify({ best, unlocked }));
-  }, [best, unlocked, courseId]);
+    window.localStorage.setItem(battleProgressKey(), JSON.stringify({ best, unlocked }));
+  }, [best, unlocked, courseId, userId]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1208,11 +1224,11 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
     window.localStorage.setItem(savedSessionKey(), JSON.stringify(session));
     setSavedSession(session);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen, activeLevel, questions, run, answer, wrongMode, timeLeft, matchedPairs, courseId]);
+  }, [screen, activeLevel, questions, run, answer, wrongMode, timeLeft, matchedPairs, courseId, userId]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
-    fetch(`/api/mistakes?courseId=${courseId}`)
+    fetch(appPath(`/api/mistakes?courseId=${courseId}`))
       .then((response) => (response.ok ? response.json() : null))
       .then((payload) => {
         const ids = new Set<string>();
@@ -1256,7 +1272,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
   useEffect(() => () => clearFillRevealTimers(), []);
 
   function rootMatchStatsKey() {
-    return `latinfun_root_match_stats_${courseId}`;
+    return userStorageKey("root_match_stats");
   }
 
   function emptyRootMatchStats(): RootMatchStats {
@@ -2038,7 +2054,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
     const knowledgePointId =
       "stem" in question && !question.stem.id.startsWith("latin-stem-") ? question.stem.id : undefined;
 
-    await fetch("/api/attempts", {
+    await fetch(appPath("/api/attempts"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

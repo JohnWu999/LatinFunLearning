@@ -31,6 +31,12 @@ function friendlyError(body: ApiErrorBody | null, mode: AuthMode) {
   return message ?? "请求失败，请稍后再试";
 }
 
+function safeNextPath() {
+  const next = new URLSearchParams(window.location.search).get("next");
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/dashboard";
+  return next;
+}
+
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -66,7 +72,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       return;
     }
 
-    window.location.href = appPath("/dashboard");
+    window.location.href = appPath(safeNextPath());
   }
 
   return (
