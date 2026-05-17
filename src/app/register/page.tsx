@@ -14,7 +14,7 @@ export default async function RegisterPage({ searchParams }: Props) {
   const next = (await searchParams)?.next;
 
   return (
-    <main className="main narrow">
+    <main className="main narrow auth-page">
       <h1 className="page-title">创建账号</h1>
       <p className="lede">第一版账号系统使用邮箱和密码，后续可以接入 Google、Classroom 或学校统一登录。</p>
       <AuthForm mode="register" />
