@@ -3585,6 +3585,10 @@ textarea {
   transform: scale(1.03);
 }
 
+.build-word-answer.pronouncing {
+  animation: build-word-pronounce-pulse 900ms ease-in-out 1;
+}
+
 .build-word-answer.built button {
   background: transparent;
   box-shadow: none;
@@ -3728,6 +3732,34 @@ textarea {
 .build-family-row.matched {
   border-color: rgba(40, 122, 75, 0.35);
   background: rgba(244, 251, 243, 0.95);
+}
+
+.build-family-row.pronouncing {
+  animation: build-family-pronounce-pulse 900ms ease-in-out 1;
+  border-color: rgba(232, 93, 4, 0.72);
+  box-shadow: 0 18px 34px rgba(232, 93, 4, 0.18), 0 0 0 4px rgba(255, 216, 112, 0.22);
+}
+
+@keyframes build-word-pronounce-pulse {
+  0%, 100% {
+    box-shadow: 0 16px 36px rgba(40, 122, 75, 0.18), inset 0 0 0 2px rgba(40, 122, 75, 0.12);
+    transform: scale(1.03);
+  }
+  45% {
+    background: #fff2b8;
+    box-shadow: 0 24px 44px rgba(232, 93, 4, 0.22), 0 0 0 5px rgba(255, 216, 112, 0.34);
+    transform: scale(1.1);
+  }
+}
+
+@keyframes build-family-pronounce-pulse {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+  }
+  45% {
+    background: #fff2b8;
+    transform: translateY(-4px) scale(1.04);
+  }
 }
 
 .build-family-word-target {

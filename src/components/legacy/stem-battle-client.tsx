@@ -1008,6 +1008,8 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
   const [buildFamilyFeedback, setBuildFamilyFeedback] = useState("");
   const [buildFamilyBuilt, setBuildFamilyBuilt] = useState(false);
   const [buildFamilyWrongCount, setBuildFamilyWrongCount] = useState(0);
+  const [buildWarmupReviewing, setBuildWarmupReviewing] = useState(false);
+  const [buildReviewWordId, setBuildReviewWordId] = useState<string | null>(null);
   const [selectedFamilyRow, setSelectedFamilyRow] = useState(buildWordChallenges.com.familyWords[0]?.id ?? "");
   const [selectedFamilyWord, setSelectedFamilyWord] = useState<string | null>(null);
   const [buildFamilyMatches, setBuildFamilyMatches] = useState<Record<string, string>>({});
@@ -1020,6 +1022,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
   const musicTimerRef = useRef<number | null>(null);
   const fillRevealTimersRef = useRef<number[]>([]);
   const buildReturnTimerRef = useRef<number | null>(null);
+  const buildReviewTimersRef = useRef<number[]>([]);
 
   const activeQuestion = questions[run.qi];
   const displayLevels = useMemo(() => [rootMatchingHubLevel, jeopardyHubLevel, buildAWordHubLevel, ...levels], [levels]);
@@ -1045,6 +1048,35 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
       setSelectedFamilyWord(null);
       buildReturnTimerRef.current = null;
     }, 1400);
+  }
+
+  function clearBuildReviewTimers() {
+    buildReviewTimersRef.current.forEach((timer) => window.clearTimeout(timer));
+    buildReviewTimersRef.current = [];
+    window.speechSynthesis?.cancel();
+  }
+
+  function scheduleBuildReviewTimer(callback: () => void, delay: number) {
+    const timer = window.setTimeout(callback, delay);
+    buildReviewTimersRef.current.push(timer);
+  }
+
+  function speakBuildText(text: string, rate = 0.78) {
+    if (!("speechSynthesis" in window)) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = "en-US";
+    utterance.rate = rate;
+    utterance.pitch = 1;
+    const voices = window.speechSynthesis.getVoices();
+    const usVoice = voices.find((voice) => voice.lang === "en-US") ?? voices.find((voice) => voice.lang.startsWith("en"));
+    if (usVoice) utterance.voice = usVoice;
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function reviewBuildWordOnce(word: string, definition: string, startDelay = 0) {
+    scheduleBuildReviewTimer(() => speakBuildText(word, 0.78), startDelay);
+    scheduleBuildReviewTimer(() => speakBuildText(definition, 0.86), startDelay + 1050);
   }
 
   useEffect(() => {
@@ -1088,11 +1120,13 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
       setBuildWordStage("family");
       setActiveBuildMapIndex(1);
       setActiveBuildStemId(challenge.id);
-      setBuildFamilyTiles(challenge.familyTiles);
+      setBuildFamilyTiles(shuffle(challenge.familyTiles));
       setBuildFamilyAnswers(emptyBuildWordFamilyAnswers(challenge));
       setBuildFamilyFeedback("");
       setBuildFamilyBuilt(false);
       setBuildFamilyWrongCount(0);
+      setBuildWarmupReviewing(false);
+      setBuildReviewWordId(null);
       setSelectedFamilyRow(challenge.familyWords[0]?.id ?? "");
       setSelectedFamilyWord(null);
       setBuildFamilyMatches({});
@@ -1114,6 +1148,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
       if (buildReturnTimerRef.current) {
         window.clearTimeout(buildReturnTimerRef.current);
       }
+      clearBuildReviewTimers();
     };
   }, []);
 
@@ -1625,16 +1660,19 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
 
   function startBuildAWord() {
     stopRootMatchMusic();
+    clearBuildReviewTimers();
     setBuildWordStage("map");
     const challenge = buildWordChallengeFor(activeBuildStemId) ?? buildWordChallenges.com;
     setBuildWordTiles(challenge.warmup.parts);
     setBuildWordAnswer([]);
     setBuildWordFeedback("");
-    setBuildFamilyTiles(challenge.familyTiles);
+    setBuildFamilyTiles(shuffle(challenge.familyTiles));
     setBuildFamilyAnswers(emptyBuildWordFamilyAnswers(challenge));
     setBuildFamilyFeedback("");
     setBuildFamilyBuilt(false);
     setBuildFamilyWrongCount(0);
+    setBuildWarmupReviewing(false);
+    setBuildReviewWordId(null);
     setSelectedFamilyRow(challenge.familyWords[0]?.id ?? "");
     setSelectedFamilyWord(null);
     setBuildFamilyMatches({});
@@ -1644,6 +1682,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
   function startBuildWordStem(stemId = activeBuildStemId) {
     const challenge = buildWordChallengeFor(stemId);
     if (!challenge) return;
+    clearBuildReviewTimers();
     setPendingUnlockMapIndex(null);
     setBuildMapTransitioning(false);
     setActiveBuildStemId(challenge.id);
@@ -1651,11 +1690,13 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
     setBuildWordTiles(challenge.warmup.parts);
     setBuildWordAnswer([]);
     setBuildWordFeedback("");
-    setBuildFamilyTiles(challenge.familyTiles);
+    setBuildFamilyTiles(shuffle(challenge.familyTiles));
     setBuildFamilyAnswers(emptyBuildWordFamilyAnswers(challenge));
     setBuildFamilyFeedback("");
     setBuildFamilyBuilt(false);
     setBuildFamilyWrongCount(0);
+    setBuildWarmupReviewing(false);
+    setBuildReviewWordId(null);
     setSelectedFamilyRow(challenge.familyWords[0]?.id ?? "");
     setSelectedFamilyWord(null);
     setBuildFamilyMatches({});
@@ -1672,14 +1713,14 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
   }
 
   function chooseBuildWordTile(tile: string) {
-    if (buildWordFeedback.includes("Recte")) return;
+    if (buildWordFeedback.includes("Recte") || buildWarmupReviewing) return;
     setBuildWordFeedback("");
     setBuildWordAnswer((parts) => [...parts, tile]);
     setBuildWordTiles((parts) => parts.filter((item) => item !== tile));
   }
 
   function removeBuildWordPart(index: number) {
-    if (buildWordFeedback.includes("Recte")) return;
+    if (buildWordFeedback.includes("Recte") || buildWarmupReviewing) return;
     const removed = buildWordAnswer[index];
     if (!removed) return;
     setBuildWordFeedback("");
@@ -1692,13 +1733,42 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
     setBuildWordFeedback(isCorrect ? activeBuildChallenge.warmup.success : "Iterum! Read the meaning and reorder the parts.");
     if (isCorrect) {
       playAnswerCorrectSound();
-      window.setTimeout(() => {
+      setBuildWarmupReviewing(true);
+      reviewBuildWordOnce(activeBuildChallenge.warmup.answer, activeBuildChallenge.warmup.meaning, 180);
+      scheduleBuildReviewTimer(() => {
         setBuildWordStage("family");
         setBuildWordFeedback("");
-      }, 900);
+        setBuildWarmupReviewing(false);
+        setBuildReviewWordId(null);
+      }, 3400);
     } else {
       playAnswerWrongSound();
     }
+  }
+
+  function finishBuildFamilyAfterReview(firstCompletion: boolean, currentMapComplete: boolean) {
+    setBuildReviewWordId(null);
+    setBuildFamilyFeedback(firstCompletion ? "Macte! +10 gems. Returning to map..." : "Macte! This stem family is complete. Returning to map...");
+    playGroupCelebrationSound();
+    setCompletedBuildStems((items) => items.includes(activeBuildChallenge.id) ? items : [...items, activeBuildChallenge.id]);
+    if (firstCompletion) setBuildRewardPoints((points) => points + 10);
+    if (currentMapComplete && buildWordMaps[activeBuildMapIndex + 1]?.stems.length) {
+      setPendingUnlockMapIndex(activeBuildMapIndex + 1);
+    }
+    scheduleBuildWordMapReturn();
+  }
+
+  function reviewBuildFamilyWords(firstCompletion: boolean, currentMapComplete: boolean) {
+    clearBuildReviewTimers();
+    activeBuildChallenge.familyWords.forEach((word, index) => {
+      const startDelay = index * 3500;
+      scheduleBuildReviewTimer(() => {
+        setBuildReviewWordId(word.id);
+        setSelectedFamilyRow(word.id);
+      }, startDelay);
+      reviewBuildWordOnce(word.word, word.meaning, startDelay + 180);
+    });
+    scheduleBuildReviewTimer(() => finishBuildFamilyAfterReview(firstCompletion, currentMapComplete), activeBuildChallenge.familyWords.length * 3500 + 260);
   }
 
   function useBuildHint() {
@@ -1806,14 +1876,8 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
     const firstCompletion = !completedBuildStems.includes(activeBuildChallenge.id);
     const completedAfterThisRun = firstCompletion ? [...completedBuildStems, activeBuildChallenge.id] : completedBuildStems;
     const currentMapComplete = activeBuildMapStems.length > 0 && activeBuildMapStems.every((stem) => completedAfterThisRun.includes(stem.id));
-    setBuildFamilyFeedback(firstCompletion ? "Macte! +10 gems. Returning to map..." : "Macte! This stem family is complete. Returning to map...");
-    playGroupCelebrationSound();
-    setCompletedBuildStems((items) => items.includes(activeBuildChallenge.id) ? items : [...items, activeBuildChallenge.id]);
-    if (firstCompletion) setBuildRewardPoints((points) => points + 10);
-    if (currentMapComplete && buildWordMaps[activeBuildMapIndex + 1]?.stems.length) {
-      setPendingUnlockMapIndex(activeBuildMapIndex + 1);
-    }
-    scheduleBuildWordMapReturn();
+    setBuildFamilyFeedback("Optime! Listen and watch each word.");
+    reviewBuildFamilyWords(firstCompletion, currentMapComplete);
   }
 
   function openJeopardyCell(cell: JeopardyCell) {
@@ -2361,9 +2425,9 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
                 </div>
 
                 <div className="build-word-play">
-                  <div className={`build-word-answer ${buildWordFeedback.includes("Recte") ? "built" : ""}`}>
+                  <div className={`build-word-answer ${buildWordFeedback.includes("Recte") ? "built" : ""} ${buildWarmupReviewing ? "pronouncing" : ""}`}>
                     {buildWordAnswer.length ? buildWordAnswer.map((part, index) => (
-                      <button disabled={buildWordFeedback.includes("Recte")} key={`${part}-${index}`} onClick={() => removeBuildWordPart(index)} type="button">{part}</button>
+                      <button disabled={buildWordFeedback.includes("Recte") || buildWarmupReviewing} key={`${part}-${index}`} onClick={() => removeBuildWordPart(index)} type="button">{part}</button>
                     )) : <small>Choose the parts in order</small>}
                   </div>
                   <div className="build-word-tiles">
@@ -2387,7 +2451,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
                     {activeBuildChallenge.familyWords.map((item) => {
                       const answerParts = buildFamilyAnswers[item.id] ?? [];
                       return (
-                        <div className={`build-family-row ${selectedFamilyRow === item.id ? "selected" : ""} ${buildFamilyBuilt ? "built matched" : ""}`} key={item.id}>
+                        <div className={`build-family-row ${selectedFamilyRow === item.id ? "selected" : ""} ${buildReviewWordId === item.id ? "pronouncing" : ""} ${buildFamilyBuilt ? "built matched" : ""}`} key={item.id}>
                           <p>{item.meaning}</p>
                           <button
                             className="build-family-word-target"
