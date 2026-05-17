@@ -19,6 +19,10 @@ function getSecret() {
   return new TextEncoder().encode(secret ?? "latinfun-dev-secret-change-me");
 }
 
+function shouldUseSecureCookie() {
+  return process.env.AUTH_COOKIE_SECURE === "true";
+}
+
 export async function createSessionToken(payload: SessionPayload) {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: "HS256" })
@@ -31,7 +35,7 @@ export function setSessionCookie(response: NextResponse, token: string) {
   response.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookie(),
     path: "/",
     maxAge: 60 * 60 * 24 * 30
   });
@@ -41,7 +45,7 @@ export function clearSessionCookie(response: NextResponse) {
   response.cookies.set(SESSION_COOKIE, "", {
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookie(),
     path: "/",
     maxAge: 0
   });
