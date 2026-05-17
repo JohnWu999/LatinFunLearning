@@ -103,6 +103,48 @@ textarea {
   opacity: 0.55;
 }
 
+.player-stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.player-stat {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 32px;
+  padding: 7px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(184, 138, 53, 0.2);
+  background: rgba(255, 255, 255, 0.64);
+  color: var(--text);
+  box-shadow: 0 8px 18px rgba(54, 41, 25, 0.06);
+}
+
+.player-stat strong {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.player-stat-gems {
+  color: #0f8ca8;
+}
+
+.player-stat-gems svg {
+  fill: rgba(66, 202, 225, 0.28);
+  stroke: #0f8ca8;
+}
+
+.player-stat-rank {
+  color: #b88418;
+}
+
+.player-stat-rank svg {
+  fill: rgba(235, 190, 79, 0.32);
+  stroke: #b88418;
+}
+
 .nav-user {
   color: var(--text);
   font-weight: 700;
