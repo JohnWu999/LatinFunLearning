@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -10,20 +11,24 @@ type Props = {
 
 export default async function CoursePage({ params }: Props) {
   const { courseId } = await params;
-  const course = await prisma.course.findFirst({
-    where: { OR: [{ id: courseId }, { slug: courseId }] },
-    include: {
-      knowledge: {
-        where: { type: "STEM" },
-        select: { id: true }
-      },
-      lessons: { orderBy: { order: "asc" } },
-      gameLevels: { orderBy: { order: "asc" } },
-      _count: { select: { knowledge: true, vocabulary: true, exercises: true } }
-    }
-  });
+  const [user, course] = await Promise.all([
+    getCurrentUser(),
+    prisma.course.findFirst({
+      where: { OR: [{ id: courseId }, { slug: courseId }] },
+      include: {
+        knowledge: {
+          where: { type: "STEM" },
+          select: { id: true }
+        },
+        lessons: { orderBy: { order: "asc" } },
+        gameLevels: { orderBy: { order: "asc" } },
+        _count: { select: { knowledge: true, vocabulary: true, exercises: true } }
+      }
+    })
+  ]);
 
   if (!course) notFound();
+  if (!user) redirect(`/login?next=/courses/${course.slug}`);
 
   return (
     <main className="legacy-page embedded">

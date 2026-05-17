@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PronunciationButton } from "@/components/pronunciation-button";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { lessonVocabulary } from "@/lib/lesson-vocabulary";
 
@@ -67,19 +68,23 @@ function renderHighlightedText(text: string, word: string) {
 
 export default async function ClassicWordsPage({ params }: Props) {
   const { courseId } = await params;
-  const course = await prisma.course.findFirst({
-    where: { OR: [{ id: courseId }, { slug: courseId }] },
-    include: {
-      lessons: {
-        orderBy: { order: "asc" },
-        include: {
-          vocabulary: { orderBy: { sourceOrder: "asc" } }
+  const [user, course] = await Promise.all([
+    getCurrentUser(),
+    prisma.course.findFirst({
+      where: { OR: [{ id: courseId }, { slug: courseId }] },
+      include: {
+        lessons: {
+          orderBy: { order: "asc" },
+          include: {
+            vocabulary: { orderBy: { sourceOrder: "asc" } }
+          }
         }
       }
-    }
-  });
+    })
+  ]);
 
   if (!course) notFound();
+  if (!user) redirect(`/login?next=/courses/${course.slug}/classic-words`);
 
   return (
     <main className="legacy-page">

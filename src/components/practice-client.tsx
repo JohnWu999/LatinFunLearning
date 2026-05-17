@@ -36,6 +36,13 @@ function asAnswer(value: unknown) {
   return String(value ?? "");
 }
 
+function appPath(path: string) {
+  const asset = document.querySelector<HTMLScriptElement | HTMLLinkElement>('script[src*="/_next/"], link[href*="/_next/"]');
+  const source = asset instanceof HTMLScriptElement ? asset.src : asset?.href;
+  const prefix = source ? new URL(source, window.location.origin).pathname.split("/_next/")[0] : "";
+  return `${prefix}${path}`;
+}
+
 export function PracticeClient({ courseId, lessonId, exercises, isLoggedIn }: PracticeClientProps) {
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState("");
@@ -71,7 +78,7 @@ export function PracticeClient({ courseId, lessonId, exercises, isLoggedIn }: Pr
     }));
 
     if (isLoggedIn) {
-      await fetch("/api/attempts", {
+      await fetch(appPath("/api/attempts"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

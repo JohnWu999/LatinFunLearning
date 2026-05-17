@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { VocabPracticeClient } from "@/components/legacy/vocab-practice-client";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -25,6 +25,7 @@ export default async function VocabPracticePage({ params }: Props) {
   ]);
 
   if (!course) notFound();
+  if (!user) redirect(`/login?next=/courses/${course.slug}/vocab-practice`);
 
   return (
     <VocabPracticeClient

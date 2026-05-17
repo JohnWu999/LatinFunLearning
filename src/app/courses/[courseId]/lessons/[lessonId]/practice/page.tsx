@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PracticeClient } from "@/components/practice-client";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -28,6 +28,7 @@ export default async function LessonPracticePage({ params }: Props) {
   ]);
 
   if (!lesson) notFound();
+  if (!user) redirect(`/login?next=/courses/${lesson.course.slug}/lessons/${lesson.slug}/practice`);
 
   return (
     <main className="main">
@@ -37,9 +38,7 @@ export default async function LessonPracticePage({ params }: Props) {
         <span>{lesson.title}</span>
       </div>
       <h1 className="page-title">{lesson.title}</h1>
-      <p className="lede">
-        {user ? "本次答题会自动同步到你的学习记录与错题本。" : "当前是游客练习；登录后才会保存进度和错题。"}
-      </p>
+      <p className="lede">本次答题会自动同步到你的学习记录与错题本。</p>
 
       <section className="section">
         <h2>本课词汇</h2>
@@ -53,7 +52,7 @@ export default async function LessonPracticePage({ params }: Props) {
       </section>
 
       <section className="section">
-        <PracticeClient courseId={lesson.courseId} exercises={lesson.exercises} isLoggedIn={Boolean(user)} lessonId={lesson.id} />
+        <PracticeClient courseId={lesson.courseId} exercises={lesson.exercises} isLoggedIn={true} lessonId={lesson.id} />
       </section>
     </main>
   );

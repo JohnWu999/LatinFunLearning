@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { PronunciationButton } from "@/components/pronunciation-button";
+import { getCurrentUser } from "@/lib/auth";
 import { latinStemLessons } from "@/lib/latin-stem-lessons";
 import { prisma } from "@/lib/prisma";
 
@@ -12,17 +13,21 @@ type Props = {
 
 export default async function LatinStemsPage({ params }: Props) {
   const { courseId } = await params;
-  const course = await prisma.course.findFirst({
-    where: { OR: [{ id: courseId }, { slug: courseId }] },
-    include: {
-      knowledge: {
-        where: { type: "STEM" },
-        orderBy: { sourceOrder: "asc" }
+  const [user, course] = await Promise.all([
+    getCurrentUser(),
+    prisma.course.findFirst({
+      where: { OR: [{ id: courseId }, { slug: courseId }] },
+      include: {
+        knowledge: {
+          where: { type: "STEM" },
+          orderBy: { sourceOrder: "asc" }
+        }
       }
-    }
-  });
+    })
+  ]);
 
   if (!course) notFound();
+  if (!user) redirect(`/login?next=/courses/${course.slug}/latin-stems`);
 
   const enrichedStemLessons = Object.values(latinStemLessons);
   const stemOverview = enrichedStemLessons.flatMap((lesson) => [

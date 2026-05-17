@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -15,20 +16,24 @@ function previewAnswer(value: unknown) {
 
 export default async function WorkbookPage({ params }: Props) {
   const { courseId } = await params;
-  const course = await prisma.course.findFirst({
-    where: { OR: [{ id: courseId }, { slug: courseId }] },
-    include: {
-      lessons: {
-        orderBy: { order: "asc" },
-        include: {
-          vocabulary: { orderBy: { sourceOrder: "asc" }, take: 8 },
-          exercises: { orderBy: { order: "asc" }, take: 6 }
+  const [user, course] = await Promise.all([
+    getCurrentUser(),
+    prisma.course.findFirst({
+      where: { OR: [{ id: courseId }, { slug: courseId }] },
+      include: {
+        lessons: {
+          orderBy: { order: "asc" },
+          include: {
+            vocabulary: { orderBy: { sourceOrder: "asc" }, take: 8 },
+            exercises: { orderBy: { order: "asc" }, take: 6 }
+          }
         }
       }
-    }
-  });
+    })
+  ]);
 
   if (!course) notFound();
+  if (!user) redirect(`/login?next=/courses/${course.slug}/workbook`);
 
   return (
     <main className="legacy-page">

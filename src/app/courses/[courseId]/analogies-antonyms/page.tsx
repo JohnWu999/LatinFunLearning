@@ -1,7 +1,8 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { AnalogiesAntonymsClient } from "@/components/analogies-antonyms-client";
 import { analogiesAntonymsLessons } from "@/lib/analogies-antonyms";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
@@ -12,11 +13,15 @@ type Props = {
 
 export default async function AnalogiesAntonymsPage({ params }: Props) {
   const { courseId } = await params;
-  const course = await prisma.course.findFirst({
-    where: { OR: [{ id: courseId }, { slug: courseId }] }
-  });
+  const [user, course] = await Promise.all([
+    getCurrentUser(),
+    prisma.course.findFirst({
+      where: { OR: [{ id: courseId }, { slug: courseId }] }
+    })
+  ]);
 
   if (!course) notFound();
+  if (!user) redirect(`/login?next=/courses/${course.slug}/analogies-antonyms`);
 
   return (
     <main className="legacy-page">
