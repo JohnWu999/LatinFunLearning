@@ -4,6 +4,13 @@ import { useState } from "react";
 
 type AuthMode = "login" | "register";
 
+function appPath(path: string) {
+  const asset = document.querySelector<HTMLScriptElement | HTMLLinkElement>('script[src*="/_next/"], link[href*="/_next/"]');
+  const source = asset instanceof HTMLScriptElement ? asset.src : asset?.href;
+  const prefix = source ? new URL(source, window.location.origin).pathname.split("/_next/")[0] : "";
+  return `${prefix}${path}`;
+}
+
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const [error, setError] = useState("");
   const [pending, setPending] = useState(false);
@@ -26,7 +33,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
             password: String(formData.get("password") ?? "")
           };
 
-    const response = await fetch(`/api/auth/${mode}`, {
+    const response = await fetch(appPath(`/api/auth/${mode}`), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload)
@@ -39,7 +46,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       return;
     }
 
-    window.location.href = "/dashboard";
+    window.location.href = appPath("/dashboard");
   }
 
   return (
