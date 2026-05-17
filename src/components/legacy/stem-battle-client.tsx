@@ -1023,6 +1023,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
   const fillRevealTimersRef = useRef<number[]>([]);
   const buildReturnTimerRef = useRef<number | null>(null);
   const buildReviewTimersRef = useRef<number[]>([]);
+  const buildVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
   const activeQuestion = questions[run.qi];
   const displayLevels = useMemo(() => [rootMatchingHubLevel, jeopardyHubLevel, buildAWordHubLevel, ...levels], [levels]);
@@ -1061,22 +1062,61 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
     buildReviewTimersRef.current.push(timer);
   }
 
-  function speakBuildText(text: string, rate = 0.78) {
-    if (!("speechSynthesis" in window)) return;
-    window.speechSynthesis.cancel();
+  function getBuildEnglishVoice() {
+    if (buildVoiceRef.current) return buildVoiceRef.current;
+    if (!("speechSynthesis" in window)) return null;
+
+    const voices = window.speechSynthesis.getVoices();
+    const englishVoices = voices.filter((voice) => voice.lang.toLowerCase().startsWith("en"));
+    const preferredVoice =
+      englishVoices.find((voice) => /en-US/i.test(voice.lang) && /samantha|alex|jenny|aria|natural|google us english|microsoft/i.test(voice.name)) ??
+      englishVoices.find((voice) => /en-US/i.test(voice.lang)) ??
+      englishVoices.find((voice) => /en-/i.test(voice.lang)) ??
+      null;
+
+    buildVoiceRef.current = preferredVoice;
+    return preferredVoice;
+  }
+
+  function speakBuildText(
+    text: string,
+    options: { rate?: number; pitch?: number; cancel?: boolean; onEnd?: () => void } = {}
+  ) {
+    const { rate = 0.9, pitch = 1, cancel = false, onEnd } = options;
+    if (!("speechSynthesis" in window)) {
+      onEnd?.();
+      return;
+    }
+    if (cancel) window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = "en-US";
     utterance.rate = rate;
-    utterance.pitch = 1;
-    const voices = window.speechSynthesis.getVoices();
-    const usVoice = voices.find((voice) => voice.lang === "en-US") ?? voices.find((voice) => voice.lang.startsWith("en"));
+    utterance.pitch = pitch;
+    utterance.volume = 1;
+    const usVoice = getBuildEnglishVoice();
     if (usVoice) utterance.voice = usVoice;
+    utterance.onend = () => onEnd?.();
+    utterance.onerror = () => onEnd?.();
     window.speechSynthesis.speak(utterance);
+    window.speechSynthesis.resume();
   }
 
-  function reviewBuildWordOnce(word: string, definition: string, startDelay = 0) {
-    scheduleBuildReviewTimer(() => speakBuildText(word, 0.78), startDelay);
-    scheduleBuildReviewTimer(() => speakBuildText(definition, 0.86), startDelay + 1050);
+  function reviewBuildWordOnce(word: string, definition: string, startDelay = 0, onComplete?: () => void) {
+    scheduleBuildReviewTimer(() => {
+      speakBuildText(word, {
+        rate: 0.9,
+        cancel: true,
+        onEnd: () => {
+          scheduleBuildReviewTimer(() => {
+            speakBuildText(`Definition: ${definition}`, {
+              rate: 0.88,
+              pitch: 0.98,
+              onEnd: onComplete
+            });
+          }, 220);
+        }
+      });
+    }, startDelay);
   }
 
   useEffect(() => {
@@ -1734,13 +1774,15 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
     if (isCorrect) {
       playAnswerCorrectSound();
       setBuildWarmupReviewing(true);
-      reviewBuildWordOnce(activeBuildChallenge.warmup.answer, activeBuildChallenge.warmup.meaning, 180);
-      scheduleBuildReviewTimer(() => {
-        setBuildWordStage("family");
-        setBuildWordFeedback("");
-        setBuildWarmupReviewing(false);
-        setBuildReviewWordId(null);
-      }, 3400);
+      reviewBuildWordOnce(activeBuildChallenge.warmup.answer, activeBuildChallenge.warmup.meaning, 180, () => {
+        scheduleBuildReviewTimer(() => {
+          window.speechSynthesis?.cancel();
+          setBuildWordStage("family");
+          setBuildWordFeedback("");
+          setBuildWarmupReviewing(false);
+          setBuildReviewWordId(null);
+        }, 420);
+      });
     } else {
       playAnswerWrongSound();
     }
@@ -1760,15 +1802,23 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userName, s
 
   function reviewBuildFamilyWords(firstCompletion: boolean, currentMapComplete: boolean) {
     clearBuildReviewTimers();
-    activeBuildChallenge.familyWords.forEach((word, index) => {
-      const startDelay = index * 3500;
-      scheduleBuildReviewTimer(() => {
-        setBuildReviewWordId(word.id);
-        setSelectedFamilyRow(word.id);
-      }, startDelay);
-      reviewBuildWordOnce(word.word, word.meaning, startDelay + 180);
-    });
-    scheduleBuildReviewTimer(() => finishBuildFamilyAfterReview(firstCompletion, currentMapComplete), activeBuildChallenge.familyWords.length * 3500 + 260);
+
+    function reviewNext(index: number) {
+      const word = activeBuildChallenge.familyWords[index];
+      if (!word) {
+        finishBuildFamilyAfterReview(firstCompletion, currentMapComplete);
+        return;
+      }
+
+      setBuildReviewWordId(word.id);
+      setSelectedFamilyRow(word.id);
+      reviewBuildWordOnce(word.word, word.meaning, 160, () => {
+        setBuildReviewWordId(null);
+        scheduleBuildReviewTimer(() => reviewNext(index + 1), 360);
+      });
+    }
+
+    reviewNext(0);
   }
 
   function useBuildHint() {
