@@ -51,7 +51,7 @@ type Props = {
   buildQuestions: BuildQuestion[];
 };
 
-type Screen = "cover" | "select" | "root-match-select" | "jeopardy" | "build-word" | "game" | "result";
+type Screen = "select" | "root-match-select" | "jeopardy" | "build-word" | "game" | "result";
 type RootMatchMode = "easy" | "medium" | "hard";
 type RootMatchStat = { attempts: number; wrong: number };
 type RootMatchStats = Record<RootMatchMode, Record<string, RootMatchStat>>;
@@ -980,7 +980,7 @@ function makeJeopardyQuestion(cell: JeopardyCell, stems: Stem[], stemIndex?: num
 }
 
 export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, userName, stems, levels, buildQuestions }: Props) {
-  const [screen, setScreen] = useState<Screen>("cover");
+  const [screen, setScreen] = useState<Screen>("select");
   const [activeLevel, setActiveLevel] = useState<GameLevel | null>(null);
   const [questions, setQuestions] = useState<GameQuestion[]>([]);
   const [run, setRun] = useState(emptyRun);
@@ -1035,9 +1035,11 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
   const buildVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
 
   const activeQuestion = questions[run.qi];
-  const displayLevels = useMemo(() => [rootMatchingHubLevel, jeopardyHubLevel, buildAWordHubLevel, ...levels], [levels]);
-  const totalStars = Object.values(best).reduce((sum, item) => sum + item.stars, 0);
-  const bestTotal = Object.values(best).reduce((sum, item) => sum + item.score, 0);
+  const displayLevels = useMemo(() => {
+    const completeStemLevel = levels.find((level) => level.type === "fill");
+    const bossLevel = levels.find((level) => level.isBoss || level.type === "boss");
+    return [rootMatchingHubLevel, completeStemLevel, jeopardyHubLevel, buildAWordHubLevel, bossLevel].filter(Boolean) as GameLevel[];
+  }, [levels]);
   const activeBuildMap = buildWordMaps[activeBuildMapIndex] ?? buildWordMaps[0];
   const activeBuildMapStems = activeBuildMap.stems;
   const pendingUnlockMap = pendingUnlockMapIndex === null ? null : buildWordMaps[pendingUnlockMapIndex];
@@ -2376,31 +2378,6 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
         ← 返回学习中心首页
       </Link>
 
-      {screen === "cover" ? (
-        <section className="battle-cover">
-          <div className="battle-user">👤 {userName}</div>
-          <h1>Stem Battle</h1>
-          <p>Latin Stems 闯关训练</p>
-          <div className="legacy-gold-line" />
-          <span>Root Matching · 6 种题型 · {stems.length} 个词根 · 大魔王挑战</span>
-          <div className="battle-stats">
-            <div><strong>{totalStars}</strong><span>总星级</span></div>
-            <div><strong>{bestTotal}</strong><span>最高总分</span></div>
-            <div><strong>{Math.min(displayLevels.length, unlocked.length + 1)}</strong><span>已解锁</span></div>
-          </div>
-          <button
-            className="battle-main-button"
-            onClick={() => {
-              stopRootMatchMusic();
-              setScreen("select");
-            }}
-            type="button"
-          >
-            🎮 开始挑战
-          </button>
-        </section>
-      ) : null}
-
       {showResumePrompt && savedSession ? (
         <div className="battle-resume-overlay" role="dialog" aria-modal="true" aria-label="Resume saved battle">
           <section className="battle-resume-card">
@@ -2425,7 +2402,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
           <div className="battle-level-grid">
             {displayLevels.map((level) => {
               const levelNo = level.legacyId ?? level.order;
-              const lockedLevel = !level.type.startsWith("root-match") && !unlocked.includes(levelNo) && levelNo !== 1;
+              const lockedLevel = false;
               const record = best[levelNo];
               const isStageLevel = !level.type.startsWith("root-match");
               const levelMeta = battleLevelMeta[level.type] ?? { icon: "◆", label: "Battle", mission: "Clear the challenge." };
