@@ -734,6 +734,628 @@ const buildWordChallenges: Record<string, BuildWordChallenge> = {
       { id: "ate-1", label: "ate" }
     ]
   },
+  tempor: {
+    id: "tempor",
+    label: "tempor",
+    warmup: {
+      answer: "temporary",
+      parts: ["ary", "tempor"],
+      meaning: "lasting for only a limited time",
+      success: "Recte! You built temporary."
+    },
+    familyWords: [
+      { id: "temporal", word: "temporal", answer: ["tempor", "al"], meaning: "related to time" },
+      { id: "contemporary", word: "contemporary", answer: ["con", "tempor", "ary"], meaning: "belonging to the same time period" },
+      { id: "extemporaneous", word: "extemporaneous", answer: ["ex", "tempor", "aneous"], meaning: "spoken or done without preparation" }
+    ],
+    familyTiles: [
+      { id: "aneous-1", label: "aneous" },
+      { id: "tempor-1", label: "tempor" },
+      { id: "con-1", label: "con" },
+      { id: "al-1", label: "al" },
+      { id: "tempor-2", label: "tempor" },
+      { id: "ex-1", label: "ex" },
+      { id: "ary-1", label: "ary" },
+      { id: "tempor-3", label: "tempor" }
+    ]
+  },
+  grat: {
+    id: "grat",
+    label: "grat",
+    warmup: {
+      answer: "gratify",
+      parts: ["ify", "grat"],
+      meaning: "to please or satisfy someone",
+      success: "Recte! You built gratify."
+    },
+    familyWords: [
+      { id: "grateful", word: "grateful", answer: ["grat", "eful"], meaning: "feeling thankful and pleased" },
+      { id: "gratuitous", word: "gratuitous", answer: ["grat", "uitous"], meaning: "given or done without a good reason" },
+      { id: "ingratiate", word: "ingratiate", answer: ["in", "grat", "iate"], meaning: "to try to win favor by pleasing someone" }
+    ],
+    familyTiles: [
+      { id: "uitous-1", label: "uitous" },
+      { id: "grat-1", label: "grat" },
+      { id: "in-1", label: "in" },
+      { id: "iate-1", label: "iate" },
+      { id: "grat-2", label: "grat" },
+      { id: "eful-1", label: "eful" },
+      { id: "grat-3", label: "grat" }
+    ]
+  },
+  curr: {
+    id: "curr",
+    label: "curr",
+    warmup: {
+      answer: "current",
+      parts: ["ent", "curr"],
+      meaning: "happening or running now",
+      success: "Recte! You built current."
+    },
+    familyWords: [
+      { id: "currency", word: "currency", answer: ["curr", "ency"], meaning: "money that runs in use in a country" },
+      { id: "concurrent", word: "concurrent", answer: ["con", "curr", "ent"], meaning: "happening at the same time" },
+      { id: "recurrent", word: "recurrent", answer: ["re", "curr", "ent"], meaning: "running back or happening again and again" }
+    ],
+    familyTiles: [
+      { id: "con-1", label: "con" },
+      { id: "curr-1", label: "curr" },
+      { id: "ent-1", label: "ent" },
+      { id: "ency-1", label: "ency" },
+      { id: "re-1", label: "re" },
+      { id: "curr-2", label: "curr" },
+      { id: "curr-3", label: "curr" },
+      { id: "ent-2", label: "ent" }
+    ]
+  },
+  trans: {
+    id: "trans",
+    label: "trans",
+    warmup: {
+      answer: "transition",
+      parts: ["ition", "trans"],
+      meaning: "a change from one state to another",
+      success: "Recte! You built transition."
+    },
+    familyWords: [
+      { id: "transfer", word: "transfer", answer: ["trans", "fer"], meaning: "to carry or move something across" },
+      { id: "transmit", word: "transmit", answer: ["trans", "mit"], meaning: "to send something across" },
+      { id: "transcend", word: "transcend", answer: ["trans", "cend"], meaning: "to rise above a usual limit" }
+    ],
+    familyTiles: [
+      { id: "trans-1", label: "trans" },
+      { id: "mit-1", label: "mit" },
+      { id: "fer-1", label: "fer" },
+      { id: "trans-2", label: "trans" },
+      { id: "cend-1", label: "cend" },
+      { id: "trans-3", label: "trans" }
+    ]
+  },
+  migr: {
+    id: "migr",
+    label: "migr",
+    warmup: {
+      answer: "migration",
+      parts: ["ation", "migr"],
+      meaning: "movement from one place to another",
+      success: "Recte! You built migration."
+    },
+    familyWords: [
+      { id: "migrant", word: "migrant", answer: ["migr", "ant"], meaning: "a person or animal that moves from place to place" },
+      { id: "migratory", word: "migratory", answer: ["migr", "atory"], meaning: "wandering or moving regularly from place to place" },
+      { id: "immigration", word: "immigration", answer: ["im", "migr", "ation"], meaning: "movement into a country to live there" }
+    ],
+    familyTiles: [
+      { id: "migr-1", label: "migr" },
+      { id: "atory-1", label: "atory" },
+      { id: "im-1", label: "im" },
+      { id: "ation-1", label: "ation" },
+      { id: "ant-1", label: "ant" },
+      { id: "migr-2", label: "migr" },
+      { id: "migr-3", label: "migr" }
+    ]
+  },
+  rupt: {
+    id: "rupt",
+    label: "rupt",
+    warmup: {
+      answer: "rupture",
+      parts: ["ure", "rupt"],
+      meaning: "a break or burst",
+      success: "Recte! You built rupture."
+    },
+    familyWords: [
+      { id: "abrupt", word: "abrupt", answer: ["ab", "rupt"], meaning: "sudden or broken off sharply" },
+      { id: "interrupt", word: "interrupt", answer: ["inter", "rupt"], meaning: "to break into something that is happening" },
+      { id: "disrupt", word: "disrupt", answer: ["dis", "rupt"], meaning: "to break apart the normal flow of something" }
+    ],
+    familyTiles: [
+      { id: "rupt-1", label: "rupt" },
+      { id: "inter-1", label: "inter" },
+      { id: "dis-1", label: "dis" },
+      { id: "rupt-2", label: "rupt" },
+      { id: "ab-1", label: "ab" },
+      { id: "rupt-3", label: "rupt" }
+    ]
+  },
+  clud: {
+    id: "clud",
+    label: "clud",
+    warmup: {
+      answer: "conclude",
+      parts: ["con", "clude"],
+      meaning: "to close an argument or bring it to an end",
+      success: "Recte! You built conclude."
+    },
+    familyWords: [
+      { id: "include", word: "include", answer: ["in", "clude"], meaning: "to close something in as part of a group" },
+      { id: "preclude", word: "preclude", answer: ["pre", "clude"], meaning: "to prevent or close off before it can happen" },
+      { id: "seclusion", word: "seclusion", answer: ["se", "clus", "ion"], meaning: "the state of being closed apart from others" }
+    ],
+    familyTiles: [
+      { id: "pre-1", label: "pre" },
+      { id: "clude-1", label: "clude" },
+      { id: "se-1", label: "se" },
+      { id: "in-1", label: "in" },
+      { id: "ion-1", label: "ion" },
+      { id: "clus-1", label: "clus" },
+      { id: "clude-2", label: "clude" }
+    ]
+  },
+  se: {
+    id: "se",
+    label: "se",
+    warmup: {
+      answer: "separate",
+      parts: ["se", "parate"],
+      meaning: "to set apart",
+      success: "Recte! You built separate."
+    },
+    familyWords: [
+      { id: "secede", word: "secede", answer: ["se", "cede"], meaning: "to go apart from a larger group" },
+      { id: "sequester", word: "sequester", answer: ["se", "quester"], meaning: "to set apart or isolate" },
+      { id: "segregate", word: "segregate", answer: ["se", "greg", "ate"], meaning: "to separate one group from another" }
+    ],
+    familyTiles: [
+      { id: "quester-1", label: "quester" },
+      { id: "se-1", label: "se" },
+      { id: "greg-1", label: "greg" },
+      { id: "se-2", label: "se" },
+      { id: "ate-1", label: "ate" },
+      { id: "cede-1", label: "cede" },
+      { id: "se-3", label: "se" }
+    ]
+  },
+  plu: {
+    id: "plu",
+    label: "plu",
+    warmup: {
+      answer: "plural",
+      parts: ["al", "plur"],
+      meaning: "more than one",
+      success: "Recte! You built plural."
+    },
+    familyWords: [
+      { id: "plurality", word: "plurality", answer: ["plur", "ality"], meaning: "the state of being more than one" },
+      { id: "pluripotent", word: "pluripotent", answer: ["pluri", "potent"], meaning: "able to become many different cell types" },
+      { id: "plus", word: "plus", answer: ["plu", "s"], meaning: "more; added to something" }
+    ],
+    familyTiles: [
+      { id: "potent-1", label: "potent" },
+      { id: "plur-1", label: "plur" },
+      { id: "plu-1", label: "plu" },
+      { id: "s-1", label: "s" },
+      { id: "ality-1", label: "ality" },
+      { id: "pluri-1", label: "pluri" }
+    ]
+  },
+  germ: {
+    id: "germ",
+    label: "germ",
+    warmup: {
+      answer: "germinate",
+      parts: ["inate", "germ"],
+      meaning: "to begin to grow or sprout",
+      success: "Recte! You built germinate."
+    },
+    familyWords: [
+      { id: "germinal", word: "germinal", answer: ["germ", "inal"], meaning: "in an early stage of growth" },
+      { id: "germane", word: "germane", answer: ["germ", "ane"], meaning: "closely related and relevant" },
+      { id: "germicide", word: "germicide", answer: ["germi", "cide"], meaning: "something that kills germs" }
+    ],
+    familyTiles: [
+      { id: "germ-1", label: "germ" },
+      { id: "ane-1", label: "ane" },
+      { id: "germi-1", label: "germi" },
+      { id: "cide-1", label: "cide" },
+      { id: "inal-1", label: "inal" },
+      { id: "germ-2", label: "germ" }
+    ]
+  },
+  fus: {
+    id: "fus",
+    label: "fus",
+    warmup: {
+      answer: "infuse",
+      parts: ["in", "fuse"],
+      meaning: "to pour into or fill with",
+      success: "Recte! You built infuse."
+    },
+    familyWords: [
+      { id: "diffuse", word: "diffuse", answer: ["dif", "fuse"], meaning: "to pour or spread widely" },
+      { id: "effusive", word: "effusive", answer: ["ef", "fus", "ive"], meaning: "pouring out strong emotion" },
+      { id: "transfusion", word: "transfusion", answer: ["trans", "fus", "ion"], meaning: "the transfer of blood into a person" }
+    ],
+    familyTiles: [
+      { id: "fus-1", label: "fus" },
+      { id: "trans-1", label: "trans" },
+      { id: "dif-1", label: "dif" },
+      { id: "fuse-1", label: "fuse" },
+      { id: "ive-1", label: "ive" },
+      { id: "ef-1", label: "ef" },
+      { id: "ion-1", label: "ion" },
+      { id: "fus-2", label: "fus" }
+    ]
+  },
+  culp: {
+    id: "culp",
+    label: "culp",
+    warmup: {
+      answer: "culprit",
+      parts: ["rit", "culp"],
+      meaning: "the person blamed for a problem",
+      success: "Recte! You built culprit."
+    },
+    familyWords: [
+      { id: "culpable", word: "culpable", answer: ["culp", "able"], meaning: "deserving blame" },
+      { id: "exculpate", word: "exculpate", answer: ["ex", "culp", "ate"], meaning: "to clear someone from blame" },
+      { id: "inculpate", word: "inculpate", answer: ["in", "culp", "ate"], meaning: "to accuse or place blame on someone" }
+    ],
+    familyTiles: [
+      { id: "culp-1", label: "culp" },
+      { id: "ate-1", label: "ate" },
+      { id: "ex-1", label: "ex" },
+      { id: "able-1", label: "able" },
+      { id: "culp-2", label: "culp" },
+      { id: "in-1", label: "in" },
+      { id: "ate-2", label: "ate" },
+      { id: "culp-3", label: "culp" }
+    ]
+  },
+  pugn: {
+    id: "pugn",
+    label: "pugn",
+    warmup: {
+      answer: "pugnacious",
+      parts: ["acious", "pugn"],
+      meaning: "eager to fight or argue",
+      success: "Recte! You built pugnacious."
+    },
+    familyWords: [
+      { id: "pugilist", word: "pugilist", answer: ["pugil", "ist"], meaning: "a person who fights with fists; a boxer" },
+      { id: "repugnant", word: "repugnant", answer: ["re", "pugn", "ant"], meaning: "strongly offensive or fighting against one's feelings" },
+      { id: "impugn", word: "impugn", answer: ["im", "pugn"], meaning: "to attack or challenge as false" }
+    ],
+    familyTiles: [
+      { id: "re-1", label: "re" },
+      { id: "pugil-1", label: "pugil" },
+      { id: "ant-1", label: "ant" },
+      { id: "pugn-1", label: "pugn" },
+      { id: "im-1", label: "im" },
+      { id: "ist-1", label: "ist" },
+      { id: "pugn-2", label: "pugn" }
+    ]
+  },
+  urb: {
+    id: "urb",
+    label: "urb",
+    warmup: {
+      answer: "urban",
+      parts: ["an", "urb"],
+      meaning: "related to a city",
+      success: "Recte! You built urban."
+    },
+    familyWords: [
+      { id: "suburban", word: "suburban", answer: ["sub", "urb", "an"], meaning: "related to a residential area near a city" },
+      { id: "urbane", word: "urbane", answer: ["urb", "ane"], meaning: "polished and city-like in manner" },
+      { id: "conurbation", word: "conurbation", answer: ["con", "urb", "ation"], meaning: "a large urban area formed by connected cities" }
+    ],
+    familyTiles: [
+      { id: "urb-1", label: "urb" },
+      { id: "sub-1", label: "sub" },
+      { id: "ation-1", label: "ation" },
+      { id: "ane-1", label: "ane" },
+      { id: "urb-2", label: "urb" },
+      { id: "con-1", label: "con" },
+      { id: "an-1", label: "an" },
+      { id: "urb-3", label: "urb" }
+    ]
+  },
+  numer: {
+    id: "numer",
+    label: "numer",
+    warmup: {
+      answer: "numeral",
+      parts: ["al", "numer"],
+      meaning: "a symbol that represents a number",
+      success: "Recte! You built numeral."
+    },
+    familyWords: [
+      { id: "numerous", word: "numerous", answer: ["numer", "ous"], meaning: "many in number" },
+      { id: "enumerate", word: "enumerate", answer: ["e", "numer", "ate"], meaning: "to list or count one by one" },
+      { id: "innumerable", word: "innumerable", answer: ["in", "numer", "able"], meaning: "too many to be counted" }
+    ],
+    familyTiles: [
+      { id: "numer-1", label: "numer" },
+      { id: "e-1", label: "e" },
+      { id: "ous-1", label: "ous" },
+      { id: "able-1", label: "able" },
+      { id: "numer-2", label: "numer" },
+      { id: "in-1", label: "in" },
+      { id: "ate-1", label: "ate" },
+      { id: "numer-3", label: "numer" }
+    ]
+  },
+  acr: {
+    id: "acr",
+    label: "acr",
+    warmup: {
+      answer: "acrid",
+      parts: ["id", "acr"],
+      meaning: "sharp, bitter, or harsh",
+      success: "Recte! You built acrid."
+    },
+    familyWords: [
+      { id: "acrimony", word: "acrimony", answer: ["acri", "mony"], meaning: "sharp bitterness in speech or feeling" },
+      { id: "acrimonious", word: "acrimonious", answer: ["acri", "monious"], meaning: "bitter and sharp in tone" },
+      { id: "acridity", word: "acridity", answer: ["acr", "idity"], meaning: "sharpness or bitterness of taste, smell, or manner" }
+    ],
+    familyTiles: [
+      { id: "acri-1", label: "acri" },
+      { id: "idity-1", label: "idity" },
+      { id: "monious-1", label: "monious" },
+      { id: "acr-1", label: "acr" },
+      { id: "mony-1", label: "mony" },
+      { id: "acri-2", label: "acri" }
+    ]
+  },
+  per: {
+    id: "per",
+    label: "per",
+    warmup: {
+      answer: "perforate",
+      parts: ["ate", "for", "per"],
+      meaning: "to make a hole through something",
+      success: "Recte! You built perforate."
+    },
+    familyWords: [
+      { id: "pervade", word: "pervade", answer: ["per", "vade"], meaning: "to spread through every part" },
+      { id: "permeate", word: "permeate", answer: ["per", "meate"], meaning: "to pass through and spread within" },
+      { id: "persevere", word: "persevere", answer: ["per", "severe"], meaning: "to continue through difficulty" }
+    ],
+    familyTiles: [
+      { id: "meate-1", label: "meate" },
+      { id: "per-1", label: "per" },
+      { id: "severe-1", label: "severe" },
+      { id: "per-2", label: "per" },
+      { id: "vade-1", label: "vade" },
+      { id: "per-3", label: "per" }
+    ]
+  },
+  anim: {
+    id: "anim",
+    label: "anim",
+    warmup: {
+      answer: "animate",
+      parts: ["ate", "anim"],
+      meaning: "to give life or spirit to something",
+      success: "Recte! You built animate."
+    },
+    familyWords: [
+      { id: "animal", word: "animal", answer: ["anim", "al"], meaning: "a living creature with breath or life" },
+      { id: "animosity", word: "animosity", answer: ["anim", "osity"], meaning: "strong hostility of mind" },
+      { id: "magnanimous", word: "magnanimous", answer: ["magn", "anim", "ous"], meaning: "great-minded and generous" }
+    ],
+    familyTiles: [
+      { id: "anim-1", label: "anim" },
+      { id: "magn-1", label: "magn" },
+      { id: "osity-1", label: "osity" },
+      { id: "al-1", label: "al" },
+      { id: "ous-1", label: "ous" },
+      { id: "anim-2", label: "anim" },
+      { id: "anim-3", label: "anim" }
+    ]
+  },
+  tort: {
+    id: "tort",
+    label: "tort",
+    warmup: {
+      answer: "contort",
+      parts: ["con", "tort"],
+      meaning: "to twist out of shape",
+      success: "Recte! You built contort."
+    },
+    familyWords: [
+      { id: "distort", word: "distort", answer: ["dis", "tort"], meaning: "to twist the truth or shape of something" },
+      { id: "tortuous", word: "tortuous", answer: ["tort", "uous"], meaning: "twisting and full of turns" },
+      { id: "extortion", word: "extortion", answer: ["ex", "tort", "ion"], meaning: "the act of twisting money from someone by force" }
+    ],
+    familyTiles: [
+      { id: "tort-1", label: "tort" },
+      { id: "dis-1", label: "dis" },
+      { id: "ion-1", label: "ion" },
+      { id: "ex-1", label: "ex" },
+      { id: "uous-1", label: "uous" },
+      { id: "tort-2", label: "tort" },
+      { id: "tort-3", label: "tort" }
+    ]
+  },
+  sanct: {
+    id: "sanct",
+    label: "sanct",
+    warmup: {
+      answer: "sanctify",
+      parts: ["ify", "sanct"],
+      meaning: "to make holy",
+      success: "Recte! You built sanctify."
+    },
+    familyWords: [
+      { id: "sanctuary", word: "sanctuary", answer: ["sanct", "uary"], meaning: "a holy or protected place" },
+      { id: "sanctimonious", word: "sanctimonious", answer: ["sanct", "imonious"], meaning: "pretending to be morally holy or superior" },
+      { id: "sacrosanct", word: "sacrosanct", answer: ["sacro", "sanct"], meaning: "so holy or important that it must not be criticized" }
+    ],
+    familyTiles: [
+      { id: "sanct-1", label: "sanct" },
+      { id: "sacro-1", label: "sacro" },
+      { id: "imonious-1", label: "imonious" },
+      { id: "sanct-2", label: "sanct" },
+      { id: "uary-1", label: "uary" },
+      { id: "sanct-3", label: "sanct" }
+    ]
+  },
+  voc: {
+    id: "voc",
+    label: "voc",
+    warmup: {
+      answer: "vocalize",
+      parts: ["ize", "voc", "al"],
+      meaning: "to give voice to a sound or idea",
+      success: "Recte! You built vocalize."
+    },
+    familyWords: [
+      { id: "vocabulary", word: "vocabulary", answer: ["voc", "abulary"], meaning: "the words used by a person or group" },
+      { id: "invoke", word: "invoke", answer: ["in", "voke"], meaning: "to call upon for help or authority" },
+      { id: "equivocate", word: "equivocate", answer: ["equi", "voc", "ate"], meaning: "to speak in a way that avoids a clear answer" }
+    ],
+    familyTiles: [
+      { id: "voc-1", label: "voc" },
+      { id: "equi-1", label: "equi" },
+      { id: "voke-1", label: "voke" },
+      { id: "ate-1", label: "ate" },
+      { id: "abulary-1", label: "abulary" },
+      { id: "in-1", label: "in" },
+      { id: "voc-2", label: "voc" }
+    ]
+  },
+  punct: {
+    id: "punct",
+    label: "punct",
+    warmup: {
+      answer: "puncture",
+      parts: ["ure", "punct"],
+      meaning: "to make a small pointed hole",
+      success: "Recte! You built puncture."
+    },
+    familyWords: [
+      { id: "punctual", word: "punctual", answer: ["punct", "ual"], meaning: "arriving at the exact point in time" },
+      { id: "punctuate", word: "punctuate", answer: ["punct", "uate"], meaning: "to mark writing with points or signs" },
+      { id: "compunction", word: "compunction", answer: ["com", "punct", "ion"], meaning: "a sharp feeling of guilt" }
+    ],
+    familyTiles: [
+      { id: "punct-1", label: "punct" },
+      { id: "com-1", label: "com" },
+      { id: "uate-1", label: "uate" },
+      { id: "ion-1", label: "ion" },
+      { id: "ual-1", label: "ual" },
+      { id: "punct-2", label: "punct" },
+      { id: "punct-3", label: "punct" }
+    ]
+  },
+  trib: {
+    id: "trib",
+    label: "trib",
+    warmup: {
+      answer: "tribute",
+      parts: ["ute", "trib"],
+      meaning: "something paid or given to show respect",
+      success: "Recte! You built tribute."
+    },
+    familyWords: [
+      { id: "contribute", word: "contribute", answer: ["con", "tribute"], meaning: "to give or pay together with others" },
+      { id: "tributary", word: "tributary", answer: ["tribut", "ary"], meaning: "a stream that pays its water into a larger river" },
+      { id: "retribution", word: "retribution", answer: ["re", "tribut", "ion"], meaning: "punishment paid back for wrongdoing" }
+    ],
+    familyTiles: [
+      { id: "tribut-1", label: "tribut" },
+      { id: "con-1", label: "con" },
+      { id: "ary-1", label: "ary" },
+      { id: "tribute-1", label: "tribute" },
+      { id: "re-1", label: "re" },
+      { id: "ion-1", label: "ion" },
+      { id: "tribut-2", label: "tribut" }
+    ]
+  },
+  cap: {
+    id: "cap",
+    label: "cap",
+    warmup: {
+      answer: "capture",
+      parts: ["ure", "capt"],
+      meaning: "to take hold of or take prisoner",
+      success: "Recte! You built capture."
+    },
+    familyWords: [
+      { id: "captain", word: "captain", answer: ["capt", "ain"], meaning: "a leader who takes charge" },
+      { id: "captivate", word: "captivate", answer: ["capt", "ivate"], meaning: "to take hold of someone's attention" },
+      { id: "captious", word: "captious", answer: ["capt", "ious"], meaning: "eager to take notice of small faults" }
+    ],
+    familyTiles: [
+      { id: "capt-1", label: "capt" },
+      { id: "ivate-1", label: "ivate" },
+      { id: "ious-1", label: "ious" },
+      { id: "capt-2", label: "capt" },
+      { id: "ain-1", label: "ain" },
+      { id: "capt-3", label: "capt" }
+    ]
+  },
+  pond: {
+    id: "pond",
+    label: "pond",
+    warmup: {
+      answer: "ponder",
+      parts: ["er", "pond"],
+      meaning: "to weigh something carefully in the mind",
+      success: "Recte! You built ponder."
+    },
+    familyWords: [
+      { id: "ponderous", word: "ponderous", answer: ["ponder", "ous"], meaning: "heavy and slow-moving" },
+      { id: "preponderance", word: "preponderance", answer: ["pre", "ponder", "ance"], meaning: "greater weight, force, or importance" },
+      { id: "imponderable", word: "imponderable", answer: ["im", "ponder", "able"], meaning: "too difficult to weigh or judge" }
+    ],
+    familyTiles: [
+      { id: "pre-1", label: "pre" },
+      { id: "ponder-1", label: "ponder" },
+      { id: "able-1", label: "able" },
+      { id: "im-1", label: "im" },
+      { id: "ous-1", label: "ous" },
+      { id: "ponder-2", label: "ponder" },
+      { id: "ance-1", label: "ance" },
+      { id: "ponder-3", label: "ponder" }
+    ]
+  },
+  rect: {
+    id: "rect",
+    label: "rect",
+    warmup: {
+      answer: "rectify",
+      parts: ["ify", "rect"],
+      meaning: "to make right",
+      success: "Recte! You built rectify."
+    },
+    familyWords: [
+      { id: "correct", word: "correct", answer: ["cor", "rect"], meaning: "right; made right" },
+      { id: "rectitude", word: "rectitude", answer: ["rect", "itude"], meaning: "moral uprightness or right conduct" },
+      { id: "rectilinear", word: "rectilinear", answer: ["recti", "linear"], meaning: "moving or formed in straight lines" }
+    ],
+    familyTiles: [
+      { id: "rect-1", label: "rect" },
+      { id: "itude-1", label: "itude" },
+      { id: "cor-1", label: "cor" },
+      { id: "linear-1", label: "linear" },
+      { id: "recti-1", label: "recti" },
+      { id: "rect-2", label: "rect" }
+    ]
+  },
   de: {
     id: "de",
     label: "de",
@@ -785,7 +1407,7 @@ const buildWordMaps: BuildWordMap[] = [
     shortTitle: "Map 3",
     subtitle: "Climb toward harder stems.",
     className: "mountain",
-    stems: []
+    stems: buildWordMapStems(["tempor", "grat", "curr", "trans", "migr", "rupt", "clud", "se", "plu", "germ", "fus", "culp"])
   },
   {
     id: "castle-gate",
@@ -793,7 +1415,7 @@ const buildWordMaps: BuildWordMap[] = [
     shortTitle: "Map 4",
     subtitle: "Break through the final wall of stem families.",
     className: "castle",
-    stems: []
+    stems: buildWordMapStems(["pugn", "urb", "numer", "acr", "per", "anim", "tort", "sanct", "voc", "punct", "trib", "cap"])
   },
   {
     id: "star-tower",
@@ -801,9 +1423,11 @@ const buildWordMaps: BuildWordMap[] = [
     shortTitle: "Map 5",
     subtitle: "Finish the last stems and celebrate the summit.",
     className: "star",
-    stems: []
+    stems: buildWordMapStems(["pond", "rect"])
   }
 ];
+
+const buildWordMainStemIds = buildWordMaps.flatMap((map) => map.stems.map((stem) => stem.id));
 
 const buildWordChallengeFor = (stemId: string) => buildWordChallenges[stemId];
 
@@ -1024,9 +1648,11 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
   const [buildFamilyMatches, setBuildFamilyMatches] = useState<Record<string, string>>({});
   const [completedBuildStems, setCompletedBuildStems] = useState<string[]>([]);
   const [activeBuildMapIndex, setActiveBuildMapIndex] = useState(0);
+  const [buildProgressLoaded, setBuildProgressLoaded] = useState(false);
   const [pendingUnlockMapIndex, setPendingUnlockMapIndex] = useState<number | null>(null);
   const [buildMapTransitioning, setBuildMapTransitioning] = useState(false);
   const [buildRewardPoints, setBuildRewardPoints] = useState(0);
+  const [showBuildFinale, setShowBuildFinale] = useState(false);
   const audioRef = useRef<AudioContext | null>(null);
   const musicTimerRef = useRef<number | null>(null);
   const fillRevealTimersRef = useRef<number[]>([]);
@@ -1043,6 +1669,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
   const activeBuildMap = buildWordMaps[activeBuildMapIndex] ?? buildWordMaps[0];
   const activeBuildMapStems = activeBuildMap.stems;
   const pendingUnlockMap = pendingUnlockMapIndex === null ? null : buildWordMaps[pendingUnlockMapIndex];
+  const buildWordAllComplete = buildWordMainStemIds.length > 0 && buildWordMainStemIds.every((stemId) => completedBuildStems.includes(stemId));
 
   function userStorageKey(name: string) {
     return `latinfun_${name}_${courseId}_${userId}`;
@@ -1054,6 +1681,30 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
 
   function savedSessionKey() {
     return userStorageKey("battle_session");
+  }
+
+  function buildWordProgressKey() {
+    return userStorageKey("build_word_progress");
+  }
+
+  function nextBuildMapIndex(completedStems = completedBuildStems) {
+    const nextIndex = buildWordMaps.findIndex((map) =>
+      map.stems.some((stem) => buildWordChallengeFor(stem.id) && !completedStems.includes(stem.id))
+    );
+    if (nextIndex !== -1) return nextIndex;
+    const lastPlayableMap = [...buildWordMaps].reverse().findIndex((map) => map.stems.some((stem) => buildWordChallengeFor(stem.id)));
+    return lastPlayableMap === -1 ? 0 : buildWordMaps.length - 1 - lastPlayableMap;
+  }
+
+  function buildWordPreviewState() {
+    const params = new URLSearchParams(window.location.search);
+    const match = params.get("preview")?.match(/^map([1-5])last2$/);
+    if (!match) return null;
+    const mapIndex = Number(match[1]) - 1;
+    const previewMap = buildWordMaps[mapIndex] ?? buildWordMaps[0];
+    const completedBeforeMap = buildWordMaps.slice(0, mapIndex).flatMap((map) => map.stems.map((stem) => stem.id));
+    const completedInMap = previewMap.stems.slice(0, Math.max(0, previewMap.stems.length - 2)).map((stem) => stem.id);
+    return { mapIndex, completed: [...completedBeforeMap, ...completedInMap] };
   }
 
   function updateBuildRewardDisplay(gems: number, rank?: number | null) {
@@ -1135,7 +1786,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     return 2;
   }
 
-  function scheduleBuildWordMapReturn() {
+  function scheduleBuildWordMapReturn(showFinale = false) {
     if (buildReturnTimerRef.current) {
       window.clearTimeout(buildReturnTimerRef.current);
     }
@@ -1146,6 +1797,10 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       setBuildFamilyFeedback("");
       setSelectedFamilyWord(null);
       buildReturnTimerRef.current = null;
+      if (showFinale) {
+        setShowBuildFinale(true);
+        playBuildFinaleSound();
+      }
     }, 1400);
   }
 
@@ -1206,12 +1861,12 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
         cancel: true,
         onEnd: () => {
           scheduleBuildReviewTimer(() => {
-            speakBuildText(`Definition: ${definition}`, {
+            speakBuildText(definition, {
               rate: 0.88,
               pitch: 0.98,
               onEnd: onComplete
             });
-          }, 220);
+          }, 1000);
         }
       });
     }, startDelay);
@@ -1250,6 +1905,38 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
   }, [best, unlocked, courseId, userId]);
 
   useEffect(() => {
+    setBuildProgressLoaded(false);
+    const previewState = buildWordPreviewState();
+    if (previewState) {
+      setCompletedBuildStems(previewState.completed);
+      setActiveBuildMapIndex(previewState.mapIndex);
+      setBuildProgressLoaded(true);
+      return;
+    }
+    try {
+      const raw = window.localStorage.getItem(buildWordProgressKey());
+      if (!raw) {
+        setBuildProgressLoaded(true);
+        return;
+      }
+      const parsed = JSON.parse(raw) as { completed?: string[] };
+      const completed = Array.isArray(parsed.completed) ? parsed.completed.filter((item): item is string => typeof item === "string") : [];
+      setCompletedBuildStems(completed);
+      setActiveBuildMapIndex(nextBuildMapIndex(completed));
+    } catch {
+      window.localStorage.removeItem(buildWordProgressKey());
+    }
+    setBuildProgressLoaded(true);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseId, userId]);
+
+  useEffect(() => {
+    if (!buildProgressLoaded) return;
+    if (buildWordPreviewState()) return;
+    window.localStorage.setItem(buildWordProgressKey(), JSON.stringify({ completed: completedBuildStems }));
+  }, [buildProgressLoaded, completedBuildStems, courseId, userId]);
+
+  useEffect(() => {
     refreshBuildRewards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [courseId, userId, isLoggedIn]);
@@ -1257,6 +1944,17 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const preview = params.get("preview");
+    const previewState = buildWordPreviewState();
+    if (previewState) {
+      setScreen("build-word");
+      setBuildWordStage("map");
+      setActiveBuildMapIndex(previewState.mapIndex);
+      setPendingUnlockMapIndex(null);
+      setBuildMapTransitioning(false);
+      setCompletedBuildStems(previewState.completed);
+      setBuildRewardPoints((points) => Math.max(points, 120));
+      return;
+    }
     if (preview === "clam") {
       const challenge = buildWordChallenges.clam;
       setScreen("build-word");
@@ -1539,6 +2237,28 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     ]);
   }
 
+  function playBuildFinaleSound() {
+    playToneSequence([
+      [523.25, 0, 0.16, "triangle", 0.078],
+      [659.25, 150, 0.16, "triangle", 0.078],
+      [783.99, 300, 0.18, "triangle", 0.082],
+      [1046.5, 490, 0.22, "triangle", 0.086],
+      [1318.51, 760, 0.18, "sine", 0.07],
+      [1567.98, 940, 0.18, "sine", 0.072],
+      [2093, 1160, 0.28, "triangle", 0.078],
+      [1760, 1540, 0.16, "triangle", 0.065],
+      [2093, 1730, 0.18, "triangle", 0.072],
+      [2637.02, 1960, 0.24, "sine", 0.07],
+      [3135.96, 2320, 0.28, "triangle", 0.062],
+      [2349.32, 2820, 0.18, "sine", 0.054],
+      [2637.02, 3180, 0.18, "triangle", 0.058],
+      [3135.96, 3540, 0.22, "triangle", 0.06],
+      [4186.01, 4020, 0.42, "sine", 0.05],
+      [523.25, 4620, 0.34, "triangle", 0.04],
+      [1046.5, 4620, 0.34, "sine", 0.032]
+    ]);
+  }
+
   function startRootMatchMusic() {
     if (musicTimerRef.current) return;
 
@@ -1816,6 +2536,14 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     stopRootMatchMusic();
     clearBuildReviewTimers();
     refreshBuildRewards();
+    setShowBuildFinale(false);
+    const previewState = buildWordPreviewState();
+    if (previewState) {
+      setActiveBuildMapIndex(previewState.mapIndex);
+      setCompletedBuildStems(previewState.completed);
+    } else {
+      setActiveBuildMapIndex(nextBuildMapIndex());
+    }
     setBuildWordStage("map");
     const challenge = buildWordChallengeFor(activeBuildStemId) ?? buildWordChallenges.com;
     setBuildWordTiles(challenge.warmup.parts);
@@ -1828,6 +2556,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     setBuildFamilyWrongCount(0);
     setBuildWarmupReviewing(false);
     setBuildReviewWordId(null);
+    setShowBuildFinale(false);
     setSelectedFamilyRow(challenge.familyWords[0]?.id ?? "");
     setSelectedFamilyWord(null);
     setBuildFamilyMatches({});
@@ -1911,7 +2640,12 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
 
   function finishBuildFamilyAfterReview(firstCompletion: boolean, currentMapComplete: boolean) {
     setBuildReviewWordId(null);
-    setBuildFamilyFeedback(firstCompletion ? "Macte! Saving your gems..." : "Macte! This stem family is complete. Returning to map...");
+    const finalCourseComplete = currentMapComplete && !buildWordMaps[activeBuildMapIndex + 1]?.stems.length;
+    setBuildFamilyFeedback(
+      finalCourseComplete
+        ? "Macte! You have mastered the full stem route."
+        : firstCompletion ? "Macte! Saving your gems..." : "Macte! This stem family is complete. Returning to map..."
+    );
     playGroupCelebrationSound();
     setCompletedBuildStems((items) => items.includes(activeBuildChallenge.id) ? items : [...items, activeBuildChallenge.id]);
     if (firstCompletion) {
@@ -1924,7 +2658,11 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       Promise.all(rewards).then((awards) => {
         const totalAwarded = awards.reduce((sum, amount) => sum + Math.max(0, amount), 0);
         setBuildFamilyFeedback(
-          totalAwarded > 0
+          finalCourseComplete
+            ? totalAwarded > 0
+              ? `Latin Stem Legend! +${totalAwarded} gems. Returning to Star Tower...`
+              : "Latin Stem Legend! Returning to Star Tower..."
+            : totalAwarded > 0
             ? `Macte! +${totalAwarded} gems. Returning to map...`
             : "Macte! This stem family is complete. Returning to map..."
         );
@@ -1933,7 +2671,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     if (currentMapComplete && buildWordMaps[activeBuildMapIndex + 1]?.stems.length) {
       setPendingUnlockMapIndex(activeBuildMapIndex + 1);
     }
-    scheduleBuildWordMapReturn();
+    scheduleBuildWordMapReturn(finalCourseComplete);
   }
 
   function reviewBuildFamilyWords(firstCompletion: boolean, currentMapComplete: boolean) {
@@ -1957,6 +2695,13 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     reviewNext(0);
   }
 
+  function familyEndingClue(index: number) {
+    const wordIndex = Math.min(index, Math.max(0, activeBuildChallenge.familyWords.length - 1));
+    const hintWord = activeBuildChallenge.familyWords[wordIndex] ?? activeBuildChallenge.familyWords[0];
+    const ending = hintWord.answer.slice(1).join("");
+    return { hintWord, ending, clueNumber: wordIndex + 1 };
+  }
+
   async function useBuildHint() {
     const hintCost = 3;
     if (buildRewardPoints < hintCost) {
@@ -1970,22 +2715,10 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     await applyBuildReward(-hintCost, `build-word-hint-${activeBuildChallenge.id}-${Date.now()}`, `Used hint helper for ${activeBuildChallenge.label}`);
 
     if (buildWordStage === "family") {
-      if (activeBuildChallenge.id === "clam") {
-        const hintWord = activeBuildChallenge.familyWords[Math.min(buildFamilyWrongCount, activeBuildChallenge.familyWords.length - 1)];
-        const ending = hintWord.answer.slice(1).join("");
-        setSelectedFamilyRow(hintWord.id);
-        setBuildFamilyFeedback(`Hint ${Math.min(buildFamilyWrongCount + 1, activeBuildChallenge.familyWords.length)}/3: "${hintWord.meaning}" ends with "-${ending}".`);
-        setBuildFamilyWrongCount((count) => count + 1);
-        playAnswerCorrectSound();
-        return;
-      }
-      const target =
-        activeBuildChallenge.familyWords.find((item) => {
-          const current = (buildFamilyAnswers[item.id] ?? []).map((part) => part.label).join("");
-          return current !== item.word;
-        }) ?? activeBuildChallenge.familyWords[0];
-      setSelectedFamilyRow(target.id);
-      setBuildFamilyFeedback(`Hint: "${target.meaning}" starts with "${target.answer[0]}".`);
+      const { hintWord, ending, clueNumber } = familyEndingClue(buildFamilyWrongCount);
+      setSelectedFamilyRow(hintWord.id);
+      setBuildFamilyFeedback(`Hint ${clueNumber}/3: "${hintWord.meaning}" ends with "-${ending}".`);
+      setBuildFamilyWrongCount((count) => count + 1);
       playAnswerCorrectSound();
       return;
     }
@@ -2043,16 +2776,10 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     const firstIncorrect = activeBuildChallenge.familyWords.find((item) => (buildFamilyAnswers[item.id] ?? []).map((part) => part.label).join("") !== item.word);
     const allCorrect = !firstIncorrect;
     if (!allCorrect) {
-      setSelectedFamilyRow(firstIncorrect?.id ?? activeBuildChallenge.familyWords[0]?.id ?? "");
-      if (activeBuildChallenge.id === "clam") {
-        const hintWord = activeBuildChallenge.familyWords[Math.min(buildFamilyWrongCount, activeBuildChallenge.familyWords.length - 1)];
-        const ending = hintWord.answer.slice(1).join("");
-        setBuildFamilyFeedback(`Iterum! Ending clue ${Math.min(buildFamilyWrongCount + 1, activeBuildChallenge.familyWords.length)}/3: "${hintWord.meaning}" ends with "-${ending}".`);
-        setSelectedFamilyRow(hintWord.id);
-        setBuildFamilyWrongCount((count) => count + 1);
-      } else {
-        setBuildFamilyFeedback("Iterum! Check the meaning and rebuild that word.");
-      }
+      const { hintWord, ending, clueNumber } = familyEndingClue(buildFamilyWrongCount);
+      setSelectedFamilyRow(hintWord.id);
+      setBuildFamilyFeedback(`Iterum! Ending clue ${clueNumber}/3: "${hintWord.meaning}" ends with "-${ending}".`);
+      setBuildFamilyWrongCount((count) => count + 1);
       playAnswerWrongSound();
       return;
     }
@@ -2574,6 +3301,28 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
                   <h2>{activeBuildMap.title}</h2>
                   <p>{activeBuildMap.subtitle}</p>
                 </div>
+                {buildWordAllComplete ? (
+                  <div className="build-map-replay-tabs" aria-label="Replay completed Build-a-Word maps">
+                    {buildWordMaps.map((map, index) =>
+                      map.stems.length ? (
+                        <button
+                          className={index === activeBuildMapIndex ? "active" : ""}
+                          key={map.id}
+                          onClick={() => {
+                            setActiveBuildMapIndex(index);
+                            setPendingUnlockMapIndex(null);
+                            setBuildMapTransitioning(false);
+                            setShowBuildFinale(false);
+                          }}
+                          type="button"
+                        >
+                          <span>{map.shortTitle}</span>
+                          <strong>{map.title}</strong>
+                        </button>
+                      ) : null
+                    )}
+                  </div>
+                ) : null}
                 <div className="build-word-stem-map" aria-label={`${activeBuildMap.title} stem family map`}>
                   {activeBuildMapStems.map((stem, index) => {
                     const challenge = buildWordChallengeFor(stem.id);
@@ -2598,6 +3347,45 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
                     );
                   })}
                 </div>
+                {buildWordAllComplete && activeBuildMap.id === "star-tower" ? (
+                  <section className="build-final-celebration" aria-label="Build-a-Word complete">
+                    <span>Latin Stem Legend</span>
+                    <h3>All 50 stem families complete!</h3>
+                    <p>You built the route from roots to powerful words.</p>
+                  </section>
+                ) : null}
+                {showBuildFinale ? (
+                  <div className="build-finale-overlay" role="dialog" aria-modal="true" aria-label="Final Build-a-Word celebration">
+                    <div className="battle-fireworks finale" aria-hidden="true">
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                      <span />
+                    </div>
+                    <section>
+                      <small>Star Tower Complete</small>
+                      <h3>Latin Stem Legend!</h3>
+                      <p>
+                        You completed all 50 stem families. That is serious word power:
+                        roots, meanings, and family words are now yours to command.
+                      </p>
+                      <strong>Keep building. Keep noticing. Every classic word has a story.</strong>
+                      <button
+                        onClick={() => {
+                          setShowBuildFinale(false);
+                          setScreen("select");
+                        }}
+                        type="button"
+                      >
+                        Return to Stem Battle
+                      </button>
+                    </section>
+                  </div>
+                ) : null}
                 {pendingUnlockMap ? (
                   <div className="build-unlock-gate" role="dialog" aria-label={`${pendingUnlockMap.title} unlocked`}>
                     <div className="build-gate-door" aria-hidden="true">
