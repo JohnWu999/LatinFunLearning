@@ -43,6 +43,15 @@ function appPath(path: string) {
   return `${prefix}${path}`;
 }
 
+async function refreshRewardHeader(courseId: string) {
+  const response = await fetch(appPath(`/api/rewards?courseId=${courseId}`));
+  if (!response.ok) return;
+  const payload = (await response.json()) as { data?: { gems?: number; rank?: number | null } };
+  if (typeof payload.data?.gems === "number") {
+    window.dispatchEvent(new CustomEvent("latinfun:gems-updated", { detail: { gems: payload.data.gems, rank: payload.data.rank ?? null } }));
+  }
+}
+
 export function PracticeClient({ courseId, lessonId, exercises, isLoggedIn }: PracticeClientProps) {
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState("");
@@ -78,7 +87,7 @@ export function PracticeClient({ courseId, lessonId, exercises, isLoggedIn }: Pr
     }));
 
     if (isLoggedIn) {
-      await fetch(appPath("/api/attempts"), {
+      const response = await fetch(appPath("/api/attempts"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -90,6 +99,7 @@ export function PracticeClient({ courseId, lessonId, exercises, isLoggedIn }: Pr
           gameMode: "practice"
         })
       });
+      if (response.ok && correct) await refreshRewardHeader(courseId);
     }
   }
 

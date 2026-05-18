@@ -8,8 +8,10 @@ type InteractiveQuestion = MultipleChoiceQuestion & {
 };
 
 type Props = {
+  courseId: string;
   lesson: AnalogiesAntonymsLesson;
 };
+type RewardPayload = { data?: { gems?: number; rank?: number | null; awarded?: number } };
 
 const choiceLabels = ["a", "b", "c", "d"];
 
@@ -96,7 +98,34 @@ function speakFeedback(text: string, mood: "celebration" | "encouragement") {
   window.speechSynthesis.speak(utterance);
 }
 
-export function AnalogiesAntonymsClient({ lesson }: Props) {
+function appPath(path: string) {
+  const asset = document.querySelector<HTMLScriptElement | HTMLLinkElement>('script[src*="/_next/"], link[href*="/_next/"]');
+  const source = asset instanceof HTMLScriptElement ? asset.src : asset?.href;
+  const prefix = source ? new URL(source, window.location.origin).pathname.split("/_next/")[0] : "";
+  return `${prefix}${path}`;
+}
+
+async function applyLessonReward(courseId: string, lessonName: string, amount: number, perfect: boolean) {
+  const response = await fetch(appPath("/api/rewards"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      courseId,
+      amount,
+      source: "analogies-antonyms",
+      sourceKey: `analogies-antonyms-${lessonName}`,
+      reason: perfect ? `Perfect Analogies & Antonyms score in ${lessonName}` : `Completed Analogies & Antonyms in ${lessonName}`
+    })
+  });
+  if (!response.ok) return null;
+  const payload = (await response.json()) as RewardPayload;
+  if (typeof payload.data?.gems === "number") {
+    window.dispatchEvent(new CustomEvent("latinfun:gems-updated", { detail: { gems: payload.data.gems, rank: payload.data.rank ?? null } }));
+  }
+  return payload.data?.awarded ?? 0;
+}
+
+export function AnalogiesAntonymsClient({ courseId, lesson }: Props) {
   const questions = useMemo<InteractiveQuestion[]>(
     () => [
       ...lesson.analogies.map((question) => ({ ...question, kind: "analogy" as const })),
@@ -119,10 +148,12 @@ export function AnalogiesAntonymsClient({ lesson }: Props) {
     setAnswers((current) => ({ ...current, [questionIndex]: optionIndex }));
   }
 
-  function submit() {
+  async function submit() {
     if (!readyToSubmit || submitted) return;
 
     const allCorrect = questions.every((question, index) => answers[index] === question.correctAnswerIndex);
+    const totalCorrect = questions.reduce((sum, question, index) => sum + (answers[index] === question.correctAnswerIndex ? 1 : 0), 0);
+    const bonus = allCorrect ? 4 : totalCorrect >= Math.ceil(questions.length / 2) ? 2 : 0;
     setSubmitted(true);
     if (allCorrect) {
       playCelebrationSound();
@@ -131,6 +162,7 @@ export function AnalogiesAntonymsClient({ lesson }: Props) {
       playEncouragementSound();
       speakFeedback("Good effort! Review the answers and try again!", "encouragement");
     }
+    await applyLessonReward(courseId, lesson.lesson, totalCorrect + bonus, allCorrect);
   }
 
   return (

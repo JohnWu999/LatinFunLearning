@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { BookOpen, Gem, Trophy } from "lucide-react";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { LogoutButton } from "@/components/logout-button";
 
 type Props = {
@@ -17,6 +18,25 @@ export function SiteHeader({ userName, userRole, gems = 0, rank }: Props) {
   const minimalHeaderPaths = ["/", "/login", "/register"];
   const shouldHideNav = minimalHeaderPaths.includes(pathname);
   const isAdmin = userRole === "ADMIN" || userRole === "TEACHER";
+  const [playerStats, setPlayerStats] = useState({ gems, rank });
+
+  useEffect(() => {
+    setPlayerStats({ gems, rank });
+  }, [gems, rank]);
+
+  useEffect(() => {
+    function updateStats(event: Event) {
+      const detail = (event as CustomEvent<{ gems?: number; rank?: number | null }>).detail;
+      if (!detail) return;
+      setPlayerStats((current) => ({
+        gems: typeof detail.gems === "number" ? detail.gems : current.gems,
+        rank: "rank" in detail ? detail.rank ?? null : current.rank
+      }));
+    }
+
+    window.addEventListener("latinfun:gems-updated", updateStats);
+    return () => window.removeEventListener("latinfun:gems-updated", updateStats);
+  }, []);
 
   return (
     <header className="topbar">
@@ -32,14 +52,14 @@ export function SiteHeader({ userName, userRole, gems = 0, rank }: Props) {
             <>
               {isAdmin ? <Link href="/admin">管理端</Link> : <Link href="/mistakes">错题本</Link>}
               {!isAdmin ? (
-                <span className="player-stats" aria-label={`宝石 ${gems}，排名 ${rank ?? "暂无"}`}>
+                <span className="player-stats" aria-label={`宝石 ${playerStats.gems}，排名 ${playerStats.rank ?? "暂无"}`}>
                   <span className="player-stat player-stat-gems">
                     <Gem size={16} aria-hidden="true" />
-                    <strong>{gems}</strong>
+                    <strong>{playerStats.gems}</strong>
                   </span>
                   <span className="player-stat player-stat-rank">
                     <Trophy size={16} aria-hidden="true" />
-                    <strong>{rank ? `#${rank}` : "--"}</strong>
+                    <strong>{playerStats.rank ? `#${playerStats.rank}` : "--"}</strong>
                   </span>
                 </span>
               ) : null}

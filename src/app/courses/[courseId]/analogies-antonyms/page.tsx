@@ -45,7 +45,7 @@ export default async function AnalogiesAntonymsPage({ params }: Props) {
                 </div>
               </header>
 
-              <AnalogiesAntonymsClient lesson={lesson} />
+              <AnalogiesAntonymsClient courseId={course.id} lesson={lesson} />
             </section>
           ))}
         </div>

@@ -29,3 +29,11 @@ export const attemptSchema = z.object({
   timeSpentMs: z.number().int().positive().optional().nullable(),
   gameMode: z.string().max(80).optional().nullable()
 });
+
+export const rewardSchema = z.object({
+  courseId: z.string().min(1),
+  amount: z.number().int().min(-50).max(100),
+  source: z.string().min(1).max(80),
+  sourceKey: z.string().min(1).max(160),
+  reason: z.string().min(1).max(180)
+});

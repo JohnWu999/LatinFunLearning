@@ -74,6 +74,15 @@ function appPath(path: string) {
   return `${prefix}${path}`;
 }
 
+async function refreshRewardHeader(courseId: string) {
+  const response = await fetch(appPath(`/api/rewards?courseId=${courseId}`));
+  if (!response.ok) return;
+  const payload = (await response.json()) as { data?: { gems?: number; rank?: number | null } };
+  if (typeof payload.data?.gems === "number") {
+    window.dispatchEvent(new CustomEvent("latinfun:gems-updated", { detail: { gems: payload.data.gems, rank: payload.data.rank ?? null } }));
+  }
+}
+
 export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons }: Props) {
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
   const [answered, setAnswered] = useState<AnsweredMap>({});
@@ -118,7 +127,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons 
     notify(isCorrect ? "✓ 正确！" : "✗ 再接再厉");
 
     if (!isLoggedIn || !activeLesson) return;
-    await fetch(appPath("/api/attempts"), {
+    const response = await fetch(appPath("/api/attempts"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -130,6 +139,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons 
         gameMode: "vocab-practice"
       })
     });
+    if (response.ok && isCorrect) await refreshRewardHeader(courseId);
   }
 
   function startLesson(lessonId: string) {

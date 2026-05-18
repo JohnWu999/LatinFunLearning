@@ -102,6 +102,7 @@ type SavedBattleSession = {
   matchedPairs: Record<string, boolean>;
   savedAt: number;
 };
+type RewardPayload = { data?: { gems?: number; rank?: number | null; awarded?: number; duplicate?: boolean } };
 
 const emptyRun = {
   score: 0,
@@ -1053,6 +1054,85 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     return userStorageKey("battle_session");
   }
 
+  function updateBuildRewardDisplay(gems: number, rank?: number | null) {
+    setBuildRewardPoints(Math.max(0, gems));
+    window.dispatchEvent(new CustomEvent("latinfun:gems-updated", { detail: { gems: Math.max(0, gems), rank } }));
+  }
+
+  async function refreshBuildRewards() {
+    if (!isLoggedIn) return;
+    try {
+      const response = await fetch(appPath(`/api/rewards?courseId=${courseId}`));
+      if (!response.ok) return;
+      const payload = (await response.json()) as RewardPayload;
+      if (typeof payload.data?.gems === "number") {
+        updateBuildRewardDisplay(payload.data.gems, payload.data.rank ?? null);
+      }
+    } catch {
+      return;
+    }
+  }
+
+  async function applyGameReward(amount: number, source: string, sourceKey: string, reason: string) {
+    if (!isLoggedIn) {
+      setBuildRewardPoints((points) => Math.max(0, points + amount));
+      return amount;
+    }
+
+    try {
+      const response = await fetch(appPath("/api/rewards"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          courseId,
+          amount,
+          source,
+          sourceKey,
+          reason
+        })
+      });
+      if (!response.ok) throw new Error("Reward request failed");
+      const payload = (await response.json()) as RewardPayload;
+      if (typeof payload.data?.gems === "number") {
+        updateBuildRewardDisplay(payload.data.gems, payload.data.rank ?? null);
+      }
+      return payload.data?.awarded ?? amount;
+    } catch {
+      setBuildRewardPoints((points) => Math.max(0, points + amount));
+      return amount;
+    }
+  }
+
+  function applyBuildReward(amount: number, sourceKey: string, reason: string) {
+    return applyGameReward(amount, "build-a-word", sourceKey, reason);
+  }
+
+  function battleLevelKey() {
+    if (!activeLevel) return "battle";
+    return activeLevel.id || `level-${activeLevel.legacyId ?? activeLevel.order}`;
+  }
+
+  function jeopardyCellBonus(value: number) {
+    if (value <= 200) return 2;
+    if (value <= 400) return 4;
+    return 6;
+  }
+
+  function rootMatchRoundBonus(mode: RootMatchMode | null) {
+    if (mode === "hard") return 5;
+    if (mode === "medium") return 4;
+    return 3;
+  }
+
+  function battleCompletionBonus(accuracy: number, isBoss: boolean) {
+    if (isBoss && accuracy === 1) return 18;
+    if (isBoss) return 12;
+    if (accuracy >= 0.95) return 10;
+    if (accuracy >= 0.8) return 7;
+    if (accuracy >= 0.6) return 4;
+    return 2;
+  }
+
   function scheduleBuildWordMapReturn() {
     if (buildReturnTimerRef.current) {
       window.clearTimeout(buildReturnTimerRef.current);
@@ -1166,6 +1246,11 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
   useEffect(() => {
     window.localStorage.setItem(battleProgressKey(), JSON.stringify({ best, unlocked }));
   }, [best, unlocked, courseId, userId]);
+
+  useEffect(() => {
+    refreshBuildRewards();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseId, userId, isLoggedIn]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -1694,6 +1779,17 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     return savedSession.activeLevel.id === level.id || savedSession.activeLevel.type === level.type;
   }
 
+  function savedSessionProgress(session: SavedBattleSession) {
+    return `${Math.min(session.run.qi + 1, session.questions.length)}/${session.questions.length}`;
+  }
+
+  function restartSavedSession() {
+    const level = pendingResumeLevel ?? savedSession?.activeLevel ?? null;
+    clearSavedSession();
+    if (level) startLevel(level);
+    else setScreen("select");
+  }
+
   function chooseLevel(level: GameLevel, asWrongPractice = false) {
     if (!asWrongPractice && hasSavedSessionForLevel(level)) {
       setPendingResumeLevel(level);
@@ -1717,6 +1813,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
   function startBuildAWord() {
     stopRootMatchMusic();
     clearBuildReviewTimers();
+    refreshBuildRewards();
     setBuildWordStage("map");
     const challenge = buildWordChallengeFor(activeBuildStemId) ?? buildWordChallenges.com;
     setBuildWordTiles(challenge.warmup.parts);
@@ -1788,6 +1885,12 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     const isCorrect = buildWordAnswer.join("") === activeBuildChallenge.warmup.answer;
     setBuildWordFeedback(isCorrect ? activeBuildChallenge.warmup.success : "Iterum! Read the meaning and reorder the parts.");
     if (isCorrect) {
+      const firstCompletion = !completedBuildStems.includes(activeBuildChallenge.id);
+      if (firstCompletion) {
+        applyBuildReward(2, `build-word-warmup-${activeBuildChallenge.id}`, `Built ${activeBuildChallenge.warmup.answer}`).then((awarded) => {
+          if (awarded > 0) setBuildWordFeedback(`${activeBuildChallenge.warmup.success} +${awarded} gems.`);
+        });
+      }
       playAnswerCorrectSound();
       setBuildWarmupReviewing(true);
       reviewBuildWordOnce(activeBuildChallenge.warmup.answer, activeBuildChallenge.warmup.meaning, 180, () => {
@@ -1806,10 +1909,25 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
 
   function finishBuildFamilyAfterReview(firstCompletion: boolean, currentMapComplete: boolean) {
     setBuildReviewWordId(null);
-    setBuildFamilyFeedback(firstCompletion ? "Macte! +10 gems. Returning to map..." : "Macte! This stem family is complete. Returning to map...");
+    setBuildFamilyFeedback(firstCompletion ? "Macte! Saving your gems..." : "Macte! This stem family is complete. Returning to map...");
     playGroupCelebrationSound();
     setCompletedBuildStems((items) => items.includes(activeBuildChallenge.id) ? items : [...items, activeBuildChallenge.id]);
-    if (firstCompletion) setBuildRewardPoints((points) => points + 10);
+    if (firstCompletion) {
+      const rewards = [
+        applyBuildReward(8, `build-word-family-${activeBuildChallenge.id}`, `Completed ${activeBuildChallenge.label} family words`)
+      ];
+      if (currentMapComplete) {
+        rewards.push(applyBuildReward(20, `build-word-map-${activeBuildMap.id}`, `Completed ${activeBuildMap.title}`));
+      }
+      Promise.all(rewards).then((awards) => {
+        const totalAwarded = awards.reduce((sum, amount) => sum + Math.max(0, amount), 0);
+        setBuildFamilyFeedback(
+          totalAwarded > 0
+            ? `Macte! +${totalAwarded} gems. Returning to map...`
+            : "Macte! This stem family is complete. Returning to map..."
+        );
+      });
+    }
     if (currentMapComplete && buildWordMaps[activeBuildMapIndex + 1]?.stems.length) {
       setPendingUnlockMapIndex(activeBuildMapIndex + 1);
     }
@@ -1837,7 +1955,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     reviewNext(0);
   }
 
-  function useBuildHint() {
+  async function useBuildHint() {
     const hintCost = 3;
     if (buildRewardPoints < hintCost) {
       const message = `Hint needs ${hintCost} gems. Complete a stem family to earn more.`;
@@ -1847,7 +1965,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       return;
     }
 
-    setBuildRewardPoints((points) => Math.max(0, points - hintCost));
+    await applyBuildReward(-hintCost, `build-word-hint-${activeBuildChallenge.id}-${Date.now()}`, `Used hint helper for ${activeBuildChallenge.label}`);
 
     if (buildWordStage === "family") {
       if (activeBuildChallenge.id === "clam") {
@@ -1958,12 +2076,21 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     if (!jeopardyQuestion || jeopardyFeedback) return;
     const cell = jeopardyCells.find((item) => item.id === jeopardyQuestion.cellId);
     if (!cell) return;
+    const currentStem = cell.stems[jeopardyQuestion.stemIndex] ?? cell.stems[0];
 
     const isCorrect = option === jeopardyQuestion.answer;
     setJeopardyFeedback(isCorrect ? "Recte!" : "Non recte!");
     if (isCorrect) {
       playAnswerCorrectSound();
       setJeopardyScore((score) => score + (jeopardyCellRun ? Math.round(cell.value / cell.stems.length) : cell.value));
+      if (currentStem) {
+        applyGameReward(
+          1,
+          "jeopardy",
+          `jeopardy-answer-${cell.id}-${currentStem.id}`,
+          `Answered ${currentStem.key} in Jeopardy`
+        );
+      }
     } else {
       playAnswerWrongSound();
     }
@@ -1977,6 +2104,14 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
 
         if (correctIndices.length >= cell.stems.length) {
           setJeopardyCells((items) => items.map((item) => (item.id === cell.id ? { ...item, completed: true } : item)));
+          applyGameReward(
+            5 + jeopardyCellBonus(cell.value),
+            "jeopardy",
+            `jeopardy-cell-${cell.id}`,
+            `Completed ${cell.category} ${cell.value} Jeopardy cell`
+          ).then((awarded) => {
+            if (awarded > 0) setJeopardyFeedback(`Macte! +${awarded} gems.`);
+          });
           setJeopardyCellRun(null);
           setJeopardyQuestion(null);
           return;
@@ -2054,7 +2189,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     const knowledgePointId =
       "stem" in question && !question.stem.id.startsWith("latin-stem-") ? question.stem.id : undefined;
 
-    await fetch(appPath("/api/attempts"), {
+    const response = await fetch(appPath("/api/attempts"), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -2065,12 +2200,13 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
         gameMode: activeLevel ? `battle-level-${activeLevel.legacyId ?? activeLevel.order}` : "battle"
       })
     });
+    if (response.ok && isCorrect) await refreshBuildRewards();
   }
 
   function applyResult(isCorrect: boolean, question: GameQuestion, value: unknown) {
     if (locked) return;
     setLocked(true);
-    recordQuestion(question, isCorrect, value);
+    recordQuestion(question, isCorrect, value).catch(() => undefined);
     setRun((prev) => {
       const combo = isCorrect ? prev.combo + 1 : 0;
       const add = !isCorrect ? 0 : activeLevel?.isBoss ? 15 : wrongMode ? 5 : combo >= 3 ? 15 : combo >= 2 ? 13 : 10;
@@ -2111,6 +2247,12 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
         setLocked(true);
         setGroupMessage(message);
         playGroupCelebrationSound();
+        applyGameReward(
+          8,
+          "stem-battle",
+          `complete-stem-group-${battleLevelKey()}-${Math.floor(nextQi / 20)}`,
+          `Completed Complete the Stem group ${Math.floor(nextQi / 20)}`
+        );
         window.setTimeout(() => {
           setGroupMessage(null);
           setLocked(false);
@@ -2138,7 +2280,9 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     if (isCorrect) {
       setMatchedPairs((prev) => ({ ...prev, [id]: true }));
       const stem = stems.find((item) => item.id === id);
-      if (stem) recordQuestion({ type: "pick", stem, answer: stem.key, meaning: stem.meaning ?? "", options: [] }, true, id);
+      if (stem) {
+        recordQuestion({ type: "pick", stem, answer: stem.key, meaning: stem.meaning ?? "", options: [] }, true, id).catch(() => undefined);
+      }
       if (rootMode) updateRootMatchStats(rootMode, id, true);
       setRun((prev) => ({
         ...prev,
@@ -2153,6 +2297,12 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
         setFeedback("Optime!");
         setShowFireworks(true);
         playRoundCelebrationSound();
+        applyGameReward(
+          rootMatchRoundBonus(rootMode),
+          "root-matching",
+          `root-match-round-${battleLevelKey()}-${question.round}`,
+          `Completed Root Matching round ${question.round}`
+        );
         window.setTimeout(() => {
           setFeedback("");
           setShowFireworks(false);
@@ -2166,7 +2316,9 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       }
     } else {
       const stem = stems.find((item) => item.id === selectedMatch.id || item.id === id);
-      if (stem) recordQuestion({ type: "pick", stem, answer: stem.key, meaning: stem.meaning ?? "", options: [] }, false, id);
+      if (stem) {
+        recordQuestion({ type: "pick", stem, answer: stem.key, meaning: stem.meaning ?? "", options: [] }, false, id).catch(() => undefined);
+      }
       if (rootMode) updateRootMatchStats(rootMode, attemptedStemId, false);
       setRun((prev) => ({ ...prev, combo: 0, wrong: prev.wrong + 1 }));
       setFeedback("Iterum!");
@@ -2194,6 +2346,15 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       const nextId = currentId + 1;
       setUnlocked((prev) => (nextId <= levels.length && !prev.includes(nextId) ? [...prev, nextId] : prev));
     }
+    const completionBonus = activeLevel.type.startsWith("root-match")
+      ? rootMatchRoundBonus(rootMatchModeFromType(activeLevel.type)) + stars
+      : battleCompletionBonus(accuracy, activeLevel.isBoss);
+    applyGameReward(
+      completionBonus,
+      activeLevel.type.startsWith("root-match") ? "root-matching" : "stem-battle",
+      `${activeLevel.type.startsWith("root-match") ? "root-match" : "stem-battle"}-complete-${battleLevelKey()}-${wrongMode ? "review" : "main"}`,
+      `Completed ${levelDisplayName(activeLevel)}`
+    );
     setResultTitle(wrongMode && run.wrong === 0 ? "错题已全部掌握！" : activeLevel.isBoss ? "魔王已被击败!" : `${levelDisplayName(activeLevel)} 完成！`);
     setScreen("result");
     beep("triangle", 520, 0.18);
@@ -2250,15 +2411,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
             </p>
             <div className="battle-resume-actions">
               <button className="button primary" onClick={() => resumeSavedSession(savedSession)} type="button">继续上次练习</button>
-              <button
-                className="button"
-                onClick={() => {
-                  clearSavedSession();
-                  if (pendingResumeLevel) startLevel(pendingResumeLevel);
-                  else setScreen("select");
-                }}
-                type="button"
-              >
+              <button className="button" onClick={restartSavedSession} type="button">
                 重新开始
               </button>
             </div>
@@ -2296,6 +2449,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
               }
 
               if (isStageLevel) {
+                const hasSavedLevelSession = hasSavedSessionForLevel(level);
                 return (
                   <article className={`battle-level-card stage-card ${level.type} ${level.isBoss ? "boss" : ""} ${lockedLevel ? "locked" : ""}`} key={level.id}>
                     <button disabled={lockedLevel} onClick={() => chooseLevel(level)} type="button">
@@ -2305,7 +2459,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
                       </div>
                       <strong>{level.subtitle}</strong>
                       <small>{levelMeta.mission}</small>
-                      <em>{record ? `${record.score} 分 · ${"★".repeat(record.stars)}${"☆".repeat(3 - record.stars)}` : lockedLevel ? "LOCKED" : "START"}</em>
+                      <em>{hasSavedLevelSession && savedSession ? `CONTINUE · ${savedSessionProgress(savedSession)}` : record ? `${record.score} 分 · ${"★".repeat(record.stars)}${"☆".repeat(3 - record.stars)}` : lockedLevel ? "LOCKED" : "START"}</em>
                     </button>
                     {!level.isBoss ? (
                       <button className="battle-wrong-button" disabled={wrongStemIds.size === 0 || lockedLevel} onClick={() => chooseLevel(level, true)} type="button">

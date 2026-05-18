@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { getCurrentUser } from "@/lib/auth";
 import { SiteHeader } from "@/components/site-header";
-import { prisma } from "@/lib/prisma";
+import { getPlayerRewardSummary } from "@/lib/rewards";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -36,29 +36,7 @@ export default async function RootLayout({
 
 async function getPlayerStats(userId: string) {
   try {
-    const correctAttemptsByUser = await prisma.answerAttempt.groupBy({
-      by: ["userId"],
-      where: { isCorrect: true },
-      _count: { _all: true }
-    });
-    const studentIds = await prisma.user.findMany({
-      where: { role: "STUDENT" },
-      select: { id: true }
-    });
-    const gemsByUser = new Map(correctAttemptsByUser.map((item) => [item.userId, item._count._all]));
-    const rankedStudents = studentIds
-      .map((student) => ({
-        id: student.id,
-        gems: gemsByUser.get(student.id) ?? 0
-      }))
-      .sort((a, b) => b.gems - a.gems || a.id.localeCompare(b.id));
-    const gems = gemsByUser.get(userId) ?? 0;
-    const rankIndex = rankedStudents.findIndex((student) => student.id === userId);
-
-    return {
-      gems,
-      rank: rankIndex >= 0 ? rankIndex + 1 : null
-    };
+    return await getPlayerRewardSummary(userId);
   } catch {
     return { gems: 0, rank: null };
   }
