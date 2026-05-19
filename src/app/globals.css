@@ -2537,15 +2537,15 @@ textarea {
 }
 
 .battle-level-card.stage-card.boss {
-  border-color: rgba(139, 30, 30, 0.28);
+  border-color: rgba(38, 70, 92, 0.16);
   background:
-    radial-gradient(circle at 82% 12%, rgba(240, 93, 35, 0.18), transparent 32%),
-    linear-gradient(155deg, #ffffff 0%, #fff0ed 100%);
+    radial-gradient(circle at 82% 12%, rgba(246, 196, 83, 0.18), transparent 32%),
+    linear-gradient(155deg, #ffffff 0%, #fffaf1 100%);
 }
 
 .battle-level-card.stage-card.boss .stage-icon,
 .battle-level-card.stage-card.boss em {
-  background: #8b1e1e;
+  background: #26465c;
 }
 
 .battle-level-card.stage-card.root-hub-card {
@@ -2586,6 +2586,265 @@ textarea {
 .battle-level-card.stage-card.build-word-hub-card .stage-icon,
 .battle-level-card.stage-card.build-word-hub-card em {
   background: #e85d04;
+}
+
+.boss-challenge {
+  display: grid;
+  gap: 18px;
+}
+
+.boss-shell {
+  border: 1px solid rgba(38, 70, 92, 0.14);
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 82% 12%, rgba(246, 196, 83, 0.14), transparent 30%),
+    linear-gradient(155deg, #ffffff 0%, #fffaf1 100%);
+  box-shadow: 0 22px 46px rgba(42, 32, 20, 0.11);
+  padding: 30px;
+}
+
+.boss-header {
+  display: grid;
+  gap: 8px;
+  max-width: 760px;
+  margin: 0 auto 24px;
+  text-align: center;
+}
+
+.boss-header span,
+.boss-stage-count {
+  color: #c29a45;
+  font-size: 13px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.boss-header h1 {
+  margin: 0;
+  color: var(--legacy-text);
+  font-family: "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 52px;
+  line-height: 1;
+}
+
+.boss-header p {
+  margin: 0;
+  color: #6f675f;
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.boss-pack-banner {
+  display: inline-flex;
+  width: fit-content;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 10px auto 0;
+  border: 2px solid rgba(246, 196, 83, 0.46);
+  border-radius: 999px;
+  background:
+    linear-gradient(135deg, rgba(255, 248, 221, 0.94), rgba(255, 221, 122, 0.5));
+  box-shadow: 0 12px 24px rgba(194, 154, 69, 0.16);
+  color: #7a4c1c;
+  padding: 8px 14px;
+}
+
+.boss-header .boss-pack-banner span {
+  color: #7a4c1c;
+}
+
+.boss-pack-banner strong {
+  color: #26465c;
+  font-family: "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 24px;
+  line-height: 1;
+}
+
+.boss-progress {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.boss-progress span {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 999px;
+  background: rgba(38, 70, 92, 0.1);
+  color: #26465c;
+  font-size: 14px;
+  letter-spacing: 0;
+}
+
+.boss-progress span.active {
+  background: #26465c;
+  color: #ffffff;
+}
+
+.boss-stage-count {
+  margin: 0 auto 14px;
+  max-width: 760px;
+}
+
+.boss-card,
+.boss-complete-card {
+  max-width: 850px;
+  margin: 0 auto;
+  border: 1px solid rgba(38, 70, 92, 0.12);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.82);
+  box-shadow: 0 16px 34px rgba(42, 32, 20, 0.1);
+  padding: 28px;
+}
+
+.boss-card small {
+  display: inline-flex;
+  border-radius: 999px;
+  background: rgba(38, 70, 92, 0.08);
+  color: #26465c;
+  font-weight: 900;
+  padding: 6px 12px;
+}
+
+.boss-card h2 {
+  margin: 18px 0;
+  color: var(--legacy-text);
+  font-family: "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 32px;
+  line-height: 1.25;
+}
+
+.boss-root-clue {
+  margin: -6px 0 18px;
+  color: #6f675f;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.boss-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(160px, 1fr));
+  gap: 12px;
+}
+
+.boss-choice-grid button {
+  border: 2px solid rgba(38, 70, 92, 0.12);
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 10px 20px rgba(42, 32, 20, 0.08);
+  color: var(--legacy-text);
+  cursor: pointer;
+  font-family: "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 24px;
+  font-weight: 900;
+  padding: 18px;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.boss-choice-grid button:hover {
+  border-color: rgba(232, 93, 4, 0.34);
+  box-shadow: 0 16px 28px rgba(42, 32, 20, 0.12);
+  transform: translateY(-2px);
+}
+
+.boss-passage {
+  color: var(--legacy-text);
+  font-family: "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 25px;
+  font-weight: 800;
+  line-height: 1.8;
+}
+
+.boss-passage select {
+  min-width: 150px;
+  margin: 0 5px;
+  border: 2px solid rgba(38, 70, 92, 0.16);
+  border-radius: 999px;
+  background: #fffaf1;
+  color: #26465c;
+  font: inherit;
+  font-size: 21px;
+  padding: 5px 12px;
+}
+
+.boss-passage .needs-work select {
+  border-color: rgba(185, 57, 43, 0.68);
+  background: #fff1ee;
+  box-shadow: 0 0 0 4px rgba(185, 57, 43, 0.1);
+}
+
+.boss-passage-hint {
+  display: block;
+  width: fit-content;
+  margin: 8px 0 12px;
+  border-left: 4px solid #b9392b;
+  border-radius: 10px;
+  background: rgba(185, 57, 43, 0.08);
+  color: #8b2d25;
+  font-family: inherit;
+  font-size: 15px;
+  font-style: normal;
+  font-weight: 900;
+  line-height: 1.35;
+  padding: 9px 12px;
+}
+
+.boss-feedback {
+  max-width: 760px;
+  margin: 18px auto 0;
+  border-radius: 999px;
+  background: rgba(40, 122, 75, 0.1);
+  color: #287a4b;
+  font-family: "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 24px;
+  font-style: italic;
+  font-weight: 900;
+  padding: 13px 20px;
+  text-align: center;
+}
+
+.boss-feedback.wrong {
+  background: rgba(185, 57, 43, 0.1);
+  color: #b9392b;
+}
+
+.boss-complete-card {
+  text-align: center;
+}
+
+.boss-complete-card strong {
+  color: #287a4b;
+  font-family: "Palatino Linotype", Palatino, Georgia, serif;
+  font-size: 46px;
+}
+
+.boss-complete-card p {
+  margin: 12px auto 22px;
+  max-width: 560px;
+  color: #6f675f;
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.boss-complete-card .boss-loop-note {
+  max-width: 680px;
+  border-radius: 16px;
+  background: rgba(40, 122, 75, 0.08);
+  color: #287a4b;
+  padding: 14px 18px;
+}
+
+.boss-complete-actions {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  flex-wrap: wrap;
 }
 
 .battle-wrong-button {

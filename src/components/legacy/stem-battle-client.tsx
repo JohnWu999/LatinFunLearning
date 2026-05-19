@@ -51,7 +51,7 @@ type Props = {
   buildQuestions: BuildQuestion[];
 };
 
-type Screen = "select" | "root-match-select" | "jeopardy" | "build-word" | "game" | "result";
+type Screen = "select" | "root-match-select" | "jeopardy" | "build-word" | "boss" | "game" | "result";
 type RootMatchMode = "easy" | "medium" | "hard";
 type RootMatchStat = { attempts: number; wrong: number };
 type RootMatchStats = Record<RootMatchMode, Record<string, RootMatchStat>>;
@@ -92,6 +92,10 @@ type BuildWordMap = {
   stems: { id: string; label: string; status: string; detail: string }[];
 };
 type BuildWordFamilyAnswer = Record<string, BuildWordPart[]>;
+type BossStageId = "recall" | "forge" | "context" | "passage";
+type BossContextItem = { id: string; sentence: string; answer: string; options: string[]; clue: string };
+type BossPassageBlank = { id: string; answer: string; definition: string; options: string[] };
+type BossLoopContent = { contextItems: BossContextItem[]; passageText: string[]; passageBlanks: BossPassageBlank[] };
 type SavedBattleSession = {
   activeLevel: GameLevel;
   questions: GameQuestion[];
@@ -1486,11 +1490,321 @@ const battleLevelMeta: Record<string, { icon: string; label: string; mission: st
   tf: { icon: "✓", label: "Judge", mission: "Decide if each stem clue is true." },
   build: { icon: "⚙", label: "Build", mission: "Build words from Latin parts." },
   blitz: { icon: "⚡", label: "Blitz", mission: "Race the clock and choose fast." },
-  boss: { icon: "♛", label: "Boss", mission: "Defeat your toughest stems." },
+  boss: { icon: "♛", label: "Boss", mission: "Use stems, words, and context together." },
   "root-match-menu": { icon: "↔", label: "Match", mission: "Choose a difficulty and match Latin stems." },
   "jeopardy-menu": { icon: "?", label: "Board", mission: "Pick a square and win stem points." },
   "build-word-menu": { icon: "＋", label: "Build", mission: "Build nonfiction words from Latin stems." }
 };
+
+const bossStageMeta: Record<BossStageId, { title: string; subtitle: string }> = {
+  recall: { title: "Quick Recall", subtitle: "Warm up with stems that need one more look." },
+  forge: { title: "Word Family Forge", subtitle: "Choose the word that grows from the clue." },
+  context: { title: "Meaning in Context", subtitle: "Pick the word that fits the sentence naturally." },
+  passage: { title: "Complete the Passage", subtitle: "Use context to make the paragraph flow." }
+};
+
+const bossStageOrder: BossStageId[] = ["recall", "forge", "context", "passage"];
+const bossTotalLoops = 10;
+const bossBaseReward = 16;
+
+function bossLoopReward(loopIndex: number) {
+  return bossBaseReward * 2 ** Math.min(loopIndex, bossTotalLoops - 1);
+}
+
+const bossLoopContents: BossLoopContent[] = [
+  {
+    contextItems: [
+      {
+        id: "placate",
+        sentence: "The captain spoke calmly to ______ the worried crew before the storm arrived.",
+        answer: "placate",
+        options: ["placate", "contradict", "migrate", "rupture"],
+        clue: "The sentence needs a word for calming strong feelings."
+      },
+      {
+        id: "evidence",
+        sentence: "The historian needed clear ______ before making a claim about the ancient letter.",
+        answer: "evidence",
+        options: ["evidence", "surplus", "amity", "vitality"],
+        clue: "The blank asks for proof people can examine."
+      },
+      {
+        id: "contrary",
+        sentence: "Mira expected the path to be easy; on the ______, it climbed sharply through the rocks.",
+        answer: "contrary",
+        options: ["contrary", "common", "lunar", "adjacent"],
+        clue: "The phrase turns the idea in the opposite direction."
+      }
+    ],
+    passageText: [
+      "In the old library, the students found a map with ",
+      " notes in the margin. They had to ",
+      " their ideas clearly, compare each clue with real ",
+      ", and ",
+      " the final symbol from one page to another. By the end, the group felt a new ",
+      " for classical words."
+    ],
+    passageBlanks: [
+      { id: "common", answer: "common", definition: "shared by several people or belonging to a group", options: ["common", "communal", "popular", "ordinary"] },
+      { id: "communicate", answer: "communicate", definition: "to share information, thoughts, or feelings", options: ["communicate", "commute", "command", "contradict"] },
+      { id: "evidence", answer: "evidence", definition: "facts or signs that help prove whether something is true", options: ["evidence", "vitality", "videlicet", "surplus"] },
+      { id: "transfer", answer: "transfer", definition: "to move something from one place, person, or situation to another", options: ["transfer", "translate", "transmit", "transport"] },
+      { id: "vitality", answer: "vitality", definition: "energy, liveliness, or strength", options: ["vitality", "vitamin", "amity", "vital"] }
+    ]
+  },
+  {
+    contextItems: [
+      {
+        id: "alternative",
+        sentence: "When the first plan failed, the team chose an ______ route across the valley.",
+        answer: "alternative",
+        options: ["alternative", "altercation", "contrary", "intrastate"],
+        clue: "The sentence needs a word for another possible choice."
+      },
+      {
+        id: "contradict",
+        sentence: "A new witness appeared to ______ the story that everyone had believed.",
+        answer: "contradict",
+        options: ["contradict", "contrast", "communicate", "commute"],
+        clue: "The blank needs a verb meaning to speak against a statement."
+      },
+      {
+        id: "constellation",
+        sentence: "The children traced a bright ______ above the campfire and named its stars.",
+        answer: "constellation",
+        options: ["constellation", "stellar", "lunation", "intramural"],
+        clue: "The sentence points to a group of stars."
+      }
+    ],
+    passageText: [
+      "At the night camp, Leo offered an ",
+      " plan when clouds covered the trail. The guide asked him not to ",
+      " the map without proof, so he pointed to a familiar ",
+      " and waited for the ",
+      " moonlight to return. By morning, the group walked on in quiet ",
+      "."
+    ],
+    passageBlanks: [
+      { id: "alternative", answer: "alternative", definition: "another possible choice or option", options: ["alternative", "alteration", "altercation", "altruism"] },
+      { id: "contradict", answer: "contradict", definition: "to say the opposite of something or speak against it", options: ["contradict", "contrast", "contravene", "communicate"] },
+      { id: "constellation", answer: "constellation", definition: "a group of stars forming a pattern", options: ["constellation", "stellar", "stelliform", "lunation"] },
+      { id: "lunar", answer: "lunar", definition: "related to the moon", options: ["lunar", "lunatic", "sublunar", "stellar"] },
+      { id: "amity", answer: "amity", definition: "friendly feeling or peaceful friendship", options: ["amity", "amorous", "amateur", "amatory"] }
+    ]
+  },
+  {
+    contextItems: [
+      {
+        id: "temporary",
+        sentence: "The bridge was only ______, so the hikers crossed it carefully.",
+        answer: "temporary",
+        options: ["temporary", "gratitude", "current", "migrant"],
+        clue: "The word means lasting for a short time."
+      },
+      {
+        id: "current",
+        sentence: "The river's strong ______ pulled the small boat toward the bend.",
+        answer: "current",
+        options: ["current", "gratitude", "rupture", "germinate"],
+        clue: "The sentence asks for moving water."
+      },
+      {
+        id: "seclude",
+        sentence: "The writer chose to ______ herself in a quiet cabin until the chapter was finished.",
+        answer: "seclude",
+        options: ["seclude", "include", "migrate", "fuse"],
+        clue: "The context means to keep apart from others."
+      }
+    ],
+    passageText: [
+      "During the mountain study, the class made a ",
+      " shelter beside a fast ",
+      ". They wrote notes of ",
+      " to their guide, watched seeds begin to ",
+      ", and learned not to ",
+      " themselves from the group when the trail grew hard."
+    ],
+    passageBlanks: [
+      { id: "temporary", answer: "temporary", definition: "lasting for only a limited time", options: ["temporary", "temporal", "contemporary", "temporize"] },
+      { id: "current", answer: "current", definition: "moving water or the flow of something", options: ["current", "curriculum", "recur", "course"] },
+      { id: "gratitude", answer: "gratitude", definition: "a feeling of thankfulness", options: ["gratitude", "gratuity", "gratis", "grateful"] },
+      { id: "germinate", answer: "germinate", definition: "to begin to grow or develop", options: ["germinate", "germane", "germ", "migrate"] },
+      { id: "seclude", answer: "seclude", definition: "to keep apart from others", options: ["seclude", "include", "exclude", "conclude"] }
+    ]
+  },
+  {
+    contextItems: [
+      {
+        id: "urban",
+        sentence: "The museum studied how ______ life changed as the city grew.",
+        answer: "urban",
+        options: ["urban", "pugnant", "numeral", "sacred"],
+        clue: "The sentence points to life in a city."
+      },
+      {
+        id: "sanctuary",
+        sentence: "The small garden became a quiet ______ for readers after school.",
+        answer: "sanctuary",
+        options: ["sanctuary", "vocation", "tribunal", "caption"],
+        clue: "The word suggests a safe or peaceful place."
+      },
+      {
+        id: "vocation",
+        sentence: "After volunteering at the clinic, Ana began to think medicine might be her ______.",
+        answer: "vocation",
+        options: ["vocation", "vocabulary", "punctuation", "torture"],
+        clue: "The sentence asks for a calling or life work."
+      }
+    ],
+    passageText: [
+      "In the old ",
+      " district, a student counted each ",
+      " on the stone wall and copied its ",
+      ". The court nearby felt like a ",
+      ", but the library remained a ",
+      " for anyone who loved words."
+    ],
+    passageBlanks: [
+      { id: "urban", answer: "urban", definition: "related to a city", options: ["urban", "suburban", "urbane", "rural"] },
+      { id: "numeral", answer: "numeral", definition: "a symbol or word that represents a number", options: ["numeral", "numerous", "number", "enumerate"] },
+      { id: "caption", answer: "caption", definition: "a short title or explanation with an image or text", options: ["caption", "capture", "capital", "chapter"] },
+      { id: "tribunal", answer: "tribunal", definition: "a court or place of judgment", options: ["tribunal", "tribute", "tribune", "tribal"] },
+      { id: "sanctuary", answer: "sanctuary", definition: "a safe, peaceful, or protected place", options: ["sanctuary", "sacred", "sanction", "sanctify"] }
+    ]
+  },
+  {
+    contextItems: [
+      { id: "ponderous", sentence: "The old gate was so ______ that three students had to push it open.", answer: "ponderous", options: ["ponderous", "rectify", "punctual", "animate"], clue: "The sentence needs a word meaning heavy or slow." },
+      { id: "rectify", sentence: "After finding the error, the editor worked to ______ the final page.", answer: "rectify", options: ["rectify", "ponder", "tribute", "vocalize"], clue: "The blank means to correct something." },
+      { id: "punctual", sentence: "The guide was always ______, arriving exactly when the bell rang.", answer: "punctual", options: ["punctual", "punctured", "numerous", "urban"], clue: "The sentence points to being on time." }
+    ],
+    passageText: [
+      "At the observatory, the telescope looked ",
+      ", but it helped students ",
+      " a mistaken star chart. Their teacher asked for a ",
+      " report, a clear ",
+      " of the discovery, and a short ",
+      " to the scientist who first named the star."
+    ],
+    passageBlanks: [
+      { id: "ponderous", answer: "ponderous", definition: "heavy, slow, or awkward because of weight", options: ["ponderous", "ponderable", "portable", "powerful"] },
+      { id: "rectify", answer: "rectify", definition: "to correct or make right", options: ["rectify", "direct", "erect", "rectangle"] },
+      { id: "punctual", answer: "punctual", definition: "arriving or happening at the right time", options: ["punctual", "punctured", "punctuate", "punctilious"] },
+      { id: "caption", answer: "caption", definition: "a short explanation beside an image or text", options: ["caption", "capture", "capital", "chapter"] },
+      { id: "tribute", answer: "tribute", definition: "words or actions showing respect or admiration", options: ["tribute", "tribunal", "tribune", "contribute"] }
+    ]
+  },
+  {
+    contextItems: [
+      { id: "migration", sentence: "The birds began their long ______ as the weather turned cold.", answer: "migration", options: ["migration", "rupture", "fusion", "seclusion"], clue: "The context points to movement from one region to another." },
+      { id: "rupture", sentence: "Too much pressure can ______ a weak pipe.", answer: "rupture", options: ["rupture", "migrate", "include", "gratify"], clue: "The blank means to break or burst." },
+      { id: "fusion", sentence: "The project was a ______ of science, art, and classical language.", answer: "fusion", options: ["fusion", "confusion", "germination", "gratitude"], clue: "The word means a joining together." }
+    ],
+    passageText: [
+      "In science class, students tracked animal ",
+      " across a map. They learned how a sudden ",
+      " in an ice shelf could change a route, how cultures sometimes ",
+      " ideas, and how one tiny seed may ",
+      " after a long winter. The lesson ended with real ",
+      " for patient observation."
+    ],
+    passageBlanks: [
+      { id: "migration", answer: "migration", definition: "movement from one place or region to another", options: ["migration", "immigration", "emigration", "motion"] },
+      { id: "rupture", answer: "rupture", definition: "a break or burst", options: ["rupture", "eruption", "interrupt", "corrupt"] },
+      { id: "fuse", answer: "fuse", definition: "to join together into one", options: ["fuse", "refuse", "confuse", "infuse"] },
+      { id: "germinate", answer: "germinate", definition: "to begin to grow or develop", options: ["germinate", "germane", "generate", "migrate"] },
+      { id: "gratitude", answer: "gratitude", definition: "thankfulness", options: ["gratitude", "gratuity", "gratis", "greatness"] }
+    ]
+  },
+  {
+    contextItems: [
+      { id: "populous", sentence: "The ______ market was crowded with shoppers and musicians.", answer: "populous", options: ["populous", "popular", "paternal", "localized"], clue: "The sentence needs a word meaning full of people." },
+      { id: "localized", sentence: "The storm damage was ______ to one small neighborhood.", answer: "localized", options: ["localized", "locomotive", "popularized", "maternal"], clue: "The blank means limited to a particular place." },
+      { id: "matriarch", sentence: "The family listened carefully when the wise ______ spoke.", answer: "matriarch", options: ["matriarch", "patriarch", "population", "centurion"], clue: "The sentence points to a female head of a family." }
+    ],
+    passageText: [
+      "In the ",
+      " town square, a respected ",
+      " told stories about her childhood. A ",
+      " exhibit showed the exact ",
+      " of her first home, and a ",
+      " marker celebrated one hundred years of local history."
+    ],
+    passageBlanks: [
+      { id: "populous", answer: "populous", definition: "having many people", options: ["populous", "popular", "populace", "population"] },
+      { id: "matriarch", answer: "matriarch", definition: "a female head of a family or group", options: ["matriarch", "patriarch", "maternal", "matrimony"] },
+      { id: "localized", answer: "localized", definition: "limited to a particular place", options: ["localized", "location", "locomotive", "dislocated"] },
+      { id: "location", answer: "location", definition: "a place or position", options: ["location", "locomotion", "locality", "dislocation"] },
+      { id: "centennial", answer: "centennial", definition: "related to a one-hundredth anniversary", options: ["centennial", "century", "centimeter", "centurion"] }
+    ]
+  },
+  {
+    contextItems: [
+      { id: "intravenous", sentence: "The medicine was given through an ______ line in the patient's arm.", answer: "intravenous", options: ["intravenous", "intrastate", "intramural", "adjacent"], clue: "The word means within a vein." },
+      { id: "advocate", sentence: "The speaker rose to ______ for cleaner parks in the city.", answer: "advocate", options: ["advocate", "adjacent", "adapt", "adhere"], clue: "The blank means to speak in support of a cause." },
+      { id: "infer", sentence: "From the footprints, the students could ______ that someone had crossed the garden.", answer: "infer", options: ["infer", "transfer", "conifer", "adhere"], clue: "The sentence asks for drawing a conclusion from evidence." }
+    ],
+    passageText: [
+      "At the health fair, Maya learned that ",
+      " fluids move within a vein. Later, she chose to ",
+      " for better school clinics. Her poster helped readers ",
+      " the need from clear ",
+      ", and she promised to ",
+      " the design for younger students."
+    ],
+    passageBlanks: [
+      { id: "intravenous", answer: "intravenous", definition: "within or into a vein", options: ["intravenous", "intracellular", "intrastate", "intramural"] },
+      { id: "advocate", answer: "advocate", definition: "to speak in support of something", options: ["advocate", "vocalize", "evoke", "adjoin"] },
+      { id: "infer", answer: "infer", definition: "to conclude from evidence", options: ["infer", "refer", "transfer", "confer"] },
+      { id: "evidence", answer: "evidence", definition: "facts used to support a belief or claim", options: ["evidence", "provide", "video", "videlicet"] },
+      { id: "adapt", answer: "adapt", definition: "to adjust for a new use or situation", options: ["adapt", "adopt", "adhere", "adjacent"] }
+    ]
+  },
+  {
+    contextItems: [
+      { id: "amorous", sentence: "The old poem sounded ______, full of tender feeling.", answer: "amorous", options: ["amorous", "amateur", "lunar", "gregarious"], clue: "The context points to romantic feeling." },
+      { id: "gregarious", sentence: "The ______ student loved group projects and lunchtime debates.", answer: "gregarious", options: ["gregarious", "solitary", "lunar", "amorous"], clue: "The word describes someone sociable." },
+      { id: "tangible", sentence: "The model gave the class a ______ way to understand the ancient machine.", answer: "tangible", options: ["tangible", "intangible", "juncture", "marine"], clue: "The word means able to be touched or clearly experienced." }
+    ],
+    passageText: [
+      "In drama club, a ",
+      " actor made every rehearsal lively. The script included an ",
+      " letter, a ",
+      " scene under moonlight, and a ",
+      " prop that students could actually hold. At a key ",
+      ", the whole cast finally understood the story."
+    ],
+    passageBlanks: [
+      { id: "gregarious", answer: "gregarious", definition: "sociable; enjoying groups", options: ["gregarious", "gregation", "aggregate", "segregated"] },
+      { id: "amorous", answer: "amorous", definition: "showing romantic love", options: ["amorous", "amatory", "amateur", "amity"] },
+      { id: "lunar", answer: "lunar", definition: "related to the moon", options: ["lunar", "lunatic", "lunation", "sublunar"] },
+      { id: "tangible", answer: "tangible", definition: "able to be touched or clearly understood", options: ["tangible", "intangible", "tangent", "contact"] },
+      { id: "juncture", answer: "juncture", definition: "an important point where things join or change", options: ["juncture", "junction", "adjunct", "conjunction"] }
+    ]
+  },
+  {
+    contextItems: [
+      { id: "animate", sentence: "The artist used color to ______ the flat drawing.", answer: "animate", options: ["animate", "sanctify", "torture", "number"], clue: "The blank means to bring life or energy to something." },
+      { id: "tortuous", sentence: "The ______ road twisted around the mountain for miles.", answer: "tortuous", options: ["tortuous", "tortured", "punctual", "sacred"], clue: "The word describes something full of twists." },
+      { id: "sacred", sentence: "The community treated the quiet grove as a ______ place.", answer: "sacred", options: ["sacred", "urban", "vocal", "acute"], clue: "The sentence points to something holy or deeply respected." }
+    ],
+    passageText: [
+      "The museum guide tried to ",
+      " ancient statues with stories. A ",
+      " path led visitors to a ",
+      " room, where each ",
+      " mark in the inscription changed the meaning. The final display made a sharp, ",
+      " point about careful reading."
+    ],
+    passageBlanks: [
+      { id: "animate", answer: "animate", definition: "to give life, motion, or energy", options: ["animate", "animation", "animal", "animosity"] },
+      { id: "tortuous", answer: "tortuous", definition: "full of twists and turns", options: ["tortuous", "tortured", "torture", "distort"] },
+      { id: "sacred", answer: "sacred", definition: "holy or deeply respected", options: ["sacred", "sanctuary", "sanction", "secret"] },
+      { id: "punctuation", answer: "punctuation", definition: "marks that organize written language", options: ["punctuation", "puncture", "punctual", "punctilious"] },
+      { id: "acute", answer: "acute", definition: "sharp, serious, or keen", options: ["acute", "acrid", "accurate", "acerbic"] }
+    ]
+  }
+];
 
 const fillGroupMessages = [
   { english: "Nicely done!", latin: "Bene fecisti!" },
@@ -1539,7 +1853,7 @@ function levelDisplayName(level: GameLevel) {
 }
 
 function feedbackTone(feedback: string) {
-  if (feedback.includes("Try") || feedback.includes("再想想") || feedback.includes("反击") || feedback.includes("Iterum") || feedback.includes("Cave")) return "wrong";
+  if (feedback.includes("Try") || feedback.includes("Look again") || feedback.includes("再想想") || feedback.includes("反击") || feedback.includes("Iterum") || feedback.includes("Cave")) return "wrong";
   if (feedback.includes("Great") || feedback.includes("击退") || feedback.includes("Optime") || feedback.includes("Macte")) return "great";
   return "correct";
 }
@@ -1653,6 +1967,15 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
   const [buildMapTransitioning, setBuildMapTransitioning] = useState(false);
   const [buildRewardPoints, setBuildRewardPoints] = useState(0);
   const [showBuildFinale, setShowBuildFinale] = useState(false);
+  const [bossStems, setBossStems] = useState<Stem[]>([]);
+  const [bossStage, setBossStage] = useState<BossStageId>("recall");
+  const [bossStep, setBossStep] = useState(0);
+  const [bossFeedback, setBossFeedback] = useState("");
+  const [bossScore, setBossScore] = useState(0);
+  const [bossPassageAnswers, setBossPassageAnswers] = useState<Record<string, string>>({});
+  const [bossPassageMistakes, setBossPassageMistakes] = useState<string[]>([]);
+  const [bossComplete, setBossComplete] = useState(false);
+  const [bossLoop, setBossLoop] = useState(0);
   const audioRef = useRef<AudioContext | null>(null);
   const musicTimerRef = useRef<number | null>(null);
   const fillRevealTimersRef = useRef<number[]>([]);
@@ -2337,6 +2660,161 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     return fromServer.length ? fromServer : shuffle(stems).slice(0, 10);
   }
 
+  function bossStemPool(loopIndex = bossLoop) {
+    const priority = weakStems();
+    const ids = new Set<string>();
+    const combined = [...priority, ...stems].filter((stem) => {
+      if (ids.has(stem.id)) return false;
+      ids.add(stem.id);
+      return Boolean(stem.meaning);
+    });
+    if (combined.length <= 8) return combined;
+    const offset = (loopIndex * 8) % combined.length;
+    return [...combined.slice(offset), ...combined.slice(0, offset)].slice(0, 8);
+  }
+
+  function bossForgeItems(pool = bossStems) {
+    return pool
+      .map((stem) => buildWordChallengeFor(stem.key) ?? buildWordChallengeFor(stem.id))
+      .filter((challenge): challenge is BuildWordChallenge => Boolean(challenge))
+      .flatMap((challenge) => challenge.familyWords.map((word) => ({ ...word, stem: challenge.label })))
+      .slice(0, 3);
+  }
+
+  function bossLoopContent(loopIndex = bossLoop) {
+    return bossLoopContents[loopIndex % bossLoopContents.length];
+  }
+
+  function normalizedBossLoop(loopIndex = bossLoop) {
+    return Math.min(Math.max(loopIndex, 0), bossTotalLoops - 1);
+  }
+
+  function bossStageTotal(stage: BossStageId) {
+    if (stage === "recall") return Math.min(3, bossStems.length);
+    if (stage === "forge") return Math.max(1, bossForgeItems().length);
+    if (stage === "context") return bossLoopContent().contextItems.length;
+    return 1;
+  }
+
+  function bossStageIndex(stage = bossStage) {
+    return bossStageOrder.indexOf(stage);
+  }
+
+  function advanceBossStage() {
+    const nextStage = bossStageOrder[bossStageIndex() + 1];
+    if (!nextStage) {
+      finishBossChallenge();
+      return;
+    }
+    setBossStage(nextStage);
+    setBossStep(0);
+    setBossFeedback("");
+  }
+
+  function advanceBossStep() {
+    const total = bossStageTotal(bossStage);
+    window.setTimeout(() => {
+      if (bossStep + 1 >= total) advanceBossStage();
+      else {
+        setBossStep((step) => step + 1);
+        setBossFeedback("");
+      }
+    }, 850);
+  }
+
+  function markBossAnswer(isCorrect: boolean, stem?: Stem) {
+    if (stem) {
+      recordQuestion({ type: "pick", stem, answer: stem.key, meaning: stem.meaning ?? "", options: [] }, isCorrect, stem.key).catch(() => undefined);
+    }
+    if (isCorrect) {
+      setBossScore((score) => score + 1);
+      setBossFeedback("Nice move.");
+      playAnswerCorrectSound();
+      advanceBossStep();
+    } else {
+      setBossFeedback("Look again. The clue is doing quiet work here.");
+      playAnswerWrongSound();
+    }
+  }
+
+  function startBossChallenge(loopIndex = 0) {
+    const nextLoop = normalizedBossLoop(loopIndex);
+    stopRootMatchMusic();
+    clearFillRevealTimers();
+    clearBuildReviewTimers();
+    initAudio();
+    refreshBuildRewards();
+    setBossLoop(nextLoop);
+    setBossStems(bossStemPool(nextLoop));
+    setBossStage("recall");
+    setBossStep(0);
+    setBossFeedback("");
+    setBossScore(0);
+    setBossPassageAnswers({});
+    setBossPassageMistakes([]);
+    setBossComplete(false);
+    setScreen("boss");
+  }
+
+  function chooseBossRecall(option: string) {
+    const stem = bossStems[bossStep];
+    if (!stem) return;
+    markBossAnswer(normalize(option) === normalize(stem.key), stem);
+  }
+
+  function chooseBossForge(word: string) {
+    const item = bossForgeItems()[bossStep];
+    if (!item) return;
+    markBossAnswer(normalize(word) === normalize(item.word));
+  }
+
+  function chooseBossContext(word: string) {
+    const item = bossLoopContent().contextItems[bossStep];
+    if (!item) return;
+    markBossAnswer(normalize(word) === normalize(item.answer));
+  }
+
+  function setBossPassageBlank(blankId: string, word: string) {
+    setBossPassageAnswers((answers) => ({ ...answers, [blankId]: word }));
+    setBossPassageMistakes((mistakes) => mistakes.filter((id) => id !== blankId));
+  }
+
+  function checkBossPassage() {
+    const passageBlanks = bossLoopContent().passageBlanks;
+    const complete = passageBlanks.every((blank) => bossPassageAnswers[blank.id]);
+    if (!complete) {
+      setBossPassageMistakes(passageBlanks.filter((blank) => !bossPassageAnswers[blank.id]).map((blank) => blank.id));
+      setBossFeedback("Fill every blank, then read the paragraph once more.");
+      return;
+    }
+    const mistakes = passageBlanks
+      .filter((blank) => normalize(bossPassageAnswers[blank.id]) !== normalize(blank.answer))
+      .map((blank) => blank.id);
+    if (mistakes.length) {
+      setBossPassageMistakes(mistakes);
+      setBossFeedback("Check the marked blank. The definition will point you back to the right word.");
+      playAnswerWrongSound();
+      return;
+    }
+    setBossPassageMistakes([]);
+    setBossScore((score) => score + passageBlanks.length);
+    setBossFeedback("The paragraph flows.");
+    playGroupCelebrationSound();
+    window.setTimeout(() => finishBossChallenge(), 1200);
+  }
+
+  function finishBossChallenge() {
+    setBossComplete(true);
+    setBossFeedback("");
+    playRoundCelebrationSound();
+    applyGameReward(
+      bossLoopReward(bossLoop),
+      "boss-challenge",
+      `boss-challenge-pack-${bossLoop + 1}`,
+      `Completed Boss Challenge pack ${bossLoop + 1}`
+    );
+  }
+
   function rootMatchRounds(roundStems: Stem[], groupSize: number): GameQuestion[] {
     const rounds: GameQuestion[] = [];
     for (let offset = 0; offset < roundStems.length; offset += groupSize) {
@@ -2885,6 +3363,10 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       setScreen("root-match-select");
       return;
     }
+    if (level.isBoss || level.type === "boss") {
+      startBossChallenge();
+      return;
+    }
 
     clearSavedSession();
     initAudio();
@@ -3098,6 +3580,18 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
   const totalQuestionItems = questionItemCount(questions);
   const resultAccuracy = totalQuestionItems ? run.correct / totalQuestionItems : 0;
   const resultStars = totalQuestionItems ? (resultAccuracy >= 0.9 ? 3 : resultAccuracy >= 0.7 ? 2 : 1) : 1;
+  const bossMeta = bossStageMeta[bossStage];
+  const bossStageNumber = bossStageIndex() + 1;
+  const bossStageTotalCount = bossStageTotal(bossStage);
+  const bossRecallStem = bossStems[bossStep];
+  const bossForgeItem = bossForgeItems()[bossStep];
+  const activeBossLoopContent = bossLoopContent();
+  const bossContextItem = activeBossLoopContent.contextItems[bossStep];
+  const bossPassageText = activeBossLoopContent.passageText;
+  const bossPassageBlanks = activeBossLoopContent.passageBlanks;
+  const bossPackNumber = normalizedBossLoop() + 1;
+  const bossReward = bossLoopReward(normalizedBossLoop());
+  const hasNextBossPack = bossPackNumber < bossTotalLoops;
 
   return (
     <main className="battle-page">
@@ -3479,6 +3973,121 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
               </div>
             )}
             </div>
+        </section>
+      ) : null}
+
+      {screen === "boss" ? (
+        <section className="boss-challenge">
+          <button className="button" onClick={() => setScreen("select")} type="button">← 返回关卡</button>
+          <div className="boss-shell">
+            <header className="boss-header">
+              <span>Boss Challenge</span>
+              <h1>{bossComplete ? "Challenge Complete" : bossMeta.title}</h1>
+              <p>{bossComplete ? "You used stems, words, and context together." : bossMeta.subtitle}</p>
+              <div className="boss-pack-banner" aria-label={`Pack ${bossPackNumber} of ${bossTotalLoops}, reward ${bossReward} gems`}>
+                <span>Pack {bossPackNumber}/{bossTotalLoops}</span>
+                <strong>+{bossReward}</strong>
+                <span className="gem-icon small" aria-hidden="true" />
+              </div>
+              {!bossComplete ? (
+                <div className="boss-progress" aria-label={`Stage ${bossStageNumber} of ${bossStageOrder.length}`}>
+                  {bossStageOrder.map((stage, index) => (
+                    <span className={index <= bossStageIndex() ? "active" : ""} key={stage}>{index + 1}</span>
+                  ))}
+                </div>
+              ) : null}
+            </header>
+
+            {bossComplete ? (
+              <div className="boss-complete-card">
+                <strong>Great work.</strong>
+                <p>You moved from recall into real vocabulary use, then completed a paragraph with context.</p>
+                <p className="boss-loop-note">
+                  {hasNextBossPack
+                    ? `Ready for Pack ${bossPackNumber + 1}? The next clear is worth ${bossLoopReward(bossPackNumber)} gems and brings in a new set of stems, nonfiction words, and family words.`
+                    : "You cleared all 10 packs. Replay from Pack 1 anytime to keep the words warm."}
+                </p>
+                <div className="boss-complete-actions">
+                  <button className="button primary" onClick={() => startBossChallenge(hasNextBossPack ? bossLoop + 1 : 0)} type="button">
+                    {hasNextBossPack ? "Challenge Next Pack" : "Replay From Pack 1"}
+                  </button>
+                  <button className="button" onClick={() => setScreen("select")} type="button">Back to Games</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="boss-stage-count">Stage {bossStageNumber} · {Math.min(bossStep + 1, bossStageTotalCount)}/{bossStageTotalCount}</div>
+
+                {bossStage === "recall" && bossRecallStem ? (
+                  <div className="boss-card">
+                    <small>Choose the stem</small>
+                    <h2>{bossRecallStem.meaning}</h2>
+                    <div className="boss-choice-grid">
+                      {optionsFor(bossRecallStem).map((option) => (
+                        <button key={option} onClick={() => chooseBossRecall(option)} type="button">{option}</button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {bossStage === "forge" && bossForgeItem ? (
+                  <div className="boss-card">
+                    <small>Choose the family word</small>
+                    <h2>{bossForgeItem.meaning}</h2>
+                    <p className="boss-root-clue">root family: {bossForgeItem.stem}</p>
+                    <div className="boss-choice-grid">
+                      {shuffle([bossForgeItem.word, ...bossForgeItems().filter((item) => item.word !== bossForgeItem.word).slice(0, 3).map((item) => item.word)]).map((option) => (
+                        <button key={option} onClick={() => chooseBossForge(option)} type="button">{option}</button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {bossStage === "context" && bossContextItem ? (
+                  <div className="boss-card context">
+                    <small>Choose in context</small>
+                    <h2>{bossContextItem.sentence}</h2>
+                    <p className="boss-root-clue">{bossContextItem.clue}</p>
+                    <div className="boss-choice-grid">
+                      {bossContextItem.options.map((option) => (
+                        <button key={option} onClick={() => chooseBossContext(option)} type="button">{option}</button>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {bossStage === "passage" ? (
+                  <div className="boss-card passage">
+                    <small>Complete the passage</small>
+                    <div className="boss-passage">
+                      {bossPassageBlanks.map((blank, index) => (
+                        <span className={bossPassageMistakes.includes(blank.id) ? "needs-work" : ""} key={blank.id}>
+                          {bossPassageText[index]}
+                          <select
+                            aria-label={blank.definition}
+                            onChange={(event) => setBossPassageBlank(blank.id, event.target.value)}
+                            value={bossPassageAnswers[blank.id] ?? ""}
+                          >
+                            <option value="">choose</option>
+                            {blank.options.map((option) => <option key={option} value={option}>{option}</option>)}
+                          </select>
+                          {bossPassageMistakes.includes(blank.id) ? (
+                            <em className="boss-passage-hint">
+                              {blank.answer}: {blank.definition}
+                            </em>
+                          ) : null}
+                        </span>
+                      ))}
+                      <span>{bossPassageText[bossPassageText.length - 1]}</span>
+                    </div>
+                    <button className="button primary" onClick={checkBossPassage} type="button">Check Passage</button>
+                  </div>
+                ) : null}
+
+                {bossFeedback ? <div className={`boss-feedback ${feedbackTone(bossFeedback)}`}>{bossFeedback}</div> : null}
+              </>
+            )}
+          </div>
         </section>
       ) : null}
 
