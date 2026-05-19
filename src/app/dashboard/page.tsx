@@ -127,11 +127,17 @@ export default async function DashboardPage() {
               <p>用拼写补全、连线、判断和闪电选择等玩法，反复训练 Latin Stems。</p>
               <em>互动游戏 · {primaryCourse._count.gameLevels} levels</em>
             </Link>
-            <Link href={`/courses/${primaryCourse.slug}/vocab-practice`} className="legacy-module-card">
+            <Link href={`/courses/${primaryCourse.slug}/vocab-practice?type=latin-stems`} className="legacy-module-card">
               <span>✏️</span>
-              <strong>词汇练习</strong>
-              <p>20 个单元全部覆盖。连线题、上下文选词、同义词、反义词，点击即时反馈，自动评分。</p>
-              <em>互动练习 · {primaryCourse._count.exercises} exercises</em>
+              <strong>Roots of Power</strong>
+              <p>按 Latin Stems 课程顺序练习词根、含义和例词，点击即时反馈，自动评分。</p>
+              <em>词根练习 · odd lessons</em>
+            </Link>
+            <Link href={`/courses/${primaryCourse.slug}/vocab-practice?type=classic-words`} className="legacy-module-card">
+              <span>📝</span>
+              <strong>Classic Word Treasury</strong>
+              <p>按 Classic Words 课程顺序练习上下文选词、同义词和反义词。</p>
+              <em>经典词汇 · even lessons</em>
             </Link>
           </div>
         </section>
@@ -147,7 +153,8 @@ export default async function DashboardPage() {
               <Link href={`/courses/${primaryCourse.slug}/analogies-antonyms`}>Analogies &amp; Antonyms</Link>
               <Link href={`/courses/${primaryCourse.slug}/workbook`}>精简练习册</Link>
               <Link href={`/courses/${primaryCourse.slug}/battle`}>Stem Battle</Link>
-              <Link href={`/courses/${primaryCourse.slug}/vocab-practice`}>词汇练习（互动版）</Link>
+              <Link href={`/courses/${primaryCourse.slug}/vocab-practice?type=latin-stems`}>Roots of Power</Link>
+              <Link href={`/courses/${primaryCourse.slug}/vocab-practice?type=classic-words`}>Classic Word Treasury</Link>
               <Link href={`/courses/${primaryCourse.slug}`}>课程数据总览</Link>
             </>
           ) : null}

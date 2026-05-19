@@ -30,6 +30,9 @@ export default async function CoursePage({ params }: Props) {
   if (!course) notFound();
   if (!user) redirect(`/login?next=/courses/${course.slug}`);
 
+  const latinStemLessons = course.lessons.filter((lesson) => lesson.kind === "LATIN_STEMS");
+  const classicWordLessons = course.lessons.filter((lesson) => lesson.kind === "CLASSIC_WORDS");
+
   return (
     <main className="legacy-page embedded">
       <section className="legacy-cover compact">
@@ -76,11 +79,17 @@ export default async function CoursePage({ params }: Props) {
             <p>通过多种互动题型反复训练 Latin Stems，逐步掌握词根、含义和例词。</p>
             <em>词根闯关</em>
           </Link>
-          <Link href={`/courses/${course.slug}/vocab-practice`} className="legacy-module-card">
+          <Link href={`/courses/${course.slug}/vocab-practice?type=latin-stems`} className="legacy-module-card">
             <span>✏️</span>
-            <strong>词汇练习</strong>
-            <p>连线题、上下文选词、同义词、反义词即时反馈。</p>
-            <em>互动练习</em>
+            <strong>Roots of Power</strong>
+            <p>按课练习 Latin Stems：连线、上下文选择和即时反馈。</p>
+            <em>{latinStemLessons.length} stem lessons</em>
+          </Link>
+          <Link href={`/courses/${course.slug}/vocab-practice?type=classic-words`} className="legacy-module-card">
+            <span>📝</span>
+            <strong>Classic Word Treasury</strong>
+            <p>按课练习 Classic Words：上下文选词、同义词、反义词和即时反馈。</p>
+            <em>{classicWordLessons.length} word lessons</em>
           </Link>
         </div>
       </section>

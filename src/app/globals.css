@@ -1345,6 +1345,318 @@ textarea {
   opacity: 1;
 }
 
+.roots-power-page {
+  background:
+    radial-gradient(circle at 18% 16%, rgba(255, 232, 171, 0.42), transparent 28%),
+    radial-gradient(circle at 82% 24%, rgba(79, 141, 105, 0.16), transparent 30%),
+    linear-gradient(180deg, #fffaf0 0%, #f8f4ec 56%, #f4efe4 100%);
+}
+
+.roots-power-page .legacy-cover {
+  position: relative;
+  overflow: hidden;
+}
+
+.roots-power-page .legacy-cover::before,
+.roots-power-page .legacy-cover::after {
+  position: absolute;
+  inset: auto;
+  border-radius: 999px;
+  content: "";
+  pointer-events: none;
+}
+
+.roots-power-page .legacy-cover::before {
+  top: 34px;
+  right: 14%;
+  width: 72px;
+  height: 72px;
+  background: radial-gradient(circle, rgba(201, 169, 97, 0.28), rgba(201, 169, 97, 0));
+}
+
+.roots-power-page .legacy-cover::after {
+  bottom: 22px;
+  left: 18%;
+  width: 120px;
+  height: 12px;
+  background: linear-gradient(90deg, transparent, rgba(38, 87, 111, 0.18), transparent);
+  transform: rotate(-4deg);
+}
+
+.roots-power-page .legacy-lesson-grid {
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+}
+
+.roots-power-page .legacy-lesson-card {
+  position: relative;
+  min-height: 174px;
+  border: 1px solid rgba(201, 169, 97, 0.34);
+  border-bottom: 6px solid rgba(38, 87, 111, 0.22);
+  border-left: 0;
+  background:
+    linear-gradient(140deg, rgba(255, 255, 255, 0.98), rgba(255, 248, 232, 0.86)),
+    radial-gradient(circle at 78% 18%, rgba(201, 169, 97, 0.18), transparent 38%);
+  box-shadow: 0 14px 28px rgba(38, 87, 111, 0.09);
+  padding: 24px;
+}
+
+.roots-power-page .legacy-lesson-card::after {
+  position: absolute;
+  right: 18px;
+  bottom: 16px;
+  width: 42px;
+  height: 42px;
+  border: 2px solid rgba(201, 169, 97, 0.36);
+  border-radius: 50%;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.88), rgba(201, 169, 97, 0.16));
+  box-shadow: inset 0 -4px 0 rgba(38, 87, 111, 0.08);
+  content: "";
+}
+
+.roots-power-page .legacy-lesson-card:hover {
+  box-shadow: 0 22px 40px rgba(38, 87, 111, 0.16);
+  transform: translateY(-5px) scale(1.01);
+}
+
+.roots-power-page .legacy-lesson-num {
+  width: fit-content;
+  border-radius: 999px;
+  background: rgba(38, 87, 111, 0.1);
+  color: var(--legacy-primary);
+  padding: 5px 12px;
+}
+
+.roots-power-page .legacy-lesson-card strong {
+  color: var(--legacy-primary);
+  font-size: 28px;
+  line-height: 1.05;
+}
+
+.roots-power-page .legacy-lesson-card small {
+  color: var(--legacy-gold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.roots-power-page .legacy-score-bar {
+  border: 1px solid rgba(38, 87, 111, 0.16);
+  border-bottom: 5px solid rgba(201, 169, 97, 0.24);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 16px 34px rgba(38, 87, 111, 0.1);
+}
+
+.roots-power-page .legacy-score-bar span,
+.roots-power-page .legacy-score-bar strong {
+  color: var(--legacy-primary);
+  font-weight: 900;
+}
+
+.roots-power-page .legacy-score-track {
+  height: 14px;
+  border: 1px solid rgba(38, 87, 111, 0.14);
+  background: #f3ead7;
+}
+
+.roots-power-page .legacy-score-fill {
+  background: linear-gradient(90deg, #51a36f, #d2a941, #e85a1f);
+}
+
+.roots-power-page .legacy-ex-section {
+  position: relative;
+  border: 1px solid rgba(201, 169, 97, 0.3);
+  border-bottom: 6px solid rgba(38, 87, 111, 0.14);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 250, 240, 0.94)),
+    radial-gradient(circle at 90% 12%, rgba(81, 163, 111, 0.1), transparent 32%);
+  box-shadow: 0 18px 36px rgba(38, 87, 111, 0.1);
+}
+
+.roots-power-page .legacy-ex-section h3 {
+  display: inline-flex;
+  align-items: center;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(38, 87, 111, 0.1);
+  color: var(--legacy-primary);
+  font-size: 18px;
+  padding: 9px 16px;
+}
+
+.roots-power-page .legacy-matching {
+  gap: 22px;
+}
+
+.roots-power-page .roots-match-board {
+  position: relative;
+}
+
+.roots-match-lines {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.roots-match-lines line {
+  stroke: rgba(38, 87, 111, 0.72);
+  stroke-dasharray: 8 6;
+  stroke-linecap: round;
+  stroke-width: 4;
+  filter: drop-shadow(0 3px 4px rgba(38, 87, 111, 0.18));
+}
+
+.roots-match-lines line.matched {
+  stroke: rgba(81, 163, 111, 0.9);
+  stroke-dasharray: 0;
+}
+
+.roots-power-page .legacy-matching > div {
+  position: relative;
+  z-index: 3;
+  border-radius: 8px;
+  padding: 18px;
+}
+
+.roots-power-page .legacy-matching > div:first-child {
+  border: 1px solid rgba(38, 87, 111, 0.12);
+  background: linear-gradient(180deg, rgba(38, 87, 111, 0.12), rgba(38, 87, 111, 0.05));
+}
+
+.roots-power-page .legacy-matching > div:last-child {
+  border: 1px solid rgba(81, 163, 111, 0.16);
+  background: linear-gradient(180deg, rgba(81, 163, 111, 0.13), rgba(81, 163, 111, 0.05));
+}
+
+.roots-power-page .legacy-matching h4 {
+  color: var(--legacy-primary);
+  font-size: 16px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.roots-power-page .legacy-match-item,
+.roots-power-page .legacy-opt {
+  border-color: rgba(38, 87, 111, 0.14);
+  border-bottom-width: 4px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 7px 16px rgba(38, 87, 111, 0.08);
+  font-weight: 800;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease, background 0.16s ease;
+}
+
+.roots-power-page .legacy-match-item:hover,
+.roots-power-page .legacy-opt:hover:not(:disabled) {
+  border-color: var(--legacy-gold);
+  background: #fff7e4;
+  box-shadow: 0 12px 22px rgba(38, 87, 111, 0.12);
+  transform: translateY(-2px);
+}
+
+.roots-power-page .legacy-match-item.selected {
+  border-color: var(--legacy-primary);
+  background: rgba(38, 87, 111, 0.12);
+  transform: translateY(-2px) scale(1.01);
+}
+
+.roots-power-page .legacy-match-item.assigned,
+.roots-power-page .legacy-opt.selected {
+  border-color: var(--legacy-primary);
+  background: rgba(38, 87, 111, 0.1);
+  box-shadow: 0 14px 24px rgba(38, 87, 111, 0.14);
+}
+
+.roots-power-page .legacy-match-item.matched,
+.roots-power-page .legacy-opt.correct {
+  border-color: #51a36f;
+  background: rgba(81, 163, 111, 0.16);
+  color: #1f6f3d;
+}
+
+.roots-power-page .legacy-opt.checked-correct {
+  border-color: #39a862;
+  background: rgba(81, 163, 111, 0.16);
+  box-shadow: 0 0 0 3px rgba(81, 163, 111, 0.16), 0 12px 22px rgba(38, 87, 111, 0.1);
+  color: #1f6f3d;
+}
+
+.roots-power-page .legacy-opt.checked-wrong {
+  border-color: #d24a37;
+  background: rgba(210, 74, 55, 0.1);
+  box-shadow: 0 0 0 3px rgba(210, 74, 55, 0.14), 0 12px 22px rgba(38, 87, 111, 0.1);
+  color: #a72f22;
+}
+
+.roots-power-page .legacy-mcq {
+  border: 1px solid rgba(201, 169, 97, 0.22);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.72);
+  margin-bottom: 16px;
+  padding: 18px;
+}
+
+.roots-power-page .legacy-mcq:last-child {
+  border-bottom: 1px solid rgba(201, 169, 97, 0.22);
+  padding-bottom: 18px;
+}
+
+.roots-power-page .legacy-mcq-q {
+  color: var(--legacy-primary);
+  font-size: 17px;
+}
+
+.roots-power-page .legacy-reveal {
+  background: var(--legacy-primary);
+  box-shadow: 0 12px 26px rgba(38, 87, 111, 0.18);
+}
+
+.roots-check-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.roots-check-button {
+  border: 0;
+  border-bottom: 5px solid rgba(38, 87, 111, 0.28);
+  border-radius: 999px;
+  background: linear-gradient(135deg, var(--legacy-primary), #347a5a);
+  box-shadow: 0 14px 24px rgba(38, 87, 111, 0.18);
+  color: white;
+  cursor: pointer;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  padding: 12px 24px;
+  text-transform: uppercase;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+
+.roots-check-button:hover {
+  box-shadow: 0 18px 30px rgba(38, 87, 111, 0.22);
+  transform: translateY(-2px);
+}
+
+.roots-section-feedback {
+  border-radius: 999px;
+  font-weight: 900;
+  padding: 9px 15px;
+}
+
+.roots-section-feedback.correct {
+  background: rgba(81, 163, 111, 0.16);
+  color: #1f6f3d;
+}
+
+.roots-section-feedback.wrong {
+  background: rgba(210, 88, 58, 0.12);
+  color: #b73522;
+}
+
 .learning-stem-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));

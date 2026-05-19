@@ -2792,7 +2792,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       .map((blank) => blank.id);
     if (mistakes.length) {
       setBossPassageMistakes(mistakes);
-      setBossFeedback("Check the marked blank. The definition will point you back to the right word.");
+      setBossFeedback("Check the marked blank. The definition will guide your next choice.");
       playAnswerWrongSound();
       return;
     }
@@ -4073,7 +4073,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
                           </select>
                           {bossPassageMistakes.includes(blank.id) ? (
                             <em className="boss-passage-hint">
-                              {blank.answer}: {blank.definition}
+                              {blank.definition}
                             </em>
                           ) : null}
                         </span>
