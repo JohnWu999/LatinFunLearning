@@ -79,6 +79,12 @@ export default async function CoursePage({ params }: Props) {
             <p>通过多种互动题型反复训练 Latin Stems，逐步掌握词根、含义和例词。</p>
             <em>词根闯关</em>
           </Link>
+          <Link href={`/courses/${course.slug}/classic-word-quest`} className="legacy-module-card">
+            <span>🔨</span>
+            <strong>Whack-a-Word</strong>
+            <p>听标准发音，快速敲中正确的 classic word，越快答对宝石越多。</p>
+            <em>Classic Words game</em>
+          </Link>
           <Link href={`/courses/${course.slug}/vocab-practice?type=latin-stems`} className="legacy-module-card">
             <span>✏️</span>
             <strong>Roots of Power</strong>

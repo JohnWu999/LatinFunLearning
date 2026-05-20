@@ -17,6 +17,16 @@ export const analogiesAntonymsLessons: AnalogiesAntonymsLesson[] = [
     sourceLesson: "PDF Lesson I",
     analogies: [
       {
+        prompt: "PRELUDE : POSTLUDE ::",
+        options: ["tire : car", "window : house", "prologue : epilogue", "red : sunset"],
+        correctAnswerIndex: 2
+      },
+      {
+        prompt: "DESCEND : ASCEND ::",
+        options: ["bicycle : tricycle", "submerge : emerge", "man : superman", "school : preschool"],
+        correctAnswerIndex: 1
+      },
+      {
         prompt: "INTRACELLULAR : CELL ::",
         options: ["advocate : oppose", "transfer : goods", "interior : car", "century : year"],
         correctAnswerIndex: 2

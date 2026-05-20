@@ -53,8 +53,8 @@ const practiceCopy: Record<PracticeType, { title: string; subtitle: string; desc
   "classic-words": {
     title: "Classic Word Treasury",
     subtitle: "Classic Words Practice",
-    description: "Even Lessons · Classic Words · 自动同步错题与进度",
-    lessonHint: "只显示 Classic Words 课程：连线题 · 上下文选词 · 同义词 · 反义词",
+    description: "10 Treasury Steps · Meanings · Context · Word Allies",
+    lessonHint: "Choose a step, complete each quest, and earn gemmae.",
     empty: "暂无 Classic Words 练习单元。"
   },
   all: {
@@ -150,6 +150,47 @@ function playRootRewardSound() {
   });
 }
 
+function speakLatinEncouragement(stage: number) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  window.speechSynthesis.cancel();
+  const utterance = new SpeechSynthesisUtterance(stage >= 10 ? "Macte virtute! Omnes gradus vicisti." : "Macte! Ascende ad proximum gradum.");
+  utterance.lang = "la";
+  utterance.rate = 0.82;
+  utterance.pitch = 1.08;
+  utterance.volume = 1;
+  window.speechSynthesis.speak(utterance);
+}
+
+function progressStorageKey(courseId: string, practiceType: PracticeType) {
+  return practiceType === "latin-stems"
+    ? `roots_power_completed_${courseId}`
+    : `classic_treasury_completed_${courseId}`;
+}
+
+function stageTitle(practiceType: PracticeType, stage: number) {
+  if (practiceType === "latin-stems") return `Power Stage ${stage}`;
+  if (practiceType === "classic-words") return `Treasury Step ${stage}`;
+  return `Lesson ${stage}`;
+}
+
+function stageCardTitle(practiceType: PracticeType, stage: number) {
+  if (practiceType === "classic-words") return `Step ${stage}`;
+  return stageTitle(practiceType, stage);
+}
+
+function questTitle(practiceType: PracticeType, group: PracticeGroup, questNumber: number) {
+  if (practiceType === "all") {
+    if (group === "matching") return "练习一：连线题 — 英文释义 ↔ 单词匹配";
+    return `练习${["二", "三", "四"][questNumber - 2]}：${group === "context" ? "上下文选词题" : group === "synonym" ? "同义词选择题" : "反义词选择题"}`;
+  }
+  if (practiceType === "latin-stems") {
+    if (group === "matching") return "Quest 1 · Match the Power Root";
+    return `Quest ${questNumber} · ${group === "context" ? "Choose in Context" : group === "synonym" ? "Find the Ally Word" : "Spot the Opposite"}`;
+  }
+  if (group === "matching") return "Quest 1 · Match the Treasure Word";
+  return `Quest ${questNumber} · ${group === "context" ? "Choose in Context" : group === "synonym" ? "Find the Kindred Word" : "Find the Opposite"}`;
+}
+
 async function refreshRewardHeader(courseId: string) {
   const response = await fetch(appPath(`/api/rewards?courseId=${courseId}`));
   if (!response.ok) return;
@@ -172,6 +213,10 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
   const [sectionFeedback, setSectionFeedback] = useState<Record<string, string>>({});
   const [completedSections, setCompletedSections] = useState<Record<string, boolean>>({});
   const [awardedSections, setAwardedSections] = useState<Record<string, number>>({});
+  const [completedLessonIds, setCompletedLessonIds] = useState<string[]>([]);
+  const [hasLoadedStageProgress, setHasLoadedStageProgress] = useState(!["latin-stems", "classic-words"].includes(practiceType));
+  const [climberJumpStage, setClimberJumpStage] = useState<number | null>(null);
+  const [rootsMapMessage, setRootsMapMessage] = useState("");
   const [matchLines, setMatchLines] = useState<MatchLine[]>([]);
   const [toast, setToast] = useState("");
   const [showAnswers, setShowAnswers] = useState(false);
@@ -180,11 +225,40 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
   const activeLessonIndex = activeLesson ? lessons.findIndex((lesson) => lesson.id === activeLesson.id) : -1;
   const copy = practiceCopy[practiceType];
   const isRootsPower = practiceType === "latin-stems";
-  const pageClassName = `legacy-page ${isRootsPower ? "roots-power-page" : ""}`;
+  const isClassicTreasure = practiceType === "classic-words";
+  const isStagePractice = isRootsPower || isClassicTreasure;
+  const pageClassName = `legacy-page ${isRootsPower ? "roots-power-page" : ""} ${isClassicTreasure ? "classic-treasure-page" : ""}`;
+  const completedLessonSet = useMemo(() => new Set(completedLessonIds), [completedLessonIds]);
+  const highestCompletedIndex = lessons.reduce((highest, lesson, index) => completedLessonSet.has(lesson.id) ? Math.max(highest, index) : highest, -1);
+  const restingClimberStage = isStagePractice && lessons.length > 0 ? Math.max(1, Math.min(highestCompletedIndex + 1, lessons.length)) : 1;
+  const climberStage = climberJumpStage ?? restingClimberStage;
 
   function lessonNumber(lesson: LegacyLesson, index: number) {
     return practiceType === "all" ? lesson.order : index + 1;
   }
+
+  useEffect(() => {
+    if (!isStagePractice || typeof window === "undefined") return;
+    const stored = window.localStorage.getItem(progressStorageKey(courseId, practiceType));
+    if (!stored) {
+      setHasLoadedStageProgress(true);
+      return;
+    }
+    try {
+      const ids = JSON.parse(stored);
+      if (Array.isArray(ids)) setCompletedLessonIds(ids.filter((id): id is string => typeof id === "string"));
+    } catch {
+      window.localStorage.removeItem(progressStorageKey(courseId, practiceType));
+    } finally {
+      setHasLoadedStageProgress(true);
+    }
+  }, [courseId, isStagePractice, practiceType]);
+
+  useEffect(() => {
+    if (!isStagePractice || typeof window === "undefined") return;
+    if (!hasLoadedStageProgress) return;
+    window.localStorage.setItem(progressStorageKey(courseId, practiceType), JSON.stringify(completedLessonIds));
+  }, [completedLessonIds, courseId, hasLoadedStageProgress, isStagePractice, practiceType]);
 
   const grouped = useMemo(() => {
     const groups: Record<string, LegacyExercise[]> = {
@@ -212,7 +286,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
   const activeGroups = (["matching", "context", "synonym", "antonym"] as PracticeGroup[]).filter((group) => grouped[group].length > 0);
 
   useEffect(() => {
-    if (!isRootsPower || !matchingAreaRef.current) {
+    if (!isStagePractice || !matchingAreaRef.current) {
       setMatchLines([]);
       return;
     }
@@ -242,7 +316,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
     updateLines();
     window.addEventListener("resize", updateLines);
     return () => window.removeEventListener("resize", updateLines);
-  }, [isRootsPower, matchingSelections, matched, shuffledMatchingWords, activeLessonId]);
+  }, [isStagePractice, matchingSelections, matched, shuffledMatchingWords, activeLessonId]);
 
   function notify(message: string) {
     setToast(message);
@@ -269,7 +343,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
     if (response.ok && isCorrect) await refreshRewardHeader(courseId);
   }
 
-  async function applyRootsReward(amount: number, sourceKey: string, reason: string) {
+  async function applyStageReward(amount: number, sourceKey: string, reason: string) {
     if (!isLoggedIn) return 0;
     const response = await fetch(appPath("/api/rewards"), {
       method: "POST",
@@ -277,7 +351,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
       body: JSON.stringify({
         courseId,
         amount,
-        source: "roots-of-power",
+        source: isRootsPower ? "roots-of-power" : "classic-word-treasury",
         sourceKey,
         reason
       })
@@ -290,8 +364,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
     return payload.data?.awarded ?? 0;
   }
 
-  function startLesson(lessonId: string) {
-    setActiveLessonId(lessonId);
+  function resetActiveLessonState() {
     setAnswered({});
     setMatched({});
     setMatchingSelections({});
@@ -302,26 +375,50 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
     setAwardedSections({});
     setSelectedMatch(null);
     setShowAnswers(false);
+  }
+
+  function openLesson(lessonId: string) {
+    setActiveLessonId(lessonId);
+    setRootsMapMessage("");
+    setClimberJumpStage(null);
+    resetActiveLessonState();
     window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  function startLesson(lessonId: string, stage?: number) {
+    if (!isStagePractice || !stage) {
+      openLesson(lessonId);
+      return;
+    }
+
+    setRootsMapMessage(`Ascende ad Gradum ${stage}.`);
+    setClimberJumpStage(stage);
+    playRootCorrectSound();
+    window.setTimeout(() => openLesson(lessonId), stage === restingClimberStage ? 260 : 760);
   }
 
   function backToHome() {
     setActiveLessonId(null);
-    setAnswered({});
-    setMatched({});
-    setMatchingSelections({});
-    setChoiceSelections({});
-    setCheckedChoiceStatus({});
-    setSectionFeedback({});
-    setCompletedSections({});
-    setAwardedSections({});
-    setSelectedMatch(null);
-    setShowAnswers(false);
+    setClimberJumpStage(null);
+    resetActiveLessonState();
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
+  function returnToRootsMapAfterLesson(lessonId: string, completedStage: number) {
+    setRootsMapMessage(completedStage >= lessons.length ? "Macte virtute! Omnes gradus vicisti." : `Macte! Gradus ${completedStage} perfectus est.`);
+    speakLatinEncouragement(completedStage);
+    playRootRewardSound();
+    window.setTimeout(() => {
+      setCompletedLessonIds((prev) => prev.includes(lessonId) ? prev : [...prev, lessonId]);
+      setClimberJumpStage(null);
+      setActiveLessonId(null);
+      resetActiveLessonState();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }, 1250);
+  }
+
   function chooseMatch(definitionId: string, wordId?: string) {
-    if (isRootsPower) {
+    if (isStagePractice) {
       if (!wordId) {
         setSelectedMatch(definitionId);
         playRootClickSound();
@@ -369,7 +466,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
     setSelectedMatch(null);
   }
 
-  function chooseRootsOption(exerciseId: string, option: string) {
+  function chooseStageOption(exerciseId: string, option: string) {
     setChoiceSelections((prev) => ({ ...prev, [exerciseId]: option }));
     setCheckedChoiceStatus((prev) => {
       const next = { ...prev };
@@ -385,7 +482,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
     playRootClickSound();
   }
 
-  async function completeRootsSection(group: PracticeGroup) {
+  async function completeStageSection(group: PracticeGroup) {
     if (!activeLesson || grouped[group].length === 0) return;
     const exercises = grouped[group];
     const wrongNumbers: number[] = [];
@@ -464,7 +561,9 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
     });
 
     playRootCorrectSound();
-    const sectionAward = await applyRootsReward(3, `roots-power-section-${activeLesson.id}-${group}`, `Completed ${group} in Roots of Power ${activeLesson.title}`);
+    const sourcePrefix = isRootsPower ? "roots-power" : "classic-treasury";
+    const productName = isRootsPower ? "Roots of Power" : "Classic Word Treasury";
+    const sectionAward = await applyStageReward(3, `${sourcePrefix}-section-${activeLesson.id}-${group}`, `Completed ${group} in ${productName} ${activeLesson.title}`);
     if (sectionAward > 0) {
       setAwardedSections((prev) => ({ ...prev, [group]: sectionAward }));
       playRootRewardSound();
@@ -473,11 +572,12 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
 
     const nextCompleted = { ...completedSections, [group]: true };
     if (activeGroups.every((item) => nextCompleted[item])) {
-      const lessonAward = await applyRootsReward(8, `roots-power-lesson-${activeLesson.id}`, `Completed all quests in Roots of Power ${activeLesson.title}`);
+      const lessonAward = await applyStageReward(8, `${sourcePrefix}-lesson-${activeLesson.id}`, `Completed all quests in ${productName} ${activeLesson.title}`);
       if (lessonAward > 0) {
         playRootRewardSound();
         notify(`Macte! +${lessonAward} gemmae.`);
       }
+      returnToRootsMapAfterLesson(activeLesson.id, activeLessonIndex + 1);
     }
   }
 
@@ -494,20 +594,29 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
 
         <div className="legacy-container">
           <Link className="legacy-back" href={`/courses/${courseSlug}`}>
-            {isRootsPower ? "← Learning Center" : "← 返回学习中心首页"}
+            {isStagePractice ? "← Learning Center" : "← 返回学习中心首页"}
           </Link>
-          <h2 className="legacy-section-title">{isRootsPower ? "Choose Your Power Stage" : "选择单元开始练习"}</h2>
+          <h2 className="legacy-section-title">{isRootsPower ? "Choose Your Power Stage" : isClassicTreasure ? "Choose Your Treasury Step" : "选择单元开始练习"}</h2>
           <p className="legacy-muted">{copy.lessonHint}</p>
-          <div className="legacy-lesson-grid">
+          {isStagePractice && rootsMapMessage ? <div className="roots-map-message">{rootsMapMessage}</div> : null}
+          <div className={isStagePractice ? "legacy-lesson-grid roots-staircase" : "legacy-lesson-grid"}>
+            {isStagePractice ? (
+              <div className={`roots-climber roots-climber-${climberStage}`} aria-label={`Current climber at stage ${climberStage}`}>
+                <span className="roots-climber-head" />
+                <span className="roots-climber-body" />
+              </div>
+            ) : null}
             {lessons.length > 0 ? lessons.map((lesson, lessonIndex) => {
               const matchingCount = lesson.exercises.filter((item) => item.group === "matching").length;
               const choiceCount = lesson.exercises.length - matchingCount;
               const displayNumber = lessonNumber(lesson, lessonIndex);
+              const completed = completedLessonSet.has(lesson.id);
+              const current = isStagePractice && displayNumber === climberStage;
               return (
-                <button className="legacy-lesson-card" key={lesson.id} onClick={() => startLesson(lesson.id)} type="button">
+                <button className={`legacy-lesson-card roots-stage-card roots-stage-${displayNumber} ${completed ? "completed" : ""} ${current ? "current" : ""}`} key={lesson.id} onClick={() => startLesson(lesson.id, displayNumber)} type="button">
                   <span className="legacy-lesson-num">Lesson {displayNumber}</span>
-                  <strong>{isRootsPower ? `Power Stage ${displayNumber}` : lesson.kind === "LATIN_STEMS" ? "Latin Stems" : "Classic Words"}</strong>
-                  <small>{matchingCount} match + {choiceCount} choice</small>
+                  <strong>{isStagePractice ? stageCardTitle(practiceType, displayNumber) : lesson.kind === "LATIN_STEMS" ? "Latin Stems" : "Classic Words"}</strong>
+                  <small>{matchingCount} match · {choiceCount} choice</small>
                 </button>
               );
             }) : <div className="legacy-empty">{copy.empty}</div>}
@@ -522,17 +631,17 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
       <section className="legacy-cover compact">
         <div className="legacy-label">Caesar&apos;s English II</div>
         <h1>{copy.title}</h1>
-        <div className="legacy-subtitle">{isRootsPower ? `Lesson ${activeLessonIndex + 1} · Power Stage` : activeLesson.title}</div>
+        <div className="legacy-subtitle">{isStagePractice ? `Lesson ${activeLessonIndex + 1} · ${stageTitle(practiceType, activeLessonIndex + 1)}` : activeLesson.title}</div>
         <div className="legacy-gold-line" />
       </section>
 
       <div className="legacy-container">
         <button className="legacy-back as-button" onClick={backToHome} type="button">
-          {isRootsPower ? "← Power Stage Map" : "← 返回单元列表"}
+          {isRootsPower ? "← Power Stage Map" : isClassicTreasure ? "← Treasury Step Map" : "← 返回单元列表"}
         </button>
 
         <div className="legacy-score-bar">
-          <span>{isRootsPower ? "Power Meter" : "本节得分"}</span>
+          <span>{isRootsPower ? "Power Meter" : isClassicTreasure ? "Treasury Meter" : "本节得分"}</span>
           <div className="legacy-score-track">
             <div className="legacy-score-fill" style={{ width: `${score}%` }} />
           </div>
@@ -541,9 +650,9 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
 
         {grouped.matching.length > 0 ? (
           <section className="legacy-ex-section">
-            <h3>{isRootsPower ? "Quest 1 · Match the Power Root" : "练习一：连线题 — 英文释义 ↔ 单词匹配"}</h3>
+            <h3>{questTitle(practiceType, "matching", 1)}</h3>
             <div className="legacy-matching roots-match-board" ref={matchingAreaRef}>
-              {isRootsPower ? (
+              {isStagePractice ? (
                 <svg className="roots-match-lines" aria-hidden="true">
                   {matchLines.map((line) => (
                     <line
@@ -558,7 +667,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
                 </svg>
               ) : null}
               <div>
-                <h4>{isRootsPower ? "Meaning Clues" : "英文释义"}</h4>
+                <h4>{isStagePractice ? "Meaning Clues" : "英文释义"}</h4>
                 {grouped.matching.map((exercise) => (
                   <button
                     className={`legacy-match-item ${selectedMatch === exercise.id ? "selected" : ""} ${matchingSelections[exercise.id] ? "assigned" : ""} ${matched[exercise.id] ? "matched" : ""}`}
@@ -574,7 +683,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
                 ))}
               </div>
               <div>
-                <h4>{isRootsPower ? "Root Cards" : "单词"}</h4>
+                <h4>{isRootsPower ? "Root Cards" : isClassicTreasure ? "Word Cards" : "单词"}</h4>
                 {shuffledMatchingWords.map((item) => (
                   <button
                     className={`legacy-match-item ${Object.values(matchingSelections).includes(item.id) ? "assigned" : ""} ${matched[item.id] ? "matched" : ""}`}
@@ -590,9 +699,9 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
                 ))}
               </div>
             </div>
-            {isRootsPower ? (
+            {isStagePractice ? (
               <div className="roots-check-row">
-                <button className="roots-check-button" onClick={() => completeRootsSection("matching")} type="button">
+                <button className="roots-check-button" onClick={() => completeStageSection("matching")} type="button">
                   Check Quest
                 </button>
                 {sectionFeedback.matching ? <span className={`roots-section-feedback ${completedSections.matching ? "correct" : "wrong"}`}>{sectionFeedback.matching}</span> : null}
@@ -604,7 +713,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
         {(["context", "synonym", "antonym"] as const).map((group, index) =>
           grouped[group].length > 0 ? (
             <section className="legacy-ex-section" key={group}>
-              <h3>{isRootsPower ? `Quest ${index + 2} · ${group === "context" ? "Choose in Context" : group === "synonym" ? "Find the Ally Word" : "Spot the Opposite"}` : `练习${["二", "三", "四"][index]}：${group === "context" ? "上下文选词题" : group === "synonym" ? "同义词选择题" : "反义词选择题"}`}</h3>
+              <h3>{questTitle(practiceType, group, index + 2)}</h3>
               {grouped[group].map((exercise, exerciseIndex) => {
                 const status = answered[exercise.id];
                 const correctAnswer = asAnswer(exercise.correctAnswer);
@@ -616,13 +725,13 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
                         const isCorrect = status && normalize(option) === normalize(correctAnswer);
                         const isWrong = status === "wrong" && !isCorrect && normalize(option) !== normalize(correctAnswer);
                         const selected = choiceSelections[exercise.id] === option;
-                        const rootsStatus = isRootsPower && selected ? checkedChoiceStatus[exercise.id] : undefined;
+                        const rootsStatus = isStagePractice && selected ? checkedChoiceStatus[exercise.id] : undefined;
                         return (
                           <button
                             className={`legacy-opt ${selected ? "selected" : ""} ${rootsStatus === "correct" ? "checked-correct" : ""} ${rootsStatus === "wrong" ? "checked-wrong" : ""} ${isCorrect ? "correct" : ""} ${isWrong ? "disabled" : ""}`}
-                            disabled={!isRootsPower && Boolean(status)}
+                            disabled={!isStagePractice && Boolean(status)}
                             key={option}
-                            onClick={() => isRootsPower ? chooseRootsOption(exercise.id, option) : recordAttempt(exercise, option, normalize(option) === normalize(correctAnswer))}
+                            onClick={() => isStagePractice ? chooseStageOption(exercise.id, option) : recordAttempt(exercise, option, normalize(option) === normalize(correctAnswer))}
                             type="button"
                           >
                             {option}
@@ -633,9 +742,9 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
                   </div>
                 );
               })}
-              {isRootsPower ? (
+              {isStagePractice ? (
                 <div className="roots-check-row">
-                  <button className="roots-check-button" onClick={() => completeRootsSection(group)} type="button">
+                  <button className="roots-check-button" onClick={() => completeStageSection(group)} type="button">
                     Check Quest
                   </button>
                   {sectionFeedback[group] ? <span className={`roots-section-feedback ${completedSections[group] ? "correct" : "wrong"}`}>{sectionFeedback[group]}</span> : null}
@@ -645,12 +754,12 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
           ) : null
         )}
 
-        {!isRootsPower ? (
+        {!isStagePractice ? (
           <button className="legacy-reveal" onClick={() => setShowAnswers(true)} type="button">
             显示答案键
           </button>
         ) : null}
-        {showAnswers && !isRootsPower ? (
+        {showAnswers && !isStagePractice ? (
           <section className="legacy-answer-key">
             <h4>答案键</h4>
             {(["matching", "context", "synonym", "antonym"] as const).map((group) => (

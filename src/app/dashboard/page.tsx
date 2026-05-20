@@ -127,6 +127,12 @@ export default async function DashboardPage() {
               <p>用拼写补全、连线、判断和闪电选择等玩法，反复训练 Latin Stems。</p>
               <em>互动游戏 · {primaryCourse._count.gameLevels} levels</em>
             </Link>
+            <Link href={`/courses/${primaryCourse.slug}/classic-word-quest`} className="legacy-module-card">
+              <span>🔨</span>
+              <strong>Whack-a-Word</strong>
+              <p>听发音，敲中正确 classic word，练习快速识别和记忆。</p>
+              <em>Classic Words game</em>
+            </Link>
             <Link href={`/courses/${primaryCourse.slug}/vocab-practice?type=latin-stems`} className="legacy-module-card">
               <span>✏️</span>
               <strong>Roots of Power</strong>

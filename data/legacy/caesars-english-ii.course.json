@@ -2744,6 +2744,21 @@
         },
         {
           "type": "MULTIPLE_CHOICE",
+          "prompt": "videlicet (viz.)",
+          "options": [
+            "a. namely",
+            "b. silently",
+            "c. rarely",
+            "d. indirectly"
+          ],
+          "answer": "a. namely",
+          "order": 15,
+          "source": "legacy-static-site",
+          "group": "synonym",
+          "legacyIndex": 4
+        },
+        {
+          "type": "MULTIPLE_CHOICE",
           "prompt": "matriarch",
           "options": [
             "a. forfeit",
@@ -2752,7 +2767,7 @@
             "d. inaudible"
           ],
           "answer": "c. patriarch",
-          "order": 15,
+          "order": 16,
           "source": "legacy-static-site",
           "group": "antonym",
           "legacyIndex": 0
@@ -2767,7 +2782,7 @@
             "d. benevolence"
           ],
           "answer": "b. maternal",
-          "order": 16,
+          "order": 17,
           "source": "legacy-static-site",
           "group": "antonym",
           "legacyIndex": 1
@@ -2782,7 +2797,7 @@
             "d. direct"
           ],
           "answer": "b. sparsely populated",
-          "order": 17,
+          "order": 18,
           "source": "legacy-static-site",
           "group": "antonym",
           "legacyIndex": 2
@@ -2797,10 +2812,25 @@
             "d. carefree"
           ],
           "answer": "a. lethargy",
-          "order": 18,
+          "order": 19,
           "source": "legacy-static-site",
           "group": "antonym",
           "legacyIndex": 3
+        },
+        {
+          "type": "MULTIPLE_CHOICE",
+          "prompt": "videlicet (viz.)",
+          "options": [
+            "a. precisely",
+            "b. vaguely",
+            "c. explicitly",
+            "d. namely"
+          ],
+          "answer": "b. vaguely",
+          "order": 20,
+          "source": "legacy-static-site",
+          "group": "antonym",
+          "legacyIndex": 4
         }
       ]
     },
@@ -6900,6 +6930,21 @@
         },
         {
           "type": "MULTIPLE_CHOICE",
+          "prompt": "magnanimous",
+          "options": [
+            "a. petty",
+            "b. generous",
+            "c. twisted",
+            "d. noisy"
+          ],
+          "answer": "b. generous",
+          "order": 15,
+          "source": "legacy-static-site",
+          "group": "synonym",
+          "legacyIndex": 4
+        },
+        {
+          "type": "MULTIPLE_CHOICE",
           "prompt": "perspicacity",
           "options": [
             "a. misery",
@@ -6908,7 +6953,7 @@
             "d. obtuseness"
           ],
           "answer": "d. obtuseness",
-          "order": 15,
+          "order": 16,
           "source": "legacy-static-site",
           "group": "antonym",
           "legacyIndex": 0
@@ -6923,7 +6968,7 @@
             "d. humble"
           ],
           "answer": "d. humble",
-          "order": 16,
+          "order": 17,
           "source": "legacy-static-site",
           "group": "antonym",
           "legacyIndex": 1
@@ -6938,7 +6983,7 @@
             "d. patriarch"
           ],
           "answer": "a. straightforward",
-          "order": 17,
+          "order": 18,
           "source": "legacy-static-site",
           "group": "antonym",
           "legacyIndex": 2
@@ -6953,10 +6998,25 @@
             "d. surly"
           ],
           "answer": "b. whisper",
-          "order": 18,
+          "order": 19,
           "source": "legacy-static-site",
           "group": "antonym",
           "legacyIndex": 3
+        },
+        {
+          "type": "MULTIPLE_CHOICE",
+          "prompt": "magnanimous",
+          "options": [
+            "a. noble",
+            "b. forgiving",
+            "c. petty",
+            "d. insightful"
+          ],
+          "answer": "c. petty",
+          "order": 20,
+          "source": "legacy-static-site",
+          "group": "antonym",
+          "legacyIndex": 4
         }
       ]
     },
