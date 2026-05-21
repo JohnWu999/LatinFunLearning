@@ -2278,8 +2278,8 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       setBuildRewardPoints((points) => Math.max(points, 120));
       return;
     }
-    if (preview === "clam") {
-      const challenge = buildWordChallenges.clam;
+    if (preview === "clam" || preview === "alter") {
+      const challenge = buildWordChallenges[preview];
       setScreen("build-word");
       setBuildWordStage("family");
       setActiveBuildMapIndex(1);
@@ -3250,10 +3250,36 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     setBuildFamilyTiles((tiles) => [...tiles, removed]);
   }
 
+  function familyAnswerLabels(wordId: string) {
+    return (buildFamilyAnswers[wordId] ?? []).map((part) => part.label);
+  }
+
+  function familyWordIsCorrect(item: BuildWordFamilyWord) {
+    const labels = familyAnswerLabels(item.id);
+    const matchesParts = labels.length === item.answer.length && labels.every((label, index) => normalize(label) === normalize(item.answer[index] ?? ""));
+    return matchesParts || normalize(labels.join("")) === normalize(item.word);
+  }
+
+  function builtFamilyWords() {
+    return activeBuildChallenge.familyWords.map((item) => ({
+      target: item,
+      built: familyAnswerLabels(item.id).join("")
+    }));
+  }
+
   function checkFamilyBuilds() {
-    const firstIncorrect = activeBuildChallenge.familyWords.find((item) => (buildFamilyAnswers[item.id] ?? []).map((part) => part.label).join("") !== item.word);
+    const firstIncorrect = activeBuildChallenge.familyWords.find((item) => !familyWordIsCorrect(item));
     const allCorrect = !firstIncorrect;
     if (!allCorrect) {
+      const completedWords = new Set(activeBuildChallenge.familyWords.map((item) => normalize(item.word)));
+      const everyRowSpellsAFamilyWord = builtFamilyWords().every(({ built }) => built && completedWords.has(normalize(built)));
+      if (everyRowSpellsAFamilyWord) {
+        setSelectedFamilyRow(firstIncorrect.id);
+        setBuildFamilyFeedback("Iterum! The words are spelled, but one is matched to the wrong meaning.");
+        setBuildFamilyWrongCount((count) => count + 1);
+        playAnswerWrongSound();
+        return;
+      }
       const { hintWord, ending, clueNumber } = familyEndingClue(buildFamilyWrongCount);
       setSelectedFamilyRow(hintWord.id);
       setBuildFamilyFeedback(`Iterum! Ending clue ${clueNumber}/3: "${hintWord.meaning}" ends with "-${ending}".`);
