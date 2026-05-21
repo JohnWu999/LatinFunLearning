@@ -80,10 +80,10 @@ export default async function CoursePage({ params }: Props) {
             <em>词根闯关</em>
           </Link>
           <Link href={`/courses/${course.slug}/classic-word-quest`} className="legacy-module-card">
-            <span>🔨</span>
-            <strong>Whack-a-Word</strong>
-            <p>听标准发音，快速敲中正确的 classic word，越快答对宝石越多。</p>
-            <em>Classic Words game</em>
+            <span>🧭</span>
+            <strong>Classic Word Quest</strong>
+            <p>通过打地鼠、侦探线索和拼写锁，练习 classic words 的识别、理解和拼写。</p>
+            <em>Classic Words games</em>
           </Link>
           <Link href={`/courses/${course.slug}/vocab-practice?type=latin-stems`} className="legacy-module-card">
             <span>✏️</span>

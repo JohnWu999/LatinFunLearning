@@ -128,10 +128,10 @@ export default async function DashboardPage() {
               <em>互动游戏 · {primaryCourse._count.gameLevels} levels</em>
             </Link>
             <Link href={`/courses/${primaryCourse.slug}/classic-word-quest`} className="legacy-module-card">
-              <span>🔨</span>
-              <strong>Whack-a-Word</strong>
-              <p>听发音，敲中正确 classic word，练习快速识别和记忆。</p>
-              <em>Classic Words game</em>
+              <span>🧭</span>
+              <strong>Classic Word Quest</strong>
+              <p>通过打地鼠、侦探线索和拼写锁，练习 classic words 的识别、理解和拼写。</p>
+              <em>Classic Words games</em>
             </Link>
             <Link href={`/courses/${primaryCourse.slug}/vocab-practice?type=latin-stems`} className="legacy-module-card">
               <span>✏️</span>

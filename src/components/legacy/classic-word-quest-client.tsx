@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { CSSProperties } from "react";
+import type { FormEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LessonVocabularyCard } from "@/lib/lesson-vocabulary";
 
@@ -10,6 +11,7 @@ type Props = {
   courseSlug: string;
   words: LessonVocabularyCard[];
   userName: string | null | undefined;
+  initialMode?: "whack" | "detective";
 };
 
 type RoundWord = LessonVocabularyCard & { lesson: number };
@@ -24,6 +26,7 @@ type FlyingGem = {
 
 const ROUND_SIZE = 20;
 const TOTAL_ROUNDS = 20;
+const DETECTIVE_SIZE = 10;
 
 function appPath(path: string) {
   const asset = document.querySelector<HTMLScriptElement | HTMLLinkElement>('script[src*="/_next/"], link[href*="/_next/"]');
@@ -63,6 +66,26 @@ function makeRound(allWords: RoundWord[], reviewWords: RoundWord[], freshStart: 
   }
 
   return { roundWords: selected, nextFreshIndex };
+}
+
+function normalizeAnswer(value: string) {
+  return value.trim().toLowerCase().replace(/[^a-z]/g, "");
+}
+
+function maskedWord(word: string) {
+  if (word.length <= 2) return word;
+  return `${word[0]}${" _".repeat(Math.max(1, word.length - 2))} ${word[word.length - 1]}`;
+}
+
+function detectiveClue(word: RoundWord, index: number) {
+  const mode = index % 4;
+  if (mode === 1 && word.synonyms.length) return `Synonym clue: ${word.synonyms.slice(0, 2).join(" · ")}`;
+  if (mode === 2 && word.antonyms.length) return `Antonym clue: not ${word.antonyms.slice(0, 2).join(" · not ")}`;
+  if (mode === 3 && word.sources[0]?.text) {
+    const hidden = word.sources[0].text.replace(new RegExp(word.word, "ig"), "_____");
+    return `Source clue: "${hidden}"`;
+  }
+  return `Definition clue: ${word.definition}`;
 }
 
 function speakWord(word: string) {
@@ -112,9 +135,11 @@ function playWhackSound(kind: "hit" | "miss" | "bonus") {
   window.setTimeout(() => context.close().catch(() => undefined), 700);
 }
 
-export function ClassicWordQuestClient({ courseId, courseSlug, words, userName }: Props) {
+export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, initialMode = "whack" }: Props) {
   const allWords = useMemo(() => words as RoundWord[], [words]);
+  const detectiveWords = useMemo(() => allWords.slice(0, DETECTIVE_SIZE), [allWords]);
   const initialRound = useMemo(() => makeRound(allWords, [], 0), [allWords]);
+  const [gameMode] = useState<"whack" | "detective">(initialMode);
   const [roundIndex, setRoundIndex] = useState(0);
   const [roundWords, setRoundWords] = useState<RoundWord[]>(initialRound.roundWords);
   const [nextFreshIndex, setNextFreshIndex] = useState(initialRound.nextFreshIndex);
@@ -128,6 +153,14 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName }
   const [questReviewWords, setQuestReviewWords] = useState<string[]>([]);
   const [answeredWord, setAnsweredWord] = useState<string | null>(null);
   const [flyingGems, setFlyingGems] = useState<FlyingGem[]>([]);
+  const [detectiveIndex, setDetectiveIndex] = useState(0);
+  const [detectivePhase, setDetectivePhase] = useState<"choose" | "spell" | "done">("choose");
+  const [detectiveFeedback, setDetectiveFeedback] = useState("");
+  const [detectiveFeedbackKind, setDetectiveFeedbackKind] = useState<"good" | "bad" | "">("");
+  const [detectiveSpelling, setDetectiveSpelling] = useState("");
+  const [detectiveAttempts, setDetectiveAttempts] = useState(0);
+  const [detectiveGems, setDetectiveGems] = useState(0);
+  const [detectiveMisses, setDetectiveMisses] = useState<string[]>([]);
   const startedAtRef = useRef(Date.now());
   const gemCounterRef = useRef<HTMLDivElement | null>(null);
 
@@ -140,6 +173,15 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName }
 
   const complete = questionIndex >= roundWords.length;
   const questComplete = complete && roundIndex >= TOTAL_ROUNDS - 1;
+  const detectiveCurrent = detectiveWords[detectiveIndex];
+  const detectiveComplete = detectiveIndex >= detectiveWords.length || detectivePhase === "done";
+  const detectiveOptions = useMemo(() => {
+    if (!detectiveCurrent) return [];
+    return shuffle([
+      detectiveCurrent,
+      ...shuffle(allWords.filter((word) => word.word !== detectiveCurrent.word)).slice(0, 2)
+    ]);
+  }, [allWords, detectiveCurrent]);
 
   useEffect(() => {
     setRoundIndex(0);
@@ -154,14 +196,14 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName }
   }, [initialRound]);
 
   useEffect(() => {
-    if (!current) return;
+    if (gameMode !== "whack" || !current) return;
     startedAtRef.current = Date.now();
     setAnsweredWord(null);
     setFeedback("");
     setFeedbackKind("");
     const id = window.setTimeout(() => speakWord(current.word), 360);
     return () => window.clearTimeout(id);
-  }, [current]);
+  }, [current, gameMode]);
 
   async function applyGems(amount: number, sourceKey: string, reason: string) {
     const response = await fetch(appPath("/api/rewards"), {
@@ -271,6 +313,91 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName }
     setFeedbackKind("");
   }
 
+  function resetDetective() {
+    setDetectiveIndex(0);
+    setDetectivePhase("choose");
+    setDetectiveFeedback("");
+    setDetectiveFeedbackKind("");
+    setDetectiveSpelling("");
+    setDetectiveAttempts(0);
+    setDetectiveGems(0);
+    setDetectiveMisses([]);
+  }
+
+  function chooseDetectiveWord(choice: RoundWord) {
+    if (!detectiveCurrent || detectivePhase !== "choose") return;
+    if (choice.word === detectiveCurrent.word) {
+      setDetectivePhase("spell");
+      setDetectiveFeedback("Evidence found. Now spell the word.");
+      setDetectiveFeedbackKind("good");
+      setDetectiveSpelling("");
+      setDetectiveAttempts(0);
+      playWhackSound("hit");
+      window.setTimeout(() => speakWord(detectiveCurrent.word), 180);
+      return;
+    }
+
+    setDetectiveMisses((items) => Array.from(new Set([...items, detectiveCurrent.word])));
+    setDetectiveFeedback("Not that suspect. Read the clue again.");
+    setDetectiveFeedbackKind("bad");
+    playWhackSound("miss");
+  }
+
+  async function submitDetectiveSpelling(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!detectiveCurrent || detectivePhase !== "spell") return;
+    const correct = normalizeAnswer(detectiveSpelling) === normalizeAnswer(detectiveCurrent.word);
+
+    if (correct) {
+      const gems = detectiveAttempts === 0 ? 5 : 3;
+      setDetectiveGems((value) => value + gems);
+      setDetectiveFeedback(`Case solved! +${gems} gems.`);
+      setDetectiveFeedbackKind("good");
+      playWhackSound(gems >= 5 ? "bonus" : "hit");
+      launchFlyingGems(gems, gemCounterRef.current);
+      await applyGems(gems, `word-detective-${detectiveCurrent.word}-${detectiveIndex}`, `Word Detective solved: ${detectiveCurrent.word}`);
+      window.setTimeout(() => {
+        const nextIndex = detectiveIndex + 1;
+        if (nextIndex >= detectiveWords.length) {
+          setDetectivePhase("done");
+          setDetectiveFeedback("");
+        } else {
+          setDetectiveIndex(nextIndex);
+          setDetectivePhase("choose");
+          setDetectiveFeedback("");
+          setDetectiveFeedbackKind("");
+          setDetectiveSpelling("");
+          setDetectiveAttempts(0);
+        }
+      }, 900);
+      return;
+    }
+
+    setDetectiveMisses((items) => Array.from(new Set([...items, detectiveCurrent.word])));
+    setDetectiveAttempts((attempts) => attempts + 1);
+    setDetectiveFeedback(
+      detectiveAttempts === 0
+        ? `Check the evidence: starts with "${detectiveCurrent.word[0]}" and ends with "${detectiveCurrent.word.at(-1)}".`
+        : `The spelling was ${detectiveCurrent.word}. This word will return for review.`
+    );
+    setDetectiveFeedbackKind("bad");
+    playWhackSound("miss");
+    if (detectiveAttempts >= 1) {
+      window.setTimeout(() => {
+        const nextIndex = detectiveIndex + 1;
+        if (nextIndex >= detectiveWords.length) setDetectivePhase("done");
+        else {
+          setDetectiveIndex(nextIndex);
+          setDetectivePhase("choose");
+          setDetectiveFeedback("");
+          setDetectiveFeedbackKind("");
+          setDetectiveSpelling("");
+          setDetectiveAttempts(0);
+        }
+      }, 1300);
+    }
+  }
+
   return (
     <main className="word-quest-page">
       <Link className="legacy-back battle-home-link" href={`/courses/${courseSlug}`}>
@@ -279,13 +406,32 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName }
 
       <section className="word-quest-cover">
         <div className="battle-user">👤 {userName ?? "player"}</div>
-        <h1>Whack-a-Word</h1>
-        <p>Round {roundIndex + 1} / {TOTAL_ROUNDS} · Listen fast. Whack the right classic word.</p>
+        <div className="classic-word-game-tabs">
+          <Link className={gameMode === "whack" ? "active" : ""} href={`/courses/${courseSlug}/classic-word-quest/whack-a-word`}>Whack-a-Word</Link>
+          <Link className={gameMode === "detective" ? "active" : ""} href={`/courses/${courseSlug}/classic-word-quest/word-detective`}>Word Detective</Link>
+        </div>
+        <h1>{gameMode === "detective" ? "Word Detective" : "Whack-a-Word"}</h1>
+        <p>
+          {gameMode === "detective"
+            ? "Find the word from clues, then spell the evidence."
+            : `Round ${roundIndex + 1} / ${TOTAL_ROUNDS} · Listen fast. Whack the right classic word.`}
+        </p>
         <div className="word-quest-stats">
-          <div><strong>{complete ? roundWords.length : questionIndex + 1}</strong><span>/ {roundWords.length}</span></div>
-          <div ref={gemCounterRef}><strong>{localGems}</strong><span>gems this run</span></div>
-          <div><strong>{missedWords.length}</strong><span>review words</span></div>
-          <div><strong>{Math.min(allWords.length, nextFreshIndex)}</strong><span>/ {allWords.length} covered</span></div>
+          {gameMode === "detective" ? (
+            <>
+              <div><strong>{detectiveComplete ? detectiveWords.length : detectiveIndex + 1}</strong><span>/ {detectiveWords.length}</span></div>
+              <div ref={gemCounterRef}><strong>{detectiveGems}</strong><span>detective gems</span></div>
+              <div><strong>{detectiveMisses.length}</strong><span>review words</span></div>
+              <div><strong>{detectivePhase === "spell" ? "SPELL" : "CLUE"}</strong><span>current step</span></div>
+            </>
+          ) : (
+            <>
+              <div><strong>{complete ? roundWords.length : questionIndex + 1}</strong><span>/ {roundWords.length}</span></div>
+              <div ref={gemCounterRef}><strong>{localGems}</strong><span>gems this run</span></div>
+              <div><strong>{missedWords.length}</strong><span>review words</span></div>
+              <div><strong>{Math.min(allWords.length, nextFreshIndex)}</strong><span>/ {allWords.length} covered</span></div>
+            </>
+          )}
         </div>
       </section>
       <div className="whack-flying-gems" aria-hidden="true">
@@ -306,7 +452,47 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName }
         ))}
       </div>
 
-      {!complete && current ? (
+      {gameMode === "detective" ? (
+        !detectiveComplete && detectiveCurrent ? (
+          <section className="detective-board">
+            <div className="detective-case-file">
+              <span>Case File</span>
+              <strong>{detectiveClue(detectiveCurrent, detectiveIndex)}</strong>
+            </div>
+
+            {detectivePhase === "choose" ? (
+              <div className="detective-options">
+                {detectiveOptions.map((choice) => (
+                  <button key={`${choice.lesson}-${choice.word}-${choice.definition}`} onClick={() => chooseDetectiveWord(choice)} type="button">
+                    {choice.word}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <form className="detective-spell-lock" onSubmit={submitDetectiveSpelling}>
+                <label htmlFor="detective-spelling">Spell the evidence</label>
+                <div className="detective-mask">{maskedWord(detectiveCurrent.word)}</div>
+                <input
+                  autoFocus
+                  id="detective-spelling"
+                  onChange={(event) => setDetectiveSpelling(event.target.value)}
+                  placeholder="type the full word"
+                  value={detectiveSpelling}
+                />
+                <button className="battle-main-button" type="submit">Submit Spelling</button>
+              </form>
+            )}
+
+            {detectiveFeedback ? <div className={`whack-feedback ${detectiveFeedbackKind}`}>{detectiveFeedback}</div> : null}
+          </section>
+        ) : (
+          <section className="whack-result">
+            <h2>Case Closed!</h2>
+            <p>You solved {detectiveWords.length - detectiveMisses.length} clean cases. Review list: {detectiveMisses.length ? detectiveMisses.join(", ") : "none"}.</p>
+            <button className="battle-main-button" onClick={resetDetective} type="button">Play Again</button>
+          </section>
+        )
+      ) : !complete && current ? (
         <section className="whack-board">
           <div className="whack-prompt">
             <button className="whack-speaker" onClick={() => speakWord(current.word)} type="button">🔊 Replay</button>
