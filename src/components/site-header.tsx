@@ -20,6 +20,14 @@ type LeaderboardEntry = {
   rank: number;
 };
 
+function appPath(path: string) {
+  if (typeof document === "undefined") return path;
+  const asset = document.querySelector<HTMLScriptElement | HTMLLinkElement>('script[src*="/_next/"], link[href*="/_next/"]');
+  const source = asset instanceof HTMLScriptElement ? asset.src : asset?.href;
+  const prefix = source ? new URL(source, window.location.origin).pathname.split("/_next/")[0] : "";
+  return `${prefix}${path}`;
+}
+
 export function SiteHeader({ userName, userRole, gems = 0, rank }: Props) {
   const pathname = usePathname();
   const minimalHeaderPaths = ["/", "/login", "/register"];
@@ -57,7 +65,7 @@ export function SiteHeader({ userName, userRole, gems = 0, rank }: Props) {
       setLeaderboardLoading(true);
       setLeaderboardError("");
       try {
-        const response = await fetch("/api/rewards/leaderboard?limit=10");
+        const response = await fetch(appPath("/api/rewards/leaderboard?limit=10"));
         if (!response.ok) throw new Error("Failed to load leaderboard");
         const payload = (await response.json()) as { data?: { leaderboard?: LeaderboardEntry[] } };
         if (!canceled) setLeaderboard(payload.data?.leaderboard ?? []);
