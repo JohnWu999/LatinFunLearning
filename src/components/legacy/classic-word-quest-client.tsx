@@ -26,7 +26,79 @@ type FlyingGem = {
 
 const ROUND_SIZE = 20;
 const TOTAL_ROUNDS = 20;
-const DETECTIVE_SIZE = 10;
+const DETECTIVE_SIZE = 40;
+const C1_DETECTIVE_WORDS = new Set([
+  "derision",
+  "procure",
+  "countenance",
+  "profound",
+  "manifest",
+  "prodigious",
+  "languor",
+  "prostrate",
+  "profuse",
+  "condescend",
+  "odious",
+  "ostentatious",
+  "inexorable",
+  "indolent",
+  "doleful",
+  "alacrity",
+  "oblique",
+  "magnanimous",
+  "importune",
+  "peremptory",
+  "incredulous",
+  "tacit",
+  "sanguine",
+  "torpid",
+  "mortify",
+  "melancholy",
+  "visage",
+  "venerate",
+  "obsequious",
+  "ignominy",
+  "acquiescence",
+  "impassive",
+  "impending",
+  "verdure",
+  "equivocal",
+  "orthodox",
+  "profane",
+  "tumult",
+  "sagacity",
+  "remonstrate",
+  "incongruous",
+  "malevolence",
+  "ambiguous",
+  "felicity",
+  "irrevocable",
+  "articulate",
+  "martyr",
+  "transient",
+  "latent",
+  "livid",
+  "censure",
+  "apprehension",
+  "superfluous",
+  "tangible",
+  "lurid",
+  "pervade",
+  "epithet",
+  "abject",
+  "eccentric",
+  "imperious",
+  "solicitude",
+  "stolid",
+  "palpable",
+  "austere",
+  "furtive"
+]);
+
+type WordErrorStat = {
+  attempts: number;
+  wrong: number;
+};
 
 function appPath(path: string) {
   const asset = document.querySelector<HTMLScriptElement | HTMLLinkElement>('script[src*="/_next/"], link[href*="/_next/"]');
@@ -72,9 +144,14 @@ function normalizeAnswer(value: string) {
   return value.trim().toLowerCase().replace(/[^a-z]/g, "");
 }
 
-function maskedWord(word: string) {
-  if (word.length <= 2) return word;
-  return `${word[0]}${" _".repeat(Math.max(1, word.length - 2))} ${word[word.length - 1]}`;
+function vowelTrace(word: string) {
+  return Array.from(word.toLowerCase())
+    .map((letter) => ("aeiou".includes(letter) ? letter : "_"))
+    .join(" ");
+}
+
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function detectiveClue(word: RoundWord, index: number) {
@@ -82,10 +159,18 @@ function detectiveClue(word: RoundWord, index: number) {
   if (mode === 1 && word.synonyms.length) return `Synonym clue: ${word.synonyms.slice(0, 2).join(" · ")}`;
   if (mode === 2 && word.antonyms.length) return `Antonym clue: not ${word.antonyms.slice(0, 2).join(" · not ")}`;
   if (mode === 3 && word.sources[0]?.text) {
-    const hidden = word.sources[0].text.replace(new RegExp(word.word, "ig"), "_____");
+    const hidden = word.sources[0].text.replace(new RegExp(escapeRegExp(word.word), "ig"), "_____");
     return `Source clue: "${hidden}"`;
   }
   return `Definition clue: ${word.definition}`;
+}
+
+function getWordStatKey(word: string) {
+  return word.trim().toLowerCase();
+}
+
+function getDetectiveStatsStorageKey(courseId: string) {
+  return `classic-word-quest-stats:${courseId}`;
 }
 
 function speakWord(word: string) {
@@ -137,7 +222,31 @@ function playWhackSound(kind: "hit" | "miss" | "bonus") {
 
 export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, initialMode = "whack" }: Props) {
   const allWords = useMemo(() => words as RoundWord[], [words]);
-  const detectiveWords = useMemo(() => allWords.slice(0, DETECTIVE_SIZE), [allWords]);
+  const [wordErrorStats, setWordErrorStats] = useState<Record<string, WordErrorStat>>({});
+  const detectiveWords = useMemo(() => {
+    const highErrorWords = allWords
+      .filter((word) => (wordErrorStats[getWordStatKey(word.word)]?.wrong ?? 0) > 0)
+      .sort((left, right) => {
+        const leftStats = wordErrorStats[getWordStatKey(left.word)] ?? { attempts: 0, wrong: 0 };
+        const rightStats = wordErrorStats[getWordStatKey(right.word)] ?? { attempts: 0, wrong: 0 };
+        const leftRate = leftStats.attempts ? leftStats.wrong / leftStats.attempts : 0;
+        const rightRate = rightStats.attempts ? rightStats.wrong / rightStats.attempts : 0;
+        return rightStats.wrong - leftStats.wrong || rightRate - leftRate || rightStats.attempts - leftStats.attempts;
+      });
+    const c1Words = allWords.filter((word) => C1_DETECTIVE_WORDS.has(getWordStatKey(word.word)));
+    const selected: RoundWord[] = [];
+    const seen = new Set<string>();
+    const addWord = (word: RoundWord) => {
+      const key = getWordStatKey(word.word);
+      if (seen.has(key) || selected.length >= DETECTIVE_SIZE) return;
+      selected.push(word);
+      seen.add(key);
+    };
+    highErrorWords.forEach(addWord);
+    c1Words.forEach(addWord);
+    allWords.forEach(addWord);
+    return selected;
+  }, [allWords, wordErrorStats]);
   const initialRound = useMemo(() => makeRound(allWords, [], 0), [allWords]);
   const [gameMode] = useState<"whack" | "detective">(initialMode);
   const [roundIndex, setRoundIndex] = useState(0);
@@ -163,6 +272,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
   const [detectiveMisses, setDetectiveMisses] = useState<string[]>([]);
   const startedAtRef = useRef(Date.now());
   const gemCounterRef = useRef<HTMLDivElement | null>(null);
+  const detectiveBoardRef = useRef<HTMLElement | null>(null);
 
   const current = roundWords[questionIndex];
   const choices = useMemo(() => {
@@ -204,6 +314,57 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
     const id = window.setTimeout(() => speakWord(current.word), 360);
     return () => window.clearTimeout(id);
   }, [current, gameMode]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      const stored = window.localStorage.getItem(getDetectiveStatsStorageKey(courseId));
+      if (stored) setWordErrorStats(JSON.parse(stored) as Record<string, WordErrorStat>);
+    } catch {
+      setWordErrorStats({});
+    }
+  }, [courseId]);
+
+  useEffect(() => {
+    if (gameMode !== "detective" || detectivePhase !== "choose" || detectiveIndex === 0) return;
+    const id = window.setTimeout(() => {
+      const board = detectiveBoardRef.current;
+      if (!board) return;
+      const top = board.getBoundingClientRect().top + window.scrollY - 16;
+      window.scrollTo({ top, behavior: "smooth" });
+    }, 80);
+    return () => window.clearTimeout(id);
+  }, [detectiveIndex, detectivePhase, gameMode]);
+
+  function recordWordOutcome(word: string, wrong: boolean) {
+    const key = getWordStatKey(word);
+    setWordErrorStats((currentStats) => {
+      let baseStats = currentStats;
+      if (gameMode === "detective") {
+        try {
+          const stored = window.localStorage.getItem(getDetectiveStatsStorageKey(courseId));
+          if (stored) baseStats = JSON.parse(stored) as Record<string, WordErrorStat>;
+        } catch {
+          baseStats = currentStats;
+        }
+      }
+      const nextWordStats = baseStats[key] ?? { attempts: 0, wrong: 0 };
+      const nextStats = {
+        ...baseStats,
+        [key]: {
+          attempts: nextWordStats.attempts + 1,
+          wrong: nextWordStats.wrong + (wrong ? 1 : 0)
+        }
+      };
+      try {
+        window.localStorage.setItem(getDetectiveStatsStorageKey(courseId), JSON.stringify(nextStats));
+      } catch {
+        // Local personalization is optional; the game still works without storage.
+      }
+      if (gameMode === "detective") return currentStats;
+      return nextStats;
+    });
+  }
 
   async function applyGems(amount: number, sourceKey: string, reason: string) {
     const response = await fetch(appPath("/api/rewards"), {
@@ -256,6 +417,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
     setAnsweredWord(choice.word);
 
     if (correct) {
+      recordWordOutcome(current.word, false);
       const gems = rewardForSpeed(elapsed);
       setLocalGems((value) => value + gems);
       setTotalGemsThisQuest((value) => value + gems);
@@ -267,6 +429,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
       window.setTimeout(() => speakWhackReaction("correct"), 280);
       await applyGems(gems, `word-whack-hit-${current.word}-${questionIndex}`, `Whack-a-Word hit: ${current.word}`);
     } else {
+      recordWordOutcome(current.word, true);
       setLocalGems((value) => Math.max(0, value - 2));
       setMissedWords((items) => Array.from(new Set([...items, current.word])));
       setQuestReviewWords((items) => Array.from(new Set([...items, current.word])));
@@ -337,6 +500,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
       return;
     }
 
+    recordWordOutcome(detectiveCurrent.word, true);
     setDetectiveMisses((items) => Array.from(new Set([...items, detectiveCurrent.word])));
     setDetectiveFeedback("Not that suspect. Read the clue again.");
     setDetectiveFeedbackKind("bad");
@@ -349,6 +513,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
     const correct = normalizeAnswer(detectiveSpelling) === normalizeAnswer(detectiveCurrent.word);
 
     if (correct) {
+      recordWordOutcome(detectiveCurrent.word, false);
       const gems = detectiveAttempts === 0 ? 5 : 3;
       setDetectiveGems((value) => value + gems);
       setDetectiveFeedback(`Case solved! +${gems} gems.`);
@@ -374,15 +539,19 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
     }
 
     setDetectiveMisses((items) => Array.from(new Set([...items, detectiveCurrent.word])));
-    setDetectiveAttempts((attempts) => attempts + 1);
+    recordWordOutcome(detectiveCurrent.word, true);
+    const nextAttempt = detectiveAttempts + 1;
+    setDetectiveAttempts(nextAttempt);
     setDetectiveFeedback(
-      detectiveAttempts === 0
-        ? `Check the evidence: starts with "${detectiveCurrent.word[0]}" and ends with "${detectiveCurrent.word.at(-1)}".`
-        : `The spelling was ${detectiveCurrent.word}. This word will return for review.`
+      nextAttempt === 1
+        ? `Vowel trace: ${vowelTrace(detectiveCurrent.word)}`
+        : nextAttempt === 2
+          ? `Boundary clue: starts with "${detectiveCurrent.word[0]}", ends with "${detectiveCurrent.word.at(-1)}".`
+          : "Case failed. Keep investigating."
     );
     setDetectiveFeedbackKind("bad");
     playWhackSound("miss");
-    if (detectiveAttempts >= 1) {
+    if (nextAttempt >= 3) {
       window.setTimeout(() => {
         const nextIndex = detectiveIndex + 1;
         if (nextIndex >= detectiveWords.length) setDetectivePhase("done");
@@ -410,19 +579,25 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
           <Link className={gameMode === "whack" ? "active" : ""} href={`/courses/${courseSlug}/classic-word-quest/whack-a-word`}>Whack-a-Word</Link>
           <Link className={gameMode === "detective" ? "active" : ""} href={`/courses/${courseSlug}/classic-word-quest/word-detective`}>Word Detective</Link>
         </div>
-        <h1>{gameMode === "detective" ? "Word Detective" : "Whack-a-Word"}</h1>
-        <p>
-          {gameMode === "detective"
-            ? "Find the word from clues, then spell the evidence."
-            : `Round ${roundIndex + 1} / ${TOTAL_ROUNDS} · Listen fast. Whack the right classic word.`}
-        </p>
-        <div className="word-quest-stats">
+        {gameMode === "detective" ? (
+          <div className="detective-hero">
+            <span>Case 01 · Confidential</span>
+            <h1>Word Detective</h1>
+            <p>A letter has arrived. Open the clue, identify the word, then spell the evidence.</p>
+          </div>
+        ) : (
+          <>
+            <h1>Whack-a-Word</h1>
+            <p>Round {roundIndex + 1} / {TOTAL_ROUNDS} · Listen fast. Whack the right classic word.</p>
+          </>
+        )}
+        <div className={`word-quest-stats ${gameMode === "detective" ? "detective-case-stats" : ""}`}>
           {gameMode === "detective" ? (
             <>
-              <div><strong>{detectiveComplete ? detectiveWords.length : detectiveIndex + 1}</strong><span>/ {detectiveWords.length}</span></div>
-              <div ref={gemCounterRef}><strong>{detectiveGems}</strong><span>detective gems</span></div>
-              <div><strong>{detectiveMisses.length}</strong><span>review words</span></div>
-              <div><strong>{detectivePhase === "spell" ? "SPELL" : "CLUE"}</strong><span>current step</span></div>
+              <div><em>Case</em><strong>{detectiveComplete ? detectiveWords.length : detectiveIndex + 1}</strong><span>/ {detectiveWords.length}</span></div>
+              <div ref={gemCounterRef}><em>Gems</em><strong>{detectiveGems}</strong><span>evidence reward</span></div>
+              <div><em>File</em><strong>{detectiveMisses.length}</strong><span>review words</span></div>
+              <div><em>Stage</em><strong>{detectivePhase === "spell" ? "SPELL" : "CLUE"}</strong><span>current step</span></div>
             </>
           ) : (
             <>
@@ -454,10 +629,17 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
 
       {gameMode === "detective" ? (
         !detectiveComplete && detectiveCurrent ? (
-          <section className="detective-board">
+          <section ref={detectiveBoardRef} className={`detective-board ${detectivePhase === "choose" ? "choosing" : "spelling"}`}>
             <div className="detective-case-file">
-              <span>Case File</span>
+              {detectivePhase === "choose" ? (
+                <div className="parchment-cinema" aria-hidden="true">
+                  <span className="parchment-cinema-sheet" />
+                  <span className="parchment-cinema-roll" />
+                </div>
+              ) : null}
+              <span>Anonymous Letter</span>
               <strong>{detectiveClue(detectiveCurrent, detectiveIndex)}</strong>
+              <em>Find the hidden word. Trust the clue.</em>
             </div>
 
             {detectivePhase === "choose" ? (
@@ -470,8 +652,9 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
               </div>
             ) : (
               <form className="detective-spell-lock" onSubmit={submitDetectiveSpelling}>
-                <label htmlFor="detective-spelling">Spell the evidence</label>
-                <div className="detective-mask">{maskedWord(detectiveCurrent.word)}</div>
+                <label htmlFor="detective-spelling">Write the word from memory</label>
+                <div className="detective-seal">Evidence selected</div>
+                <p>No spelling clue yet. Type the complete word.</p>
                 <input
                   autoFocus
                   id="detective-spelling"
@@ -480,10 +663,11 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
                   value={detectiveSpelling}
                 />
                 <button className="battle-main-button" type="submit">Submit Spelling</button>
+                {detectiveFeedback ? <div className={`detective-spell-feedback ${detectiveFeedbackKind}`}>{detectiveFeedback}</div> : null}
               </form>
             )}
 
-            {detectiveFeedback ? <div className={`whack-feedback ${detectiveFeedbackKind}`}>{detectiveFeedback}</div> : null}
+            {detectivePhase === "choose" && detectiveFeedback ? <div className={`whack-feedback ${detectiveFeedbackKind}`}>{detectiveFeedback}</div> : null}
           </section>
         ) : (
           <section className="whack-result">

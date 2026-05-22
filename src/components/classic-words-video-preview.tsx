@@ -110,6 +110,7 @@ export function ClassicWordsVideoPreview({ words }: Props) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [soundOn, setSoundOn] = useState(true);
   const [time, setTime] = useState(0);
+  const [introKey, setIntroKey] = useState(0);
   const spokenSceneRef = useRef("");
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -177,6 +178,14 @@ export function ClassicWordsVideoPreview({ words }: Props) {
         </div>
 
         <div className="cw-cinematic-scene" aria-hidden="true">
+          {scene.visual === "opening" ? (
+            <div className="cw-parchment-intro" key={`parchment-${introKey}`}>
+              <div className="cw-parchment-roll" />
+              <div className="cw-parchment-sheet">
+                <span>Classic Words</span>
+              </div>
+            </div>
+          ) : null}
           <div className="cw-shelves back" />
           <div className="cw-shelves side" />
           <div className="cw-window" />
@@ -243,6 +252,7 @@ export function ClassicWordsVideoPreview({ words }: Props) {
               setTime(0);
               setIsPlaying(false);
               spokenSceneRef.current = "";
+              setIntroKey((value) => value + 1);
               stopNarration();
             }}
             type="button"

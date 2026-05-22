@@ -53,6 +53,7 @@ export async function getPlayerRewardSummary(userId: string, courseId?: string) 
 
   const rankedStudents = [...gemsByUser.entries()]
     .map(([id, gems]) => ({ id, gems }))
+    .filter((student) => student.gems > 0)
     .sort((a, b) => b.gems - a.gems || a.id.localeCompare(b.id));
   const rankIndex = rankedStudents.findIndex((student) => student.id === userId);
 
@@ -60,6 +61,54 @@ export async function getPlayerRewardSummary(userId: string, courseId?: string) 
     gems: gemsByUser.get(userId) ?? 0,
     rank: rankIndex >= 0 ? rankIndex + 1 : null
   };
+}
+
+export async function getRewardLeaderboard({ courseId, limit = 10 }: { courseId?: string; limit?: number } = {}) {
+  const [students, attempts] = await Promise.all([
+    prisma.user.findMany({
+      where: { role: "STUDENT" },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        profile: { select: { displayName: true } }
+      }
+    }),
+    prisma.answerAttempt.findMany({
+      where: {
+        ...(courseId ? { courseId } : {}),
+        OR: [{ gameMode: GEM_LEDGER_MODE }, { isCorrect: true, NOT: { gameMode: GEM_LEDGER_MODE } }]
+      },
+      select: {
+        userId: true,
+        isCorrect: true,
+        gameMode: true,
+        answer: true
+      }
+    })
+  ]);
+
+  const gemsByUser = new Map(students.map((student) => [student.id, 0]));
+  attempts.forEach((attempt) => {
+    const current = gemsByUser.get(attempt.userId) ?? 0;
+    if (attempt.gameMode === GEM_LEDGER_MODE) {
+      const amount = Number(parseRewardAnswer(attempt.answer).amount ?? 0);
+      gemsByUser.set(attempt.userId, Math.max(0, current + amount));
+      return;
+    }
+    if (attempt.isCorrect) gemsByUser.set(attempt.userId, current + 1);
+  });
+
+  return students
+    .map((student) => ({
+      userId: student.id,
+      name: student.profile?.displayName ?? student.name ?? student.email.split("@")[0],
+      gems: gemsByUser.get(student.id) ?? 0
+    }))
+    .filter((student) => student.gems > 0)
+    .sort((a, b) => b.gems - a.gems || a.name.localeCompare(b.name))
+    .slice(0, limit)
+    .map((student, index) => ({ ...student, rank: index + 1 }));
 }
 
 export async function findRewardBySourceKey(userId: string, courseId: string, sourceKey: string) {

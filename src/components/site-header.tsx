@@ -13,12 +13,23 @@ type Props = {
   rank?: number | null;
 };
 
+type LeaderboardEntry = {
+  userId: string;
+  name: string;
+  gems: number;
+  rank: number;
+};
+
 export function SiteHeader({ userName, userRole, gems = 0, rank }: Props) {
   const pathname = usePathname();
   const minimalHeaderPaths = ["/", "/login", "/register"];
   const shouldHideNav = minimalHeaderPaths.includes(pathname);
   const isAdmin = userRole === "ADMIN" || userRole === "TEACHER";
   const [playerStats, setPlayerStats] = useState({ gems, rank });
+  const [leaderboardOpen, setLeaderboardOpen] = useState(false);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
+  const [leaderboardError, setLeaderboardError] = useState("");
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
   useEffect(() => {
     setPlayerStats({ gems, rank });
@@ -37,6 +48,31 @@ export function SiteHeader({ userName, userRole, gems = 0, rank }: Props) {
     window.addEventListener("latinfun:gems-updated", updateStats);
     return () => window.removeEventListener("latinfun:gems-updated", updateStats);
   }, []);
+
+  useEffect(() => {
+    if (!leaderboardOpen) return;
+    let canceled = false;
+
+    async function loadLeaderboard() {
+      setLeaderboardLoading(true);
+      setLeaderboardError("");
+      try {
+        const response = await fetch("/api/rewards/leaderboard?limit=10");
+        if (!response.ok) throw new Error("Failed to load leaderboard");
+        const payload = (await response.json()) as { data?: { leaderboard?: LeaderboardEntry[] } };
+        if (!canceled) setLeaderboard(payload.data?.leaderboard ?? []);
+      } catch {
+        if (!canceled) setLeaderboardError("排行榜暂时无法加载。");
+      } finally {
+        if (!canceled) setLeaderboardLoading(false);
+      }
+    }
+
+    loadLeaderboard();
+    return () => {
+      canceled = true;
+    };
+  }, [leaderboardOpen, playerStats.gems, playerStats.rank]);
 
   return (
     <header className="topbar">
@@ -57,10 +93,44 @@ export function SiteHeader({ userName, userRole, gems = 0, rank }: Props) {
                     <Gem size={16} aria-hidden="true" />
                     <strong>{playerStats.gems}</strong>
                   </span>
-                  <span className="player-stat player-stat-rank">
+                  <button
+                    aria-expanded={leaderboardOpen}
+                    aria-label="查看宝石排行榜"
+                    className="player-stat player-stat-rank leaderboard-trigger"
+                    onClick={() => setLeaderboardOpen((open) => !open)}
+                    type="button"
+                  >
                     <Trophy size={16} aria-hidden="true" />
                     <strong>{playerStats.rank ? `#${playerStats.rank}` : "--"}</strong>
-                  </span>
+                  </button>
+                  {leaderboardOpen ? (
+                    <div className="leaderboard-popover" role="dialog" aria-label="宝石排行榜">
+                      <div className="leaderboard-head">
+                        <span>Gem Leaderboard</span>
+                        <button aria-label="关闭排行榜" onClick={() => setLeaderboardOpen(false)} type="button">×</button>
+                      </div>
+                      {leaderboardLoading ? <p className="leaderboard-note">Loading...</p> : null}
+                      {leaderboardError ? <p className="leaderboard-note danger">{leaderboardError}</p> : null}
+                      {!leaderboardLoading && !leaderboardError ? (
+                        leaderboard.length ? (
+                          <ol className="leaderboard-list">
+                            {leaderboard.map((entry) => (
+                              <li key={entry.userId}>
+                                <span className="leaderboard-rank">#{entry.rank}</span>
+                                <strong>{entry.name}</strong>
+                                <span className="leaderboard-gems">
+                                  <Gem size={14} aria-hidden="true" />
+                                  {entry.gems}
+                                </span>
+                              </li>
+                            ))}
+                          </ol>
+                        ) : (
+                          <p className="leaderboard-note">还没有玩家获得宝石。</p>
+                        )
+                      ) : null}
+                    </div>
+                  ) : null}
                 </span>
               ) : null}
               <span className="nav-user">{userName}</span>
