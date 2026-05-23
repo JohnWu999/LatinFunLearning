@@ -23,6 +23,7 @@ export default async function ClassicWordQuestHubPage({ params, searchParams }: 
   if (!course) notFound();
   if (!user) redirect(`/login?next=/courses/${course.slug}/classic-word-quest`);
   if (query?.game === "detective") redirect(`/courses/${course.slug}/classic-word-quest/word-detective`);
+  if (query?.game === "sentence") redirect(`/courses/${course.slug}/classic-word-quest/sentence-forge`);
 
   return (
     <main className="word-quest-page classic-word-quest-hub">
@@ -48,6 +49,12 @@ export default async function ClassicWordQuestHubPage({ params, searchParams }: 
           <strong>Word Detective</strong>
           <p>Use clues to identify the word, then spell it to solve the case.</p>
           <em>Meaning · spelling</em>
+        </Link>
+        <Link href={`/courses/${course.slug}/classic-word-quest/sentence-forge`}>
+          <span>⚒</span>
+          <strong>Sentence Forge</strong>
+          <p>Read literary context and choose the classic word that completes the sentence.</p>
+          <em>Context · application</em>
         </Link>
       </section>
     </main>

@@ -96,15 +96,39 @@ export default async function DashboardPage() {
           <div className="legacy-module-grid">
             <Link href={`/courses/${primaryCourse.slug}/latin-stems`} className="legacy-module-card">
               <span>🌿</span>
-              <strong>Latin Stems</strong>
+              <strong>Latin Stem</strong>
               <p>集中查看全部拉丁词根、含义和现代英文例词，适合先建立词源地图。</p>
               <em>词根 · {primaryCourse.knowledge.length} stems</em>
+            </Link>
+            <Link href={`/courses/${primaryCourse.slug}/vocab-practice?type=latin-stems`} className="legacy-module-card">
+              <span>✏️</span>
+              <strong>Roots of Power</strong>
+              <p>按 Latin Stems 课程顺序练习词根、含义和例词，点击即时反馈，自动评分。</p>
+              <em>词根练习 · odd lessons</em>
+            </Link>
+            <Link href={`/courses/${primaryCourse.slug}/battle`} className="legacy-module-card">
+              <span>🎮</span>
+              <strong>Stem Battle</strong>
+              <p>用拼写补全、连线、判断和闪电选择等玩法，反复训练 Latin Stems。</p>
+              <em>互动游戏 · {primaryCourse._count.gameLevels} levels</em>
             </Link>
             <Link href={`/courses/${primaryCourse.slug}/classic-words`} className="legacy-module-card">
               <span>📚</span>
               <strong>Classic Words</strong>
               <p>按单元学习经典词汇、读音、英文释义、文学出处，以及同义词和反义词。</p>
               <em>词汇 · {primaryCourse._count.vocabulary} words</em>
+            </Link>
+            <Link href={`/courses/${primaryCourse.slug}/vocab-practice?type=classic-words`} className="legacy-module-card">
+              <span>📝</span>
+              <strong>Classic Word Treasury</strong>
+              <p>按 Classic Words 课程顺序练习上下文选词、同义词和反义词。</p>
+              <em>经典词汇 · even lessons</em>
+            </Link>
+            <Link href={`/courses/${primaryCourse.slug}/classic-word-quest`} className="legacy-module-card">
+              <span>🧭</span>
+              <strong>Classic Word Quest</strong>
+              <p>通过打地鼠、侦探线索和拼写锁，练习 classic words 的识别、理解和拼写。</p>
+              <em>Classic Words games</em>
             </Link>
             <Link href={`/courses/${primaryCourse.slug}/analogies-antonyms`} className="legacy-module-card">
               <span className="analogy-module-icon" aria-hidden="true">
@@ -114,36 +138,6 @@ export default async function DashboardPage() {
               <strong>Analogies &amp; Antonyms</strong>
               <p>汇总 Caesar&apos;s Analogies 和 Caesar&apos;s Antonyms，按课程顺序集中练习。</p>
               <em>类比 · 反义词</em>
-            </Link>
-            <Link href={`/courses/${primaryCourse.slug}/workbook`} className="legacy-module-card">
-              <span>✍️</span>
-              <strong>精简练习册</strong>
-              <p>核心词汇精简版练习册，重点突出高频词汇与典型例句，快速浏览与检索。</p>
-              <em>静态资料 · 简组版</em>
-            </Link>
-            <Link href={`/courses/${primaryCourse.slug}/battle`} className="legacy-module-card">
-              <span>🎮</span>
-              <strong>Stem Battle</strong>
-              <p>用拼写补全、连线、判断和闪电选择等玩法，反复训练 Latin Stems。</p>
-              <em>互动游戏 · {primaryCourse._count.gameLevels} levels</em>
-            </Link>
-            <Link href={`/courses/${primaryCourse.slug}/classic-word-quest`} className="legacy-module-card">
-              <span>🧭</span>
-              <strong>Classic Word Quest</strong>
-              <p>通过打地鼠、侦探线索和拼写锁，练习 classic words 的识别、理解和拼写。</p>
-              <em>Classic Words games</em>
-            </Link>
-            <Link href={`/courses/${primaryCourse.slug}/vocab-practice?type=latin-stems`} className="legacy-module-card">
-              <span>✏️</span>
-              <strong>Roots of Power</strong>
-              <p>按 Latin Stems 课程顺序练习词根、含义和例词，点击即时反馈，自动评分。</p>
-              <em>词根练习 · odd lessons</em>
-            </Link>
-            <Link href={`/courses/${primaryCourse.slug}/vocab-practice?type=classic-words`} className="legacy-module-card">
-              <span>📝</span>
-              <strong>Classic Word Treasury</strong>
-              <p>按 Classic Words 课程顺序练习上下文选词、同义词和反义词。</p>
-              <em>经典词汇 · even lessons</em>
             </Link>
           </div>
         </section>
@@ -155,12 +149,12 @@ export default async function DashboardPage() {
           {primaryCourse ? (
             <>
               <Link href={`/courses/${primaryCourse.slug}/latin-stems`}>Latin Stems</Link>
-              <Link href={`/courses/${primaryCourse.slug}/classic-words`}>Classic Words</Link>
-              <Link href={`/courses/${primaryCourse.slug}/analogies-antonyms`}>Analogies &amp; Antonyms</Link>
-              <Link href={`/courses/${primaryCourse.slug}/workbook`}>精简练习册</Link>
-              <Link href={`/courses/${primaryCourse.slug}/battle`}>Stem Battle</Link>
               <Link href={`/courses/${primaryCourse.slug}/vocab-practice?type=latin-stems`}>Roots of Power</Link>
+              <Link href={`/courses/${primaryCourse.slug}/battle`}>Stem Battle</Link>
+              <Link href={`/courses/${primaryCourse.slug}/classic-words`}>Classic Words</Link>
               <Link href={`/courses/${primaryCourse.slug}/vocab-practice?type=classic-words`}>Classic Word Treasury</Link>
+              <Link href={`/courses/${primaryCourse.slug}/classic-word-quest`}>Classic Word Quest</Link>
+              <Link href={`/courses/${primaryCourse.slug}/analogies-antonyms`}>Analogies &amp; Antonyms</Link>
               <Link href={`/courses/${primaryCourse.slug}`}>课程数据总览</Link>
             </>
           ) : null}
