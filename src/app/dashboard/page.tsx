@@ -82,19 +82,19 @@ export default async function DashboardPage() {
               <strong>Build root power first, then train through games.</strong>
             </div>
             <Link href={`/courses/${primaryCourse.slug}/latin-stems`} className="legacy-module-card">
-              <span>🌿</span>
+              <span className="module-3d-icon stem" aria-hidden="true"><i /><b /><small /></span>
               <strong>Latin Stem</strong>
               <p>Explore Latin stems, meanings, and modern English examples.</p>
               <em>{primaryCourse.knowledge.length} stems</em>
             </Link>
             <Link href={`/courses/${primaryCourse.slug}/vocab-practice?type=latin-stems`} className="legacy-module-card">
-              <span>✏️</span>
+              <span className="module-3d-icon pencil" aria-hidden="true"><i /><b /><small /></span>
               <strong>Roots of Power</strong>
               <p>Practice Latin stems by lesson with matching, context choices, and instant feedback.</p>
               <em>Stem lessons</em>
             </Link>
             <Link href={`/courses/${primaryCourse.slug}/battle`} className="legacy-module-card">
-              <span>🎮</span>
+              <span className="module-3d-icon gamepad" aria-hidden="true"><i /><b /><small /></span>
               <strong>Stem Battle</strong>
               <p>Master stems, meanings, and examples through interactive game challenges.</p>
               <em>Stem quests</em>
@@ -104,28 +104,25 @@ export default async function DashboardPage() {
               <strong>Move from word study to understanding, practice, and application.</strong>
             </div>
             <Link href={`/courses/${primaryCourse.slug}/classic-words`} className="legacy-module-card">
-              <span>📚</span>
+              <span className="module-3d-icon books" aria-hidden="true"><i /><b /><small /></span>
               <strong>Classic Words</strong>
               <p>Study classic words by unit with pronunciation, definitions, literary sources, synonyms, and antonyms.</p>
               <em>{primaryCourse._count.vocabulary} words</em>
             </Link>
             <Link href={`/courses/${primaryCourse.slug}/vocab-practice?type=classic-words`} className="legacy-module-card">
-              <span>📝</span>
+              <span className="module-3d-icon checklist" aria-hidden="true"><i /><b /><small /></span>
               <strong>Classic Word Treasury</strong>
               <p>Practice classic words by lesson through context choices, synonyms, antonyms, and instant feedback.</p>
               <em>Word lessons</em>
             </Link>
             <Link href={`/courses/${primaryCourse.slug}/classic-word-quest`} className="legacy-module-card">
-              <span>🧭</span>
+              <span className="module-3d-icon quest" aria-hidden="true"><i /><b /><small /></span>
               <strong>Classic Word Quest</strong>
               <p>Build recognition, meaning, spelling, and sentence use through word games.</p>
               <em>Classic Words games</em>
             </Link>
             <Link href={`/courses/${primaryCourse.slug}/analogies-antonyms`} className="legacy-module-card">
-              <span className="analogy-module-icon" aria-hidden="true">
-                <i>A</i>
-                <b>A</b>
-              </span>
+              <span className="module-3d-icon analogy" aria-hidden="true"><i /><b /><small /></span>
               <strong>Analogies &amp; Antonyms</strong>
               <p>Practice Caesar&apos;s Analogies and Caesar&apos;s Antonyms by lesson.</p>
               <em>Analogies · Antonyms</em>

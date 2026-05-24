@@ -18,9 +18,11 @@ type RoundWord = LessonVocabularyCard & { lesson: number };
 type SentenceChallenge = {
   word: RoundWord;
   sentence: string;
+  contextNote?: string;
   source: {
     work: string;
     author: string;
+    kind: "source" | "phrase" | "practice";
   };
   options: RoundWord[];
 };
@@ -45,7 +47,7 @@ type FlyingGem = {
 const ROUND_SIZE = 20;
 const TOTAL_ROUNDS = 20;
 const DETECTIVE_SIZE = 40;
-const SENTENCE_FORGE_SIZE = 24;
+const SENTENCE_FORGE_SIZE = 65;
 const C1_DETECTIVE_WORDS = new Set([
   "derision",
   "procure",
@@ -222,13 +224,71 @@ function sentenceSource(word: RoundWord) {
     word.sources[0];
 }
 
-function sentenceWithBlank(word: RoundWord) {
+function isCompleteLiterarySentence(value: string) {
+  const cleaned = value.replace(/\[\[|\]\]/g, "").trim();
+  const tokens = sentenceTokens(cleaned);
+  const hasEnding = /[.!?]["”']?$/.test(cleaned);
+  const hasVerbShape = /\b(am|is|are|was|were|be|being|been|has|have|had|do|does|did|can|could|may|might|must|shall|should|will|would|seems?|seemed|became|become|felt|made|makes|said|saw|found|stood|came|went|turned|looked|thought|knew|spoke)\b/i.test(cleaned);
+  return tokens.length >= 9 && hasEnding && hasVerbShape;
+}
+
+function practiceSentence(word: RoundWord) {
+  const target = `[[${word.word}]]`;
+  const definition = word.definition.replace(/[.;:]$/, "");
+  const templates = [
+    `The character's ${target} reveals ${definition}, and the whole scene turns sharper.`,
+    `The narrator lets ${target} rise quietly through the scene, suggesting ${definition}.`,
+    `As the conflict deepens, ${target} becomes the word that best captures ${definition}.`,
+    `The passage gathers force when ${target} appears, giving the reader a vivid sense of ${definition}.`
+  ];
+  return templates[stableHash(word.word) % templates.length];
+}
+
+function sentenceChallengeText(word: RoundWord, index: number) {
   const source = sentenceSource(word);
-  if (!source) return `The best word for this context is _____.`;
-  if (source.text.includes("[[")) return source.text.replace(/\[\[[^\]]+\]\]/g, "_____");
-  const exact = new RegExp(`\\b${escapeRegExp(word.word)}\\b`, "i");
-  if (exact.test(source.text)) return source.text.replace(exact, "_____");
-  return `${source.text} The best classic word for this idea is _____.`;
+  const sourceText = source?.text.trim() ?? "";
+  const markedText = sourceText.includes("[[")
+    ? sourceText
+    : sourceText.replace(new RegExp(`\\b${escapeRegExp(word.word)}\\b`, "i"), `[[${word.word}]]`);
+
+  if (source && markedText.includes("[[") && isCompleteLiterarySentence(markedText)) {
+    return {
+      sentence: markedText.replace(/\[\[[^\]]+\]\]/g, "_____"),
+      contextNote: undefined,
+      source: {
+        work: source.work,
+        author: source.author,
+        kind: "source" as const
+      }
+    };
+  }
+
+  if (source && markedText.includes("[[")) {
+    return {
+      sentence: markedText.replace(/\[\[[^\]]+\]\]/g, "_____"),
+      contextNote: `Original phrase from the source. Use the meaning clue to complete it: ${word.definition}.`,
+      source: {
+        work: source.work,
+        author: source.author,
+        kind: "phrase" as const
+      }
+    };
+  }
+
+  return {
+    sentence: practiceSentence(word).replace(/\[\[[^\]]+\]\]/g, "_____"),
+    contextNote: `Practice sentence. No complete source sentence was available for this word in the current data.`,
+    source: {
+      work: `Practice Sentence ${index + 1}`,
+      author: "Classic WordLab",
+      kind: "practice" as const
+    }
+  };
+}
+
+function sentenceWritingGemReward(stars: number) {
+  if (stars <= 0) return 0;
+  return 2 ** stars;
 }
 
 function makeSentenceChallenges(allWords: RoundWord[], stats: Record<string, WordErrorStat>) {
@@ -253,7 +313,7 @@ function makeSentenceChallenges(allWords: RoundWord[], stats: Record<string, Wor
   allWords.forEach(addWord);
 
   return selected.map((word, index) => {
-    const source = sentenceSource(word);
+    const challengeText = sentenceChallengeText(word, index);
     const distractors = stableShuffle(
       allWords.filter((candidate) => candidate.word !== word.word && candidate.partOfSpeech === word.partOfSpeech),
       `sentence-distractors-${word.word}`,
@@ -274,11 +334,9 @@ function makeSentenceChallenges(allWords: RoundWord[], stats: Record<string, Wor
     });
     return {
       word,
-      sentence: sentenceWithBlank(word),
-      source: {
-        work: source?.work ?? `Classic Word Quest ${index + 1}`,
-        author: source?.author ?? "Classic WordLab"
-      },
+      sentence: challengeText.sentence,
+      contextNote: challengeText.contextNote,
+      source: challengeText.source,
       options: stableShuffle([word, ...optionPool], `sentence-options-${word.word}`, (candidate) => candidate.word)
     };
   });
@@ -331,7 +389,7 @@ function evaluateSentenceWriting(word: RoundWord, draft: string): SentenceWritin
   ];
   const averageStars = rubric.reduce((total, item) => total + item.stars, 0) / rubric.length;
   const stars = Math.max(1, Math.min(5, Math.round(averageStars)));
-  const gems = stars === 5 ? 5 : stars === 4 ? 4 : stars === 3 ? 2 : stars === 2 ? 1 : 0;
+  const gems = sentenceWritingGemReward(stars);
   const level = stars === 5 ? "Excellent Forge" : stars === 4 ? "Strong Sentence" : stars === 3 ? "Good Start" : stars === 2 ? "Needs Sharpening" : "Try Again";
 
   let advice = `Use "${word.word}" in a complete sentence that clearly shows: ${word.definition}.`;
@@ -407,6 +465,58 @@ function playWhackSound(kind: "hit" | "miss" | "bonus") {
   window.setTimeout(() => context.close().catch(() => undefined), 700);
 }
 
+function playSentenceForgeSound(kind: "context" | "wrong" | "writing-low" | "writing-mid" | "writing-high") {
+  if (typeof window === "undefined") return;
+  const audioWindow = window as Window & { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
+  const AudioContextClass = audioWindow.AudioContext ?? audioWindow.webkitAudioContext;
+  if (!AudioContextClass) return;
+  const context = new AudioContextClass();
+  const master = context.createGain();
+  master.gain.value = 0.08;
+  master.connect(context.destination);
+
+  const pattern =
+    kind === "context" ? [392, 523, 659, 784] :
+    kind === "wrong" ? [220, 174, 146] :
+    kind === "writing-high" ? [392, 494, 587, 784, 988, 1175] :
+    kind === "writing-mid" ? [330, 392, 494, 659] :
+    [196, 247, 294];
+  const wave: OscillatorType = kind === "wrong" ? "sawtooth" : kind === "writing-high" ? "triangle" : "sine";
+  const step = kind === "writing-high" ? 0.075 : 0.1;
+  pattern.forEach((frequency, index) => {
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.type = wave;
+    oscillator.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.001, context.currentTime + index * step);
+    gain.gain.linearRampToValueAtTime(kind === "wrong" ? 0.04 : 0.06, context.currentTime + index * step + 0.018);
+    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + index * step + (kind === "writing-high" ? 0.24 : 0.18));
+    oscillator.connect(gain);
+    gain.connect(master);
+    oscillator.start(context.currentTime + index * step);
+    oscillator.stop(context.currentTime + index * step + 0.28);
+  });
+
+  if (kind === "writing-high") {
+    [1568, 1975].forEach((frequency, index) => {
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+      oscillator.type = "sine";
+      oscillator.frequency.value = frequency;
+      const start = context.currentTime + 0.18 + index * 0.08;
+      gain.gain.setValueAtTime(0.001, start);
+      gain.gain.linearRampToValueAtTime(0.035, start + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.34);
+      oscillator.connect(gain);
+      gain.connect(master);
+      oscillator.start(start);
+      oscillator.stop(start + 0.38);
+    });
+  }
+
+  window.setTimeout(() => context.close().catch(() => undefined), 1200);
+}
+
 export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, initialMode = "whack" }: Props) {
   const allWords = useMemo(() => words as RoundWord[], [words]);
   const [wordErrorStats, setWordErrorStats] = useState<Record<string, WordErrorStat>>({});
@@ -435,7 +545,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
     return selected;
   }, [allWords, wordErrorStats]);
   const initialRound = useMemo(() => makeRound(allWords, [], 0), [allWords]);
-  const sentenceChallenges = useMemo(() => makeSentenceChallenges(allWords, {}), [allWords]);
+  const sentenceChallenges = useMemo(() => makeSentenceChallenges(allWords, wordErrorStats), [allWords, wordErrorStats]);
   const [gameMode] = useState<"whack" | "detective" | "sentence">(initialMode);
   const [roundIndex, setRoundIndex] = useState(0);
   const [roundWords, setRoundWords] = useState<RoundWord[]>(initialRound.roundWords);
@@ -579,6 +689,26 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
     }
   }
 
+  async function recordGameMistake(input: {
+    category: "Latin Stems" | "Classic Words" | "Analogies & Antonyms" | "Sentence Writing";
+    itemKey: string;
+    itemLabel: string;
+    mistakeType: string;
+    sourceModule: string;
+    prompt?: string;
+    userAnswer?: unknown;
+    correctAnswer?: unknown;
+  }) {
+    await fetch(appPath("/api/mistakes"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        courseId,
+        ...input
+      })
+    }).catch(() => undefined);
+  }
+
   function rewardForSpeed(ms: number) {
     if (ms <= 1500) return 5;
     if (ms <= 3000) return 3;
@@ -630,6 +760,16 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
       await applyGems(gems, `word-whack-hit-${current.word}-${questionIndex}`, `Whack-a-Word hit: ${current.word}`);
     } else {
       recordWordOutcome(current.word, true);
+      void recordGameMistake({
+        category: "Classic Words",
+        itemKey: getWordStatKey(current.word),
+        itemLabel: current.word,
+        mistakeType: "Definition",
+        sourceModule: "Whack-a-Word",
+        prompt: current.definition,
+        userAnswer: choice.word,
+        correctAnswer: current.word
+      });
       setLocalGems((value) => Math.max(0, value - 2));
       setMissedWords((items) => Array.from(new Set([...items, current.word])));
       setQuestReviewWords((items) => Array.from(new Set([...items, current.word])));
@@ -701,6 +841,16 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
     }
 
     recordWordOutcome(detectiveCurrent.word, true);
+    void recordGameMistake({
+      category: "Classic Words",
+      itemKey: getWordStatKey(detectiveCurrent.word),
+      itemLabel: detectiveCurrent.word,
+      mistakeType: "Classic Vocabulary",
+      sourceModule: "Word Detective",
+      prompt: detectiveClue(detectiveCurrent, detectiveIndex),
+      userAnswer: choice.word,
+      correctAnswer: detectiveCurrent.word
+    });
     setDetectiveMisses((items) => Array.from(new Set([...items, detectiveCurrent.word])));
     setDetectiveFeedback("Not that suspect. Read the clue again.");
     setDetectiveFeedbackKind("bad");
@@ -740,6 +890,16 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
 
     setDetectiveMisses((items) => Array.from(new Set([...items, detectiveCurrent.word])));
     recordWordOutcome(detectiveCurrent.word, true);
+    void recordGameMistake({
+      category: "Classic Words",
+      itemKey: getWordStatKey(detectiveCurrent.word),
+      itemLabel: detectiveCurrent.word,
+      mistakeType: "Spelling",
+      sourceModule: "Word Detective",
+      prompt: `Spell the selected word: ${detectiveCurrent.definition}`,
+      userAnswer: detectiveSpelling,
+      correctAnswer: detectiveCurrent.word
+    });
     const nextAttempt = detectiveAttempts + 1;
     setDetectiveAttempts(nextAttempt);
     setDetectiveFeedback(
@@ -784,16 +944,26 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
       const gems = sentenceAttempts === 0 ? 4 : 2;
       setSentenceGems((value) => value + gems);
       setSentenceFeedback(`Context forged. +${gems} gems.`);
-      playWhackSound(gems >= 4 ? "bonus" : "hit");
+      playSentenceForgeSound("context");
       launchFlyingGems(gems, gemCounterRef.current);
       await applyGems(gems, `sentence-forge-${sentenceCurrent.word.word}-${sentenceIndex}`, `Sentence Forge solved: ${sentenceCurrent.word.word}`);
       return;
     }
 
     recordWordOutcome(sentenceCurrent.word.word, true);
+    void recordGameMistake({
+      category: "Classic Words",
+      itemKey: getWordStatKey(sentenceCurrent.word.word),
+      itemLabel: sentenceCurrent.word.word,
+      mistakeType: "Literary Context",
+      sourceModule: "Sentence Forge",
+      prompt: sentenceCurrent.sentence,
+      userAnswer: sentenceSelection,
+      correctAnswer: sentenceCurrent.word.word
+    });
     setSentenceAttempts((value) => value + 1);
     setSentenceFeedback(`Meaning clue: ${sentenceCurrent.word.definition}`);
-    playWhackSound("miss");
+    playSentenceForgeSound("wrong");
   }
 
   function trySentenceAgain() {
@@ -851,13 +1021,26 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
     if (!sentenceCurrent || sentenceStage !== "write" || sentenceWritingScore) return;
     const score = evaluateSentenceWriting(sentenceCurrent.word, sentenceDraft);
     setSentenceWritingScore(score);
+    const wordUseStars = score.rubric.find((item) => item.label === "Word Use")?.stars ?? score.stars;
+    if (score.stars <= 3 || wordUseStars <= 2) {
+      void recordGameMistake({
+        category: "Sentence Writing",
+        itemKey: getWordStatKey(sentenceCurrent.word.word),
+        itemLabel: sentenceCurrent.word.word,
+        mistakeType: wordUseStars <= 2 ? "Word Use" : "Low Score",
+        sourceModule: "Sentence Forge",
+        prompt: `Write one original sentence using "${sentenceCurrent.word.word}".`,
+        userAnswer: sentenceDraft,
+        correctAnswer: sentenceCurrent.word.definition
+      });
+    }
     if (score.gems > 0) {
       setSentenceGems((value) => value + score.gems);
-      playWhackSound(score.gems >= 4 ? "bonus" : "hit");
+      playSentenceForgeSound(score.stars >= 5 ? "writing-high" : score.stars >= 3 ? "writing-mid" : "writing-low");
       launchFlyingGems(score.gems, gemCounterRef.current);
       await applyGems(score.gems, `sentence-forge-writing-${sentenceCurrent.word.word}-${sentenceIndex}`, `Sentence Forge writing: ${sentenceCurrent.word.word}`);
     } else {
-      playWhackSound("miss");
+      playSentenceForgeSound("wrong");
     }
   }
 
@@ -989,8 +1172,15 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
           <section className="sentence-forge-board" onKeyDownCapture={handleSentenceKeyDown} tabIndex={-1}>
             <div className="sentence-forge-anvil" aria-hidden="true">⚒</div>
             <article className="sentence-forge-card">
-              <span>Literary Context</span>
+              <span>
+                {sentenceCurrent.source.kind === "source"
+                  ? "Literary Context"
+                  : sentenceCurrent.source.kind === "phrase"
+                    ? "Original Source Phrase"
+                    : "Practice Sentence"}
+              </span>
               <p>{sentenceCurrent.sentence}</p>
+              {sentenceCurrent.contextNote ? <small>{sentenceCurrent.contextNote}</small> : null}
               <em>
                 <cite>《{sentenceCurrent.source.work}》</cite>
                 <i>{sentenceCurrent.source.author}</i>
@@ -1046,6 +1236,20 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
                   <strong>{sentenceCurrent.word.word}</strong>
                   <p>{sentenceCurrent.word.definition}</p>
                 </div>
+                <div className="sentence-writing-reward">
+                  <span>Writing reward doubles with every star</span>
+                  <div>
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <b key={star}>
+                        <span>{"★".repeat(star)}</span>
+                        <em>
+                          +{sentenceWritingGemReward(star)}
+                          <i aria-hidden="true" />
+                        </em>
+                      </b>
+                    ))}
+                  </div>
+                </div>
                 <label htmlFor="sentence-writing-input">Write one original sentence using this word.</label>
                 <textarea
                   id="sentence-writing-input"
@@ -1064,9 +1268,17 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
                         {"☆".repeat(5 - sentenceWritingScore.stars)}
                       </strong>
                       <span>{sentenceWritingScore.level}</span>
-                      <em>+{sentenceWritingScore.gems} gems</em>
+                      <em className="sentence-gem-award">
+                        +{sentenceWritingScore.gems}
+                        <i aria-hidden="true" />
+                        <small>writing multiplier</small>
+                      </em>
                     </div>
                     <p>{sentenceWritingScore.praise}</p>
+                    <div className="sentence-score-advice">
+                      <b>Coach note</b>
+                      <span>{sentenceWritingScore.advice}</span>
+                    </div>
                     <ul>
                       {sentenceWritingScore.rubric.map((item) => (
                         <li key={item.label}>
@@ -1080,7 +1292,6 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
                         </li>
                       ))}
                     </ul>
-                    <div className="sentence-score-advice">{sentenceWritingScore.advice}</div>
                   </div>
                 ) : null}
                 <div className="sentence-forge-actions">

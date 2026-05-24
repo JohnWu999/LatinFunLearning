@@ -4,8 +4,16 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export default async function MistakesPage() {
+const CATEGORY_ORDER = ["Latin Stems", "Classic Words", "Analogies & Antonyms", "Sentence Writing"];
+
+type Props = {
+  searchParams?: Promise<{ category?: string }>;
+};
+
+export default async function MistakesPage({ searchParams }: Props) {
   const user = await getCurrentUser();
+  const query = await searchParams;
+  const selectedCategory = CATEGORY_ORDER.includes(query?.category ?? "") ? query?.category : undefined;
 
   if (!user) {
     return (
@@ -29,37 +37,134 @@ export default async function MistakesPage() {
     },
     orderBy: { lastSeenAt: "desc" }
   });
+  const primaryCourse = mistakes.find((mistake) => mistake.course.slug === "caesars-english-ii")?.course ?? mistakes[0]?.course;
+  const categoryCards = CATEGORY_ORDER.map((category) => ({
+    category,
+    count: mistakes.filter((mistake) => (mistake.category ?? inferCategory(mistake.knowledgePoint?.type, mistake.exercise?.group)) === category).length,
+    href: `/mistakes?category=${encodeURIComponent(category)}`,
+    label: reviewLabel(category),
+    description: categoryDescription(category)
+  }));
+  const selectedMistakes = selectedCategory
+    ? mistakes.filter((mistake) => (mistake.category ?? inferCategory(mistake.knowledgePoint?.type, mistake.exercise?.group)) === selectedCategory)
+    : [];
 
   return (
     <main className="main">
-      <h1 className="page-title">错题本</h1>
-      <p className="lede">这里记录仍未掌握的错题。连续复习答对后，系统会自动标记为已掌握。</p>
-      <section className="section list">
-        {mistakes.length ? (
-          mistakes.map((mistake) => (
-            <article className="row tall" key={mistake.id}>
-              <div>
-                <strong>{mistake.exercise?.prompt ?? mistake.knowledgePoint?.title ?? "错题"}</strong>
-                <br />
-                <small>
-                  {mistake.course.title} · {mistake.lesson?.title ?? "全课程"} · 错 {mistake.wrongCount} 次
-                </small>
-                {mistake.exercise ? <p>答案：{String(mistake.exercise.correctAnswer)}</p> : null}
-              </div>
-              {mistake.lesson ? (
-                <Link className="button" href={`/courses/${mistake.course.slug}/lessons/${mistake.lesson.slug}/practice`}>
-                  复习本课
-                </Link>
-              ) : null}
-            </article>
-          ))
-        ) : (
-          <div className="card">
-            <h3>暂无错题</h3>
-            <p>完成练习后，答错的题会自动进入这里。</p>
+      <Link className="legacy-back as-button" href="/dashboard">← 返回模块主界面</Link>
+      {!selectedCategory ? (
+        <>
+          <h1 className="page-title">错题本</h1>
+          <p className="lede">Choose a mistake type to see only that module&apos;s accumulated mistakes.</p>
+          <section className="mistake-type-grid" aria-label="错题类型入口">
+            {categoryCards.map((card) => (
+              <Link className={`mistake-type-card ${card.count === 0 ? "empty" : ""}`} href={card.href} key={card.category}>
+                <div className="mistake-card-badge">{card.count > 0 ? `▲ ${card.count} mistakes` : "All clear"}</div>
+                <div className={`mistake-type-icon ${iconClass(card.category)}`} aria-hidden="true">
+                  <i />
+                  <b />
+                  <small />
+                </div>
+                <strong>{card.category}</strong>
+                <p>{card.description}</p>
+                <em>{card.count > 0 ? "Open mistake set" : "No mistakes yet"}</em>
+              </Link>
+            ))}
+          </section>
+        </>
+      ) : (
+        <>
+          <Link className="legacy-back as-button" href="/mistakes">← Back to mistake types</Link>
+          <h1 className="page-title">{selectedCategory}</h1>
+          <p className="lede">{selectedMistakes.length} accumulated mistake{selectedMistakes.length === 1 ? "" : "s"} in this module.</p>
+          <div className="mistake-review-toolbar">
+            <Link className="button primary" href={reviewHref(selectedCategory, primaryCourse?.slug)}>
+              {reviewLabel(selectedCategory)}
+            </Link>
           </div>
-        )}
-      </section>
+          {selectedMistakes.length ? (
+            <section className="mistake-card-grid compact">
+              {selectedMistakes.map((mistake) => (
+                <article className="mistake-card" key={mistake.id}>
+                  <div className="mistake-card-head">
+                    <strong>{mistake.itemLabel ?? mistake.exercise?.prompt ?? mistake.knowledgePoint?.title ?? "Mistake"}</strong>
+                    <span>{mistake.mistakeType ?? "Practice Error"}</span>
+                  </div>
+                  <div className="mistake-card-meta">
+                    <div>
+                      <small>错误词数</small>
+                      <b>{mistake.wrongCount}</b>
+                    </div>
+                    <div>
+                      <small>来源</small>
+                      <b>{mistake.sourceModule ?? mistake.lesson?.title ?? mistake.course.title}</b>
+                    </div>
+                  </div>
+                  <Link className="button primary" href={originalPracticeHref(mistake, selectedCategory)}>
+                    回原题练习
+                  </Link>
+                </article>
+              ))}
+            </section>
+          ) : (
+            <div className="card">
+              <h3>No mistakes in this module yet</h3>
+              <p>When this category has new mistakes, they will appear here.</p>
+            </div>
+          )}
+        </>
+      )}
     </main>
   );
+}
+
+function inferCategory(type?: string | null, group?: string | null) {
+  if (type === "STEM") return "Latin Stems";
+  if (group?.toLowerCase().includes("analog")) return "Analogies & Antonyms";
+  return "Classic Words";
+}
+
+function reviewHref(category: string, courseSlug?: string) {
+  const slug = courseSlug ?? "caesars-english-ii";
+  if (category === "Latin Stems") return `/courses/${slug}/battle`;
+  if (category === "Analogies & Antonyms") return `/courses/${slug}/analogies-antonyms`;
+  if (category === "Sentence Writing") return `/courses/${slug}/classic-word-quest/sentence-forge`;
+  return `/courses/${slug}/classic-word-quest`;
+}
+
+function originalPracticeHref(
+  mistake: {
+    course: { slug: string };
+    lesson?: { slug: string } | null;
+    sourceModule?: string | null;
+  },
+  category?: string
+) {
+  const slug = mistake.course.slug;
+  if (mistake.lesson?.slug) return `/courses/${slug}/lessons/${mistake.lesson.slug}/practice`;
+  if (mistake.sourceModule === "Whack-a-Word") return `/courses/${slug}/classic-word-quest/whack-a-word`;
+  if (mistake.sourceModule === "Word Detective") return `/courses/${slug}/classic-word-quest/word-detective`;
+  if (mistake.sourceModule === "Sentence Forge" || category === "Sentence Writing") return `/courses/${slug}/classic-word-quest/sentence-forge`;
+  return reviewHref(category ?? "Classic Words", slug);
+}
+
+function reviewLabel(category: string) {
+  if (category === "Latin Stems") return "Review in Stem Battle";
+  if (category === "Analogies & Antonyms") return "Review analogies";
+  if (category === "Sentence Writing") return "Rewrite sentences";
+  return "Review classic words";
+}
+
+function categoryDescription(category: string) {
+  if (category === "Latin Stems") return "Stem meaning, spelling, and example-word practice.";
+  if (category === "Classic Words") return "Vocabulary meaning, spelling, and literary context.";
+  if (category === "Analogies & Antonyms") return "Analogy logic and antonym relationships.";
+  return "Original sentence writing and target-word use.";
+}
+
+function iconClass(category: string) {
+  if (category === "Latin Stems") return "stem";
+  if (category === "Classic Words") return "words";
+  if (category === "Analogies & Antonyms") return "analogy";
+  return "writing";
 }

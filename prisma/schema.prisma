@@ -271,6 +271,14 @@ model MistakeRecord {
   lessonId               String?
   exerciseId             String?
   knowledgePointId       String?
+  category               String?
+  itemKey                String?
+  itemLabel              String?
+  mistakeType            String?
+  sourceModule           String?
+  prompt                 String?
+  userAnswer             Json?
+  correctAnswer          Json?
   wrongCount             Int             @default(0)
   correctAfterWrongCount Int             @default(0)
   mastered               Boolean         @default(false)
@@ -285,6 +293,8 @@ model MistakeRecord {
 
   @@unique([userId, courseId, exerciseId, knowledgePointId])
   @@index([userId, courseId, mastered])
+  @@index([userId, category, mastered])
+  @@index([userId, itemKey])
 }
 
 model UploadedMaterial {
