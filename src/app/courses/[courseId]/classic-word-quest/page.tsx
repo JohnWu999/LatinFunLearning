@@ -24,6 +24,7 @@ export default async function ClassicWordQuestHubPage({ params, searchParams }: 
   if (!user) redirect(`/login?next=/courses/${course.slug}/classic-word-quest`);
   if (query?.game === "detective") redirect(`/courses/${course.slug}/classic-word-quest/word-detective`);
   if (query?.game === "sentence") redirect(`/courses/${course.slug}/classic-word-quest/sentence-forge`);
+  if (query?.game === "passage") redirect(`/courses/${course.slug}/classic-word-quest/passage-quest`);
 
   return (
     <main className="word-quest-page classic-word-quest-hub">
@@ -55,6 +56,12 @@ export default async function ClassicWordQuestHubPage({ params, searchParams }: 
           <strong>Sentence Forge</strong>
           <p>Read literary context and choose the classic word that completes the sentence.</p>
           <em>Context · application</em>
+        </Link>
+        <Link href={`/courses/${course.slug}/classic-word-quest/passage-quest`}>
+          <span>📜</span>
+          <strong>Passage Quest</strong>
+          <p>Complete a full paragraph by choosing the words that fit the whole scene.</p>
+          <em>Paragraph · application</em>
         </Link>
       </section>
     </main>

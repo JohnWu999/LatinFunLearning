@@ -144,6 +144,7 @@ function originalPracticeHref(
   if (mistake.lesson?.slug) return `/courses/${slug}/lessons/${mistake.lesson.slug}/practice`;
   if (mistake.sourceModule === "Whack-a-Word") return `/courses/${slug}/classic-word-quest/whack-a-word`;
   if (mistake.sourceModule === "Word Detective") return `/courses/${slug}/classic-word-quest/word-detective`;
+  if (mistake.sourceModule === "Passage Quest") return `/courses/${slug}/classic-word-quest/passage-quest`;
   if (mistake.sourceModule === "Sentence Forge" || category === "Sentence Writing") return `/courses/${slug}/classic-word-quest/sentence-forge`;
   return reviewHref(category ?? "Classic Words", slug);
 }

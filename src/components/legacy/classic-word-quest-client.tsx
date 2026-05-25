@@ -11,7 +11,7 @@ type Props = {
   courseSlug: string;
   words: LessonVocabularyCard[];
   userName: string | null | undefined;
-  initialMode?: "whack" | "detective" | "sentence";
+  initialMode?: "whack" | "detective" | "sentence" | "passage";
 };
 
 type RoundWord = LessonVocabularyCard & { lesson: number };
@@ -35,6 +35,12 @@ type SentenceWritingScore = {
   praise: string;
   advice: string;
 };
+type PassageChallenge = {
+  title: string;
+  scene: string;
+  source: string;
+  blanks: Array<{ word: RoundWord; displayWord: string; before: string; after: string; options: RoundWord[]; active: boolean }>;
+};
 type FlyingGem = {
   id: string;
   index: number;
@@ -48,6 +54,8 @@ const ROUND_SIZE = 20;
 const TOTAL_ROUNDS = 20;
 const DETECTIVE_SIZE = 40;
 const SENTENCE_FORGE_SIZE = 65;
+const PASSAGE_QUEST_SIZE = 24;
+const PASSAGE_ACTIVE_BLANKS = 6;
 const C1_DETECTIVE_WORDS = new Set([
   "derision",
   "procure",
@@ -342,6 +350,261 @@ function makeSentenceChallenges(allWords: RoundWord[], stats: Record<string, Wor
   });
 }
 
+function wordByKey(words: RoundWord[], key: string) {
+  return words.find((word) => getWordStatKey(word.word) === key);
+}
+
+function makePassageOptions(allWords: RoundWord[], target: RoundWord, seed: string) {
+  const byPart = allWords.filter((word) => word.word !== target.word && word.partOfSpeech === target.partOfSpeech);
+  const fallback = allWords.filter((word) => word.word !== target.word);
+  const options: RoundWord[] = [];
+  const seen = new Set<string>();
+  [...stableShuffle(byPart, `${seed}-part`, (word) => word.word), ...stableShuffle(fallback, `${seed}-fallback`, (word) => word.word)].forEach((word) => {
+    const key = getWordStatKey(word.word);
+    if (seen.has(key) || options.length >= 3) return;
+    options.push(word);
+    seen.add(key);
+  });
+  return stableShuffle([target, ...options], `${seed}-options`, (word) => word.word);
+}
+
+function makePassageChallenges(allWords: RoundWord[], stats: Record<string, WordErrorStat>) {
+  const blueprints = [
+    {
+      title: "Caesar Plans the Campaign",
+      scene: "Authentic source passage adapted only by blanking target words.",
+      source: "Caesar’s English II, Lesson II, Caesar’s Sesquipedalian Story",
+      keys: ["manifest", "vivacious", "countenance", "prodigious", "procure", "placate", "profound", "retort", "derision", "languor"],
+      lines: [
+        { before: "A ", after: " determination clouded Caesar’s " },
+        { before: "", after: " " },
+        { before: "", after: " as he pondered the " },
+        { before: "", after: " problems of the attack against the Gauls. He would have to " },
+        { before: "", after: " supplies for the legions, and he would have to " },
+        { before: "", after: " the angry Senate, which was growing " },
+        { before: "", after: " weary of his extended campaigns. Cicero, with his lightning " },
+        { before: "", after: ", was making a mockery of Caesar’s missives. Even in the streets, Caesar was being held in ", form: "retorts" },
+        { before: "", after: " by Romans who could not understand how formidable the tribes of Gauls were. The Gauls were not easy enemies weakened by " },
+        { before: "", after: "." }
+      ]
+    },
+    {
+      title: "The Senate in Disorder",
+      scene: "Authentic source passage adapted only by blanking target words.",
+      source: "Caesar’s English II, Lesson IV, Caesar’s Sesquipedalian Story",
+      keys: ["prodigious", "clamor", "profuse", "acute", "retort", "audible", "benevolent", "serene", "countenance", "grotesque", "odious", "vivacious", "manifest", "somber", "prostrate"],
+      lines: [
+        { before: "A ", after: " " },
+        { before: "", after: " rose in the Senate, and the halls were " },
+        { before: "", after: " with " },
+        { before: "", after: " " },
+        { before: "", after: "s and " },
+        { before: "", after: ", derisive condescensions that profoundly shattered the " },
+        { before: "", after: " " },
+        { before: "", after: " of the institution. The scene was surreal; on every ", form: "serenity" },
+        { before: "", after: ", a " },
+        { before: "", after: " and " },
+        { before: "", after: " apprehension dislocated the normal " },
+        { before: "", after: " faces. Only the absence of Caesar permitted such " },
+        { before: "", after: " corruption, and Caesar would impose a " },
+        { before: "", after: " rectitude on the Senate and leave these feasting senators " },
+        { before: "", after: " in submission." }
+      ]
+    },
+    {
+      title: "The Aqueduct Workers",
+      scene: "Authentic source passage adapted only by blanking target words.",
+      source: "Caesar’s English II, Lesson VI, Caesar’s Sesquipedalian Story",
+      keys: ["odious", "somber", "prostrate", "vivacious", "alacrity", "doleful", "indolent", "apprehension", "acute", "inexorable", "audible", "retort", "ostentatious", "manifest", "profuse"],
+      lines: [
+        { before: "Work on the aqueduct had stopped. The ", after: " sun burned down on the " },
+        { before: "", after: " workers, " },
+        { before: "", after: " on the grass, and the typical " },
+        { before: "", after: " " },
+        { before: "", after: " of their countenances was replaced by a " },
+        { before: "", after: " determination to do no more. It was not that they were " },
+        { before: "", after: "; rather, they felt " },
+        { before: "", after: ". Another worker had fallen, suffered ", form: "apprehension" },
+        { before: "", after: " injuries, and without more scaffolding the accidents would continue ", form: "acute" },
+        { before: "", after: ". There was no ", form: "inexorably" },
+        { before: "", after: " complaint, no derisive " },
+        { before: "", after: " or " },
+        { before: "", after: " show of discontent; there was no " },
+        { before: "", after: " insurrection, despite the engineers’ " },
+        { before: "", after: " expressions of concern." }
+      ]
+    },
+    {
+      title: "Calpurnia’s Warning",
+      scene: "Authentic source passage adapted only by blanking target words.",
+      source: "Caesar’s English II, Lesson VIII, Caesar’s Sesquipedalian Story",
+      keys: ["incredulous", "doleful", "ostentatious", "prodigious", "oblique", "grotesque", "pensive", "apprehension", "benevolent", "serene", "audible", "manifest", "importune", "prostrate", "magnanimous", "peremptory"],
+      lines: [
+        { before: "Caesar’s wife Calpurnia was ", after: ". The night had swarmed with portents, and now the " },
+        { before: "", after: " owl was clamoring in the street in " },
+        { before: "", after: " defiance of everything normal. " },
+        { before: "", after: " storms had filled the night with lightning, casting " },
+        { before: "", after: " beams and " },
+        { before: "", after: " shadows in their rooms. Calpurnia was more than " },
+        { before: "", after: "; she felt profound " },
+        { before: "", after: ". Caesar’s ambition sometimes contradicted his " },
+        { before: "", after: " words. Outside now, the sky was " },
+        { before: "", after: "; no thunder was " },
+        { before: "", after: ", but the warnings had been too " },
+        { before: "", after: ". She would " },
+        { before: "", after: " Caesar not to go, even if she had to " },
+        { before: "", after: " herself and beg. His spirit, so " },
+        { before: "", after: ", might rebel, and he might refuse with " },
+        { before: "", after: " command." }
+      ]
+    },
+    {
+      title: "The Camp at Sunset",
+      scene: "Authentic source passage adapted only by blanking target words.",
+      source: "Caesar’s English II, Lesson X, Caesar’s Sesquipedalian Story",
+      keys: ["tacit", "melancholy", "profound", "lurid", "inexorable", "prostrate", "doleful", "sanguine", "torpid", "audible", "pensive", "visage", "manifest", "clamor", "placid", "alacrity"],
+      lines: [
+        { before: "By ", after: " agreement, the Roman soldiers increased their precautions. There was something " },
+        { before: "", after: " in this green hillside, something " },
+        { before: "", after: " and vaguely threatening, as though the redness of the sunset was only a " },
+        { before: "", after: " warning of what was " },
+        { before: "", after: ". Even the waning sun seemed " },
+        { before: "", after: ", apologetic. The soldiers looked at one another with " },
+        { before: "", after: " countenances. " },
+        { before: "", after: " conversation descended into " },
+        { before: "", after: " murmuring, until metallic sounds became " },
+        { before: "", after: ". The " },
+        { before: "", after: " " },
+        { before: "", after: " of the soldiers changed into ", form: "visages" },
+        { before: "", after: " incredulity as the sound rose into a belligerent " },
+        { before: "", after: ". The Gauls shattered the " },
+        { before: "", after: " repose of the hillside as with howling " },
+        { before: "", after: " they raced down upon the legion." }
+      ]
+    },
+    {
+      title: "The Fool in the Hall",
+      scene: "Authentic source passage adapted only by blanking target words.",
+      source: "Caesar’s English II, Lesson XII, Caesar’s Sesquipedalian Story",
+      keys: ["odious", "obsequious", "venerate", "ignominy", "visage", "importune", "inexorable", "oblique", "acquiescence", "impassive", "placid", "affable", "tacit", "incredulous", "countenance", "mortify", "indolent", "retort", "peremptory", "derision"],
+      lines: [
+        { before: "The ", after: ", " },
+        { before: "", after: " fool followed the emperor, ranting about how he " },
+        { before: "", after: " his majesty and apologizing for his ", form: "venerated" },
+        { before: "", after: ". With a melancholy " },
+        { before: "", after: " the fool " },
+        { before: "", after: " Caesar ", form: "importuned" },
+        { before: "", after: " in ", form: "inexorably" },
+        { before: "", after: " phrases, but Caesar would show no " },
+        { before: "", after: ". " },
+        { before: "", after: ", Caesar continued ", form: "impassively" },
+        { before: "", after: " down the hall, past the grotesquely ", form: "placidly" },
+        { before: "", after: " merchants and politicians with their " },
+        { before: "", after: " agendas. The fool’s " },
+        { before: "", after: " " },
+        { before: "", after: " registered only a look that would " },
+        { before: "", after: " an " },
+        { before: "", after: " follower, and Caesar was about to " },
+        { before: "", after: " with " },
+        { before: "", after: ", condescending " },
+        { before: "", after: "." }
+      ]
+    },
+    {
+      title: "The Wall at Dusk",
+      scene: "Authentic source passage adapted only by blanking target words.",
+      source: "Caesar’s English II, Lesson XX, Caesar’s Sesquipedalian Story",
+      keys: ["stolid", "impassive", "furtive", "palpable", "apprehension", "austere", "abject", "repose", "imperious", "solicitude", "genial", "eccentric", "sagacity", "doleful", "lurid", "ostentatious", "prostrate", "benevolent", "epithet", "magnanimous"],
+      lines: [
+        { before: "From the top of the wall, the sentry stood ", after: " and " },
+        { before: "", after: ", scanning the darkening verdure for signs of " },
+        { before: "", after: " motions. A " },
+        { before: "", after: " sense of " },
+        { before: "", after: " pervaded the " },
+        { before: "", after: " encampment, and the " },
+        { before: "", after: " confessions of yesterday’s prisoners fooled no one. The soldiers could get little " },
+        { before: "", after: ". Caesar’s " },
+        { before: "", after: " admonitions and his " },
+        { before: "", after: " for the men made him a " },
+        { before: "", after: " commander, though his strategies were often " },
+        { before: "", after: ". The men failed to understand the subtle " },
+        { before: "", after: " of his plans until the battle was already won. A delegation came with " },
+        { before: "", after: " countenances and " },
+        { before: "", after: ", " },
+        { before: "", after: " trinkets, " },
+        { before: "", after: " themselves at Caesar’s feet and importuning his ", form: "prostrating" },
+        { before: "", after: " response. “Venerable Caesar” was their " },
+        { before: "", after: ", and he seemed to respond " },
+        { before: "", after: ".", form: "magnanimously" }
+      ]
+    }
+  ];
+
+  const passageActiveKeyGroups = (keys: string[]) => {
+    const groups: string[][] = Array.from(
+      { length: Math.max(1, Math.ceil(keys.length / PASSAGE_ACTIVE_BLANKS)) },
+      () => []
+    );
+    keys.forEach((key, index) => {
+      groups[index % groups.length].push(key);
+    });
+    return groups;
+  };
+
+  const expandedBlueprints = blueprints.flatMap((blueprint) => {
+    const groups = passageActiveKeyGroups(blueprint.keys);
+    return groups.map((activeKeys, groupIndex) => ({ ...blueprint, activeKeys, groupIndex, groups: groups.length }));
+  });
+
+  const maxGroups = Math.max(...expandedBlueprints.map((blueprint) => blueprint.groups));
+  const orderedBlueprints = Array.from({ length: maxGroups }).flatMap((_, groupIndex) =>
+    expandedBlueprints
+      .filter((blueprint) => blueprint.groupIndex === groupIndex)
+      .sort((left, right) => {
+        const leftWrong = left.keys.reduce((total, key) => total + (stats[key]?.wrong ?? 0), 0);
+        const rightWrong = right.keys.reduce((total, key) => total + (stats[key]?.wrong ?? 0), 0);
+        return rightWrong - leftWrong;
+      })
+  );
+
+  return orderedBlueprints.map((blueprint) => {
+    const highErrorKeys = blueprint.keys
+      .filter((key) => (stats[key]?.wrong ?? 0) > 0)
+      .sort((left, right) => (stats[right]?.wrong ?? 0) - (stats[left]?.wrong ?? 0));
+    const activeKeys = new Set(blueprint.activeKeys);
+    highErrorKeys.forEach((key) => {
+      if (activeKeys.has(key) || activeKeys.size >= PASSAGE_ACTIVE_BLANKS) return;
+      const keyIndex = blueprint.keys.indexOf(key);
+      const adjacentUsed = [...activeKeys].some((activeKey) => Math.abs(blueprint.keys.indexOf(activeKey) - keyIndex) <= 1);
+      if (!adjacentUsed) activeKeys.add(key);
+    });
+    const blanks = blueprint.keys
+      .map((key, blankIndex) => {
+        const word = wordByKey(allWords, key);
+        const line = blueprint.lines[blankIndex] ?? { before: "The best word here is ", after: "." };
+        if (!word) return null;
+        return {
+          word,
+          displayWord: line.form ?? word.word,
+          before: line.before,
+          after: line.after,
+          options: makePassageOptions(allWords, word, `${blueprint.title}-${blankIndex}`),
+          active: activeKeys.has(key)
+        };
+      })
+      .filter((item): item is PassageChallenge["blanks"][number] => Boolean(item));
+    const title = blueprint.groups > 1 ? `${blueprint.title} · Round ${blueprint.groupIndex + 1}` : blueprint.title;
+    const scene = blueprint.groups > 1
+      ? `${blueprint.scene} Focus set ${blueprint.groupIndex + 1} of ${blueprint.groups}.`
+      : blueprint.scene;
+    return { title, scene, source: blueprint.source, blanks };
+  }).filter((challenge) => challenge.blanks.length >= 4).slice(0, PASSAGE_QUEST_SIZE);
+}
+
+function passageBlankNumber(challenge: PassageChallenge, blankIndex: number) {
+  return challenge.blanks.slice(0, blankIndex + 1).filter((blank) => blank.active).length;
+}
+
 function evaluateSentenceWriting(word: RoundWord, draft: string): SentenceWritingScore {
   const cleanDraft = draft.trim().replace(/\s+/g, " ");
   const tokens = sentenceTokens(cleanDraft);
@@ -546,7 +809,8 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
   }, [allWords, wordErrorStats]);
   const initialRound = useMemo(() => makeRound(allWords, [], 0), [allWords]);
   const sentenceChallenges = useMemo(() => makeSentenceChallenges(allWords, wordErrorStats), [allWords, wordErrorStats]);
-  const [gameMode] = useState<"whack" | "detective" | "sentence">(initialMode);
+  const passageChallenges = useMemo(() => makePassageChallenges(allWords, wordErrorStats), [allWords, wordErrorStats]);
+  const [gameMode] = useState<"whack" | "detective" | "sentence" | "passage">(initialMode);
   const [roundIndex, setRoundIndex] = useState(0);
   const [roundWords, setRoundWords] = useState<RoundWord[]>(initialRound.roundWords);
   const [nextFreshIndex, setNextFreshIndex] = useState(initialRound.nextFreshIndex);
@@ -578,6 +842,12 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
   const [sentenceStage, setSentenceStage] = useState<"fill" | "write">("fill");
   const [sentenceDraft, setSentenceDraft] = useState("");
   const [sentenceWritingScore, setSentenceWritingScore] = useState<SentenceWritingScore | null>(null);
+  const [passageIndex, setPassageIndex] = useState(0);
+  const [passageSelections, setPassageSelections] = useState<Record<number, string>>({});
+  const [passageSubmitted, setPassageSubmitted] = useState(false);
+  const [passageAttempts, setPassageAttempts] = useState(0);
+  const [passageGems, setPassageGems] = useState(0);
+  const [passageFeedback, setPassageFeedback] = useState("");
   const startedAtRef = useRef(Date.now());
   const gemCounterRef = useRef<HTMLDivElement | null>(null);
   const detectiveBoardRef = useRef<HTMLElement | null>(null);
@@ -595,6 +865,14 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
   const detectiveComplete = detectiveIndex >= detectiveWords.length || detectivePhase === "done";
   const sentenceCurrent = sentenceChallenges[sentenceIndex];
   const sentenceComplete = sentenceIndex >= sentenceChallenges.length;
+  const passageCurrent = passageChallenges[passageIndex];
+  const passageComplete = passageIndex >= passageChallenges.length;
+  const passageWrongIndexes = useMemo(() => {
+    if (!passageCurrent || !passageSubmitted) return [];
+    return passageCurrent.blanks
+      .map((blank, index) => (!blank.active || passageSelections[index] === blank.word.word ? -1 : index))
+      .filter((index) => index >= 0);
+  }, [passageCurrent, passageSelections, passageSubmitted]);
   const detectiveOptions = useMemo(() => {
     if (!detectiveCurrent) return [];
     return shuffle([
@@ -1044,6 +1322,73 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
     }
   }
 
+  async function submitPassageQuest() {
+    if (!passageCurrent || passageComplete) return;
+    const activeBlanks = passageCurrent.blanks.filter((blank) => blank.active);
+    const answeredCount = passageCurrent.blanks.filter((blank, index) => blank.active && Boolean(passageSelections[index])).length;
+    if (answeredCount < activeBlanks.length) {
+      setPassageFeedback(`Choose a word for all ${activeBlanks.length} blanks.`);
+      setPassageSubmitted(false);
+      return;
+    }
+
+    setPassageSubmitted(true);
+    const wrongIndexes = passageCurrent.blanks
+      .map((blank, index) => (!blank.active || passageSelections[index] === blank.word.word ? -1 : index))
+      .filter((index) => index >= 0);
+
+    if (wrongIndexes.length === 0) {
+      passageCurrent.blanks.filter((blank) => blank.active).forEach((blank) => recordWordOutcome(blank.word.word, false));
+      const gems = passageAttempts === 0 ? 18 : passageAttempts === 1 ? 10 : 6;
+      setPassageGems((value) => value + gems);
+      setPassageFeedback(`Passage complete. +${gems} gems.`);
+      playSentenceForgeSound(gems >= 18 ? "writing-high" : "context");
+      launchFlyingGems(Math.min(gems, 10), gemCounterRef.current);
+      await applyGems(gems, `passage-quest-${passageCurrent.title}-${passageIndex}`, `Passage Quest solved: ${passageCurrent.title}`);
+      return;
+    }
+
+    wrongIndexes.forEach((index) => {
+      const blank = passageCurrent.blanks[index];
+      recordWordOutcome(blank.word.word, true);
+      void recordGameMistake({
+        category: "Classic Words",
+        itemKey: getWordStatKey(blank.word.word),
+        itemLabel: blank.word.word,
+        mistakeType: "Paragraph Context",
+        sourceModule: "Passage Quest",
+        prompt: `${passageCurrent.title}: blank ${passageBlankNumber(passageCurrent, index)}`,
+        userAnswer: passageSelections[index],
+        correctAnswer: blank.word.definition
+      });
+    });
+    setPassageAttempts((value) => value + 1);
+    setPassageFeedback(`${wrongIndexes.length} blank${wrongIndexes.length === 1 ? "" : "s"} need another look. Use the meaning clues below.`);
+    playSentenceForgeSound("wrong");
+  }
+
+  function revisePassageQuest() {
+    setPassageSubmitted(false);
+    setPassageFeedback("");
+  }
+
+  function nextPassageQuest() {
+    setPassageIndex((value) => value + 1);
+    setPassageSelections({});
+    setPassageSubmitted(false);
+    setPassageAttempts(0);
+    setPassageFeedback("");
+  }
+
+  function restartPassageQuest() {
+    setPassageIndex(0);
+    setPassageSelections({});
+    setPassageSubmitted(false);
+    setPassageAttempts(0);
+    setPassageGems(0);
+    setPassageFeedback("");
+  }
+
   return (
     <main className="word-quest-page">
       <Link className="legacy-back battle-home-link" href={`/courses/${courseSlug}`}>
@@ -1056,12 +1401,19 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
           <Link className={gameMode === "whack" ? "active" : ""} href={`/courses/${courseSlug}/classic-word-quest/whack-a-word`}>Whack-a-Word</Link>
           <Link className={gameMode === "detective" ? "active" : ""} href={`/courses/${courseSlug}/classic-word-quest/word-detective`}>Word Detective</Link>
           <Link className={gameMode === "sentence" ? "active" : ""} href={`/courses/${courseSlug}/classic-word-quest/sentence-forge`}>Sentence Forge</Link>
+          <Link className={gameMode === "passage" ? "active" : ""} href={`/courses/${courseSlug}/classic-word-quest/passage-quest`}>Passage Quest</Link>
         </div>
         {gameMode === "detective" ? (
           <div className="detective-hero">
             <span>Case 01 · Confidential</span>
             <h1>Word Detective</h1>
             <p>A letter has arrived. Open the clue, identify the word, then spell the evidence.</p>
+          </div>
+        ) : gameMode === "passage" ? (
+          <div className="passage-quest-hero">
+            <span>Paragraph Lab</span>
+            <h1>Passage Quest</h1>
+            <p>Use context across a whole passage. Choose the words that make the paragraph work.</p>
           </div>
         ) : gameMode === "sentence" ? (
           <div className="sentence-forge-hero">
@@ -1075,13 +1427,20 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
             <p>Round {roundIndex + 1} / {TOTAL_ROUNDS} · Listen fast. Whack the right classic word.</p>
           </>
         )}
-        <div className={`word-quest-stats ${gameMode === "detective" ? "detective-case-stats" : gameMode === "sentence" ? "sentence-forge-stats" : ""}`}>
+        <div className={`word-quest-stats ${gameMode === "detective" ? "detective-case-stats" : gameMode === "sentence" || gameMode === "passage" ? "sentence-forge-stats" : ""}`}>
           {gameMode === "detective" ? (
             <>
               <div><em>Case</em><strong>{detectiveComplete ? detectiveWords.length : detectiveIndex + 1}</strong><span>/ {detectiveWords.length}</span></div>
               <div ref={gemCounterRef}><em>Gems</em><strong>{detectiveGems}</strong><span>evidence reward</span></div>
               <div><em>File</em><strong>{detectiveMisses.length}</strong><span>review words</span></div>
               <div><em>Stage</em><strong>{detectivePhase === "spell" ? "SPELL" : "CLUE"}</strong><span>current step</span></div>
+            </>
+          ) : gameMode === "passage" ? (
+            <>
+              <div><em>Passage</em><strong>{passageComplete ? passageChallenges.length : passageIndex + 1}</strong><span>/ {passageChallenges.length}</span></div>
+              <div ref={gemCounterRef}><em>Gems</em><strong>{passageGems}</strong><span>paragraph reward</span></div>
+              <div><em>Blanks</em><strong>{passageCurrent?.blanks.filter((blank) => blank.active).length ?? 0}</strong><span>classic words</span></div>
+              <div><em>Attempt</em><strong>{passageAttempts + 1}</strong><span>current passage</span></div>
             </>
           ) : gameMode === "sentence" ? (
             <>
@@ -1165,6 +1524,92 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
             <h2>Case Closed!</h2>
             <p>You solved {detectiveWords.length - detectiveMisses.length} clean cases. Review list: {detectiveMisses.length ? detectiveMisses.join(", ") : "none"}.</p>
             <button className="battle-main-button" onClick={resetDetective} type="button">Play Again</button>
+          </section>
+        )
+      ) : gameMode === "passage" ? (
+        !passageComplete && passageCurrent ? (
+          <section className="passage-quest-board">
+            <article className="passage-quest-card">
+              <span>Passage {passageIndex + 1}</span>
+              <h2>{passageCurrent.title}</h2>
+              <p>{passageCurrent.scene}</p>
+              <small>{passageCurrent.source}</small>
+              <div className="passage-quest-text" aria-label="Passage with word choices">
+                {passageCurrent.blanks.map((blank, index) => {
+                  const selected = passageSelections[index];
+                  const isWrong = passageSubmitted && selected !== blank.word.word;
+                  const isCorrect = passageSubmitted && selected === blank.word.word;
+                  return (
+                    <span className={`passage-line ${!blank.active ? "plain" : isWrong ? "wrong" : isCorrect ? "correct" : ""}`} key={`${blank.word.word}-${index}`}>
+                      {blank.active ? <b>{passageBlankNumber(passageCurrent, index)}</b> : null}
+                      <span>{blank.before}</span>
+                      {blank.active ? (
+                        <select
+                          aria-label={`Blank ${passageBlankNumber(passageCurrent, index)}`}
+                          disabled={passageSubmitted && passageWrongIndexes.length === 0}
+                          onChange={(event) => {
+                            setPassageSelections((currentSelections) => ({ ...currentSelections, [index]: event.target.value }));
+                          }}
+                          value={selected ?? ""}
+                        >
+                          <option value="">choose</option>
+                          {blank.options.map((option) => (
+                            <option key={`${option.lesson}-${option.word}`} value={option.word}>
+                              {option.word}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <strong className="passage-inline-word">{blank.displayWord}</strong>
+                      )}
+                      <span>{blank.after}</span>
+                    </span>
+                  );
+                })}
+              </div>
+            </article>
+
+            {passageSubmitted && passageWrongIndexes.length > 0 ? (
+              <div className="passage-clue-panel">
+                {passageWrongIndexes.map((index) => {
+                  const blank = passageCurrent.blanks[index];
+                  return (
+                    <div key={`${blank.word.word}-clue`}>
+                      <strong>Blank {passageBlankNumber(passageCurrent, index)}</strong>
+                      <span>{blank.word.definition}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : null}
+
+            {passageFeedback ? (
+              <div className={`sentence-forge-feedback ${passageSubmitted && passageWrongIndexes.length === 0 ? "good" : passageSubmitted ? "bad" : ""}`}>
+                {passageFeedback}
+              </div>
+            ) : null}
+
+            <div className="sentence-forge-actions">
+              {passageSubmitted && passageWrongIndexes.length === 0 ? (
+                <button className="battle-main-button" onClick={nextPassageQuest} type="button">
+                  Next Passage
+                </button>
+              ) : passageSubmitted ? (
+                <button className="battle-main-button sentence-retry" onClick={revisePassageQuest} type="button">
+                  Revise Passage
+                </button>
+              ) : (
+                <button className="battle-main-button" onClick={submitPassageQuest} type="button">
+                  Submit Passage
+                </button>
+              )}
+            </div>
+          </section>
+        ) : (
+          <section className="whack-result sentence-forge-result">
+            <h2>Passages Complete!</h2>
+            <p>You completed {passageChallenges.length} paragraph quests and earned {passageGems} gems in this run.</p>
+            <button className="battle-main-button" onClick={restartPassageQuest} type="button">Play Again</button>
           </section>
         )
       ) : gameMode === "sentence" ? (
