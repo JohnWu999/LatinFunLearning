@@ -12,6 +12,7 @@ type Props = {
   words: LessonVocabularyCard[];
   userName: string | null | undefined;
   initialMode?: "whack" | "detective" | "sentence" | "passage";
+  reviewWordKey?: string;
 };
 
 type RoundWord = LessonVocabularyCard & { lesson: number };
@@ -299,7 +300,7 @@ function sentenceWritingGemReward(stars: number) {
   return 2 ** stars;
 }
 
-function makeSentenceChallenges(allWords: RoundWord[], stats: Record<string, WordErrorStat>) {
+function makeSentenceChallenges(allWords: RoundWord[], stats: Record<string, WordErrorStat>, reviewWordKey?: string) {
   const highErrorWords = allWords
     .filter((word) => (stats[getWordStatKey(word.word)]?.wrong ?? 0) > 0)
     .sort((left, right) => {
@@ -316,6 +317,8 @@ function makeSentenceChallenges(allWords: RoundWord[], stats: Record<string, Wor
     selected.push(word);
     seen.add(key);
   };
+  const reviewWord = reviewWordKey ? wordByKey(allWords, reviewWordKey) : undefined;
+  if (reviewWord) addWord(reviewWord);
   highErrorWords.forEach(addWord);
   c1Words.forEach(addWord);
   allWords.forEach(addWord);
@@ -368,7 +371,7 @@ function makePassageOptions(allWords: RoundWord[], target: RoundWord, seed: stri
   return stableShuffle([target, ...options], `${seed}-options`, (word) => word.word);
 }
 
-function makePassageChallenges(allWords: RoundWord[], stats: Record<string, WordErrorStat>) {
+function makePassageChallenges(allWords: RoundWord[], stats: Record<string, WordErrorStat>, reviewWordKey?: string) {
   const blueprints = [
     {
       title: "Caesar Plans the Campaign",
@@ -567,7 +570,16 @@ function makePassageChallenges(allWords: RoundWord[], stats: Record<string, Word
       })
   );
 
-  return orderedBlueprints.map((blueprint) => {
+  const reviewKey = reviewWordKey ? getWordStatKey(reviewWordKey) : "";
+  const reviewFirstBlueprints = reviewKey
+    ? [...orderedBlueprints].sort((left, right) => {
+        const leftHas = left.keys.includes(reviewKey) ? 0 : 1;
+        const rightHas = right.keys.includes(reviewKey) ? 0 : 1;
+        return leftHas - rightHas;
+      })
+    : orderedBlueprints;
+
+  return reviewFirstBlueprints.map((blueprint) => {
     const highErrorKeys = blueprint.keys
       .filter((key) => (stats[key]?.wrong ?? 0) > 0)
       .sort((left, right) => (stats[right]?.wrong ?? 0) - (stats[left]?.wrong ?? 0));
@@ -780,8 +792,22 @@ function playSentenceForgeSound(kind: "context" | "wrong" | "writing-low" | "wri
   window.setTimeout(() => context.close().catch(() => undefined), 1200);
 }
 
-export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, initialMode = "whack" }: Props) {
-  const allWords = useMemo(() => words as RoundWord[], [words]);
+export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, initialMode = "whack", reviewWordKey }: Props) {
+  const allWords = useMemo(() => {
+    const seen = new Set<string>();
+    const uniqueWords: RoundWord[] = [];
+    (words as RoundWord[]).forEach((word) => {
+      const key = getWordStatKey(word.word);
+      if (seen.has(key)) return;
+      seen.add(key);
+      uniqueWords.push(word);
+    });
+    if (!reviewWordKey) return uniqueWords;
+    const targetKey = getWordStatKey(reviewWordKey);
+    const target = uniqueWords.find((word) => getWordStatKey(word.word) === targetKey);
+    if (!target) return uniqueWords;
+    return [target, ...uniqueWords.filter((word) => getWordStatKey(word.word) !== targetKey)];
+  }, [reviewWordKey, words]);
   const [wordErrorStats, setWordErrorStats] = useState<Record<string, WordErrorStat>>({});
   const detectiveWords = useMemo(() => {
     const highErrorWords = allWords
@@ -802,14 +828,16 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
       selected.push(word);
       seen.add(key);
     };
+    const reviewWord = reviewWordKey ? wordByKey(allWords, reviewWordKey) : undefined;
+    if (reviewWord) addWord(reviewWord);
     highErrorWords.forEach(addWord);
     c1Words.forEach(addWord);
     allWords.forEach(addWord);
     return selected;
-  }, [allWords, wordErrorStats]);
+  }, [allWords, reviewWordKey, wordErrorStats]);
   const initialRound = useMemo(() => makeRound(allWords, [], 0), [allWords]);
-  const sentenceChallenges = useMemo(() => makeSentenceChallenges(allWords, wordErrorStats), [allWords, wordErrorStats]);
-  const passageChallenges = useMemo(() => makePassageChallenges(allWords, wordErrorStats), [allWords, wordErrorStats]);
+  const sentenceChallenges = useMemo(() => makeSentenceChallenges(allWords, wordErrorStats, reviewWordKey), [allWords, reviewWordKey, wordErrorStats]);
+  const passageChallenges = useMemo(() => makePassageChallenges(allWords, wordErrorStats, reviewWordKey), [allWords, reviewWordKey, wordErrorStats]);
   const [gameMode] = useState<"whack" | "detective" | "sentence" | "passage">(initialMode);
   const [roundIndex, setRoundIndex] = useState(0);
   const [roundWords, setRoundWords] = useState<RoundWord[]>(initialRound.roundWords);

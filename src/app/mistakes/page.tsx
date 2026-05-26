@@ -136,16 +136,20 @@ function originalPracticeHref(
   mistake: {
     course: { slug: string };
     lesson?: { slug: string } | null;
+    itemKey?: string | null;
+    itemLabel?: string | null;
     sourceModule?: string | null;
   },
   category?: string
 ) {
   const slug = mistake.course.slug;
+  const target = encodeURIComponent(mistake.itemKey ?? mistake.itemLabel ?? "");
+  const targetQuery = target ? `?target=${target}` : "";
   if (mistake.lesson?.slug) return `/courses/${slug}/lessons/${mistake.lesson.slug}/practice`;
-  if (mistake.sourceModule === "Whack-a-Word") return `/courses/${slug}/classic-word-quest/whack-a-word`;
-  if (mistake.sourceModule === "Word Detective") return `/courses/${slug}/classic-word-quest/word-detective`;
-  if (mistake.sourceModule === "Passage Quest") return `/courses/${slug}/classic-word-quest/passage-quest`;
-  if (mistake.sourceModule === "Sentence Forge" || category === "Sentence Writing") return `/courses/${slug}/classic-word-quest/sentence-forge`;
+  if (mistake.sourceModule === "Whack-a-Word") return `/courses/${slug}/classic-word-quest/whack-a-word${targetQuery}`;
+  if (mistake.sourceModule === "Word Detective") return `/courses/${slug}/classic-word-quest/word-detective${targetQuery}`;
+  if (mistake.sourceModule === "Passage Quest") return `/courses/${slug}/classic-word-quest/passage-quest${targetQuery}`;
+  if (mistake.sourceModule === "Sentence Forge" || category === "Sentence Writing") return `/courses/${slug}/classic-word-quest/sentence-forge${targetQuery}`;
   return reviewHref(category ?? "Classic Words", slug);
 }
 

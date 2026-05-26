@@ -8,10 +8,12 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ courseId: string }>;
+  searchParams?: Promise<{ target?: string }>;
 };
 
-export default async function SentenceForgePage({ params }: Props) {
+export default async function SentenceForgePage({ params, searchParams }: Props) {
   const { courseId } = await params;
+  const query = await searchParams;
   const [user, course] = await Promise.all([
     getCurrentUser(),
     prisma.course.findFirst({
@@ -20,7 +22,8 @@ export default async function SentenceForgePage({ params }: Props) {
   ]);
 
   if (!course) notFound();
-  if (!user) redirect(`/login?next=/courses/${course.slug}/classic-word-quest/sentence-forge`);
+  const targetQuery = query?.target ? `?target=${encodeURIComponent(query.target)}` : "";
+  if (!user) redirect(`/login?next=${encodeURIComponent(`/courses/${course.slug}/classic-word-quest/sentence-forge${targetQuery}`)}`);
 
   const words = Object.entries(lessonVocabulary).flatMap(([lesson, items]) =>
     items.map((item) => ({ ...item, lesson: Number(lesson) }))
@@ -31,6 +34,7 @@ export default async function SentenceForgePage({ params }: Props) {
       courseId={course.id}
       courseSlug={course.slug}
       initialMode="sentence"
+      reviewWordKey={query?.target}
       userName={user.profile?.displayName ?? user.name}
       words={words}
     />
