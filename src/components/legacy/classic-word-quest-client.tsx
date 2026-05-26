@@ -819,6 +819,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
   const [feedbackKind, setFeedbackKind] = useState<"good" | "bad" | "">("");
   const [localGems, setLocalGems] = useState(0);
   const [totalGemsThisQuest, setTotalGemsThisQuest] = useState(0);
+  const [whackStreak, setWhackStreak] = useState(0);
   const [hitWords, setHitWords] = useState<string[]>([]);
   const [missedWords, setMissedWords] = useState<string[]>([]);
   const [questReviewWords, setQuestReviewWords] = useState<string[]>([]);
@@ -861,6 +862,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
 
   const complete = questionIndex >= roundWords.length;
   const questComplete = complete && roundIndex >= TOTAL_ROUNDS - 1;
+  const whackComboMultiplier = answeredWord ? Math.max(1, whackStreak || 1) : whackStreak + 1;
   const detectiveCurrent = detectiveWords[detectiveIndex];
   const detectiveComplete = detectiveIndex >= detectiveWords.length || detectivePhase === "done";
   const sentenceCurrent = sentenceChallenges[sentenceIndex];
@@ -888,6 +890,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
     setQuestionIndex(0);
     setLocalGems(0);
     setTotalGemsThisQuest(0);
+    setWhackStreak(0);
     setHitWords([]);
     setMissedWords([]);
     setQuestReviewWords([]);
@@ -987,16 +990,15 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
     }).catch(() => undefined);
   }
 
-  function rewardForSpeed(ms: number) {
-    if (ms <= 1500) return 5;
-    if (ms <= 3000) return 3;
-    return 1;
-  }
-
   function launchFlyingGems(amount: number, source: HTMLElement | null) {
     const now = Date.now();
-    const sourceRect = source?.getBoundingClientRect();
-    const targetRect = gemCounterRef.current?.getBoundingClientRect();
+    const activeBoard = document.querySelector<HTMLElement>(
+      ".whack-board, .detective-board, .sentence-forge-board, .passage-quest-board"
+    );
+    const sourceElement = source && source !== gemCounterRef.current ? source : activeBoard;
+    const sourceRect = sourceElement?.getBoundingClientRect();
+    const globalGemCounter = document.querySelector<HTMLElement>('[data-gem-counter="global"]');
+    const targetRect = globalGemCounter?.getBoundingClientRect() ?? gemCounterRef.current?.getBoundingClientRect();
     const startX = sourceRect ? sourceRect.left + sourceRect.width / 2 : window.innerWidth / 2;
     const startY = sourceRect ? sourceRect.top + sourceRect.height * 0.42 : window.innerHeight * 0.66;
     const targetX = targetRect ? targetRect.left + targetRect.width / 2 : window.innerWidth / 2;
@@ -1020,22 +1022,23 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
 
   async function whack(choice: RoundWord, source: HTMLElement | null) {
     if (!current || answeredWord) return;
-    const elapsed = Date.now() - startedAtRef.current;
     const correct = choice.word === current.word;
     setAnsweredWord(choice.word);
 
     if (correct) {
       recordWordOutcome(current.word, false);
-      const gems = rewardForSpeed(elapsed);
+      const nextStreak = whackStreak + 1;
+      const gems = nextStreak;
+      setWhackStreak(nextStreak);
       setLocalGems((value) => value + gems);
       setTotalGemsThisQuest((value) => value + gems);
       setHitWords((items) => [...items, current.word]);
-      setFeedback(gems >= 5 ? `Perfect hit! +${gems} gems` : `Hit! +${gems} gems`);
+      setFeedback(nextStreak === 1 ? `Hit! x1 combo · +1 gem` : `Combo x${nextStreak}! +${gems} gems`);
       setFeedbackKind("good");
-      playWhackSound(gems >= 5 ? "bonus" : "hit");
+      playWhackSound(nextStreak >= 5 ? "bonus" : "hit");
       launchFlyingGems(gems, source);
       window.setTimeout(() => speakWhackReaction("correct"), 280);
-      await applyGems(gems, `word-whack-hit-${current.word}-${questionIndex}`, `Whack-a-Word hit: ${current.word}`);
+      await applyGems(gems, `word-whack-hit-${roundIndex}-${questionIndex}-${current.word}-${Date.now()}`, `Whack-a-Word hit: ${current.word}`);
     } else {
       recordWordOutcome(current.word, true);
       void recordGameMistake({
@@ -1048,14 +1051,15 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
         userAnswer: choice.word,
         correctAnswer: current.word
       });
-      setLocalGems((value) => Math.max(0, value - 2));
+      setLocalGems((value) => Math.max(0, value - 1));
+      setWhackStreak(0);
       setMissedWords((items) => Array.from(new Set([...items, current.word])));
       setQuestReviewWords((items) => Array.from(new Set([...items, current.word])));
-      setFeedback(`Miss! -2 gems. Listen again next time.`);
+      setFeedback(`Miss! -1 gem. Listen again next time.`);
       setFeedbackKind("bad");
       playWhackSound("miss");
       window.setTimeout(() => speakWhackReaction("wrong"), 280);
-      await applyGems(-2, `word-whack-miss-${current.word}-${Date.now()}`, `Whack-a-Word miss: ${current.word}`);
+      await applyGems(-1, `word-whack-miss-${current.word}-${Date.now()}`, `Whack-a-Word miss: ${current.word}`);
     }
 
     window.setTimeout(() => {
@@ -1071,6 +1075,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
     setNextFreshIndex(nextRound.nextFreshIndex);
     setQuestionIndex(0);
     setLocalGems(0);
+    setWhackStreak(0);
     setHitWords([]);
     setMissedWords([]);
     setAnsweredWord(null);
@@ -1086,6 +1091,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
     setQuestionIndex(0);
     setLocalGems(0);
     setTotalGemsThisQuest(0);
+    setWhackStreak(0);
     setHitWords([]);
     setMissedWords([]);
     setQuestReviewWords([]);
@@ -1453,8 +1459,8 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
             <>
               <div><strong>{complete ? roundWords.length : questionIndex + 1}</strong><span>/ {roundWords.length}</span></div>
               <div ref={gemCounterRef}><strong>{localGems}</strong><span>gems this run</span></div>
+              <div><strong>x{whackComboMultiplier}</strong><span>combo reward</span></div>
               <div><strong>{missedWords.length}</strong><span>review words</span></div>
-              <div><strong>{Math.min(allWords.length, nextFreshIndex)}</strong><span>/ {allWords.length} covered</span></div>
             </>
           )}
         </div>
@@ -1764,6 +1770,10 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
           </div>
 
           <div className={`whack-feedback ${feedbackKind}`}>{feedback}</div>
+          <div className={`whack-combo-meter ${whackComboMultiplier > 1 ? "active" : ""}`}>
+            <span>Combo</span>
+            <strong>x{whackComboMultiplier}</strong>
+          </div>
 
           <div className="mole-field">
             {choices.map((choice) => {

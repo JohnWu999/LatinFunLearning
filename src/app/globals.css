@@ -6221,7 +6221,7 @@ button.player-stat:hover {
   position: fixed;
   left: 0;
   top: 0;
-  z-index: 20;
+  z-index: 80;
   width: 100%;
   height: 100%;
   pointer-events: none;
@@ -6269,6 +6269,10 @@ button.player-stat:hover {
     linear-gradient(180deg, rgba(255, 255, 255, 0.78), rgba(255, 248, 232, 0.84)),
     repeating-linear-gradient(90deg, rgba(38, 87, 111, 0.05) 0 1px, transparent 1px 98px);
   box-shadow: 0 26px 54px var(--quest-theme-glow);
+}
+
+.whack-board {
+  position: relative;
 }
 
 .sentence-forge-board {
@@ -7643,6 +7647,56 @@ button.player-stat:hover {
 .whack-feedback.bad {
   color: #b93424;
   text-shadow: 0 10px 22px rgba(210, 74, 55, 0.16);
+}
+
+.whack-combo-meter {
+  position: absolute;
+  left: 22px;
+  top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: fit-content;
+  margin: 0;
+  padding: 7px 12px;
+  border: 1px solid rgba(15, 140, 168, 0.18);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 18% 35%, rgba(255, 255, 255, 0.92), transparent 24%),
+    linear-gradient(135deg, rgba(225, 247, 251, 0.95), rgba(255, 244, 214, 0.88));
+  box-shadow: 0 12px 26px rgba(26, 104, 125, 0.12);
+  color: #174f66;
+  font-family: Georgia, "Times New Roman", serif;
+  font-weight: 900;
+}
+
+.whack-combo-meter strong {
+  min-width: 42px;
+  color: #e85516;
+  font-size: 23px;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 8px 18px rgba(232, 85, 22, 0.2);
+}
+
+.whack-combo-meter.active {
+  animation: whackComboPulse 0.7s ease both;
+  border-color: rgba(232, 85, 22, 0.38);
+  box-shadow:
+    0 14px 32px rgba(232, 85, 22, 0.16),
+    0 0 0 5px rgba(255, 210, 112, 0.2);
+}
+
+@keyframes whackComboPulse {
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  45% {
+    transform: translateY(-3px) scale(1.04);
+  }
 }
 
 .mole-field {

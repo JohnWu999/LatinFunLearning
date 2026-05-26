@@ -97,7 +97,7 @@ export function SiteHeader({ userName, userRole, gems = 0, rank }: Props) {
               {isAdmin ? <Link href="/admin">管理端</Link> : <Link href="/mistakes">错题本</Link>}
               {!isAdmin ? (
                 <span className="player-stats" aria-label={`宝石 ${playerStats.gems}，排名 ${playerStats.rank ?? "暂无"}`}>
-                  <span className="player-stat player-stat-gems">
+                  <span className="player-stat player-stat-gems" data-gem-counter="global">
                     <Gem size={16} aria-hidden="true" />
                     <strong>{playerStats.gems}</strong>
                   </span>
