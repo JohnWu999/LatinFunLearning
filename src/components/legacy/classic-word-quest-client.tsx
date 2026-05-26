@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import type { CSSProperties } from "react";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { RewardGemBurst, useRewardGemBurst } from "@/components/reward-gem-burst";
 import type { LessonVocabularyCard } from "@/lib/lesson-vocabulary";
 
 type Props = {
@@ -42,15 +42,6 @@ type PassageChallenge = {
   source: string;
   blanks: Array<{ word: RoundWord; displayWord: string; before: string; after: string; options: RoundWord[]; active: boolean }>;
 };
-type FlyingGem = {
-  id: string;
-  index: number;
-  startX: number;
-  startY: number;
-  deltaX: number;
-  deltaY: number;
-};
-
 const ROUND_SIZE = 20;
 const TOTAL_ROUNDS = 20;
 const DETECTIVE_SIZE = 40;
@@ -852,7 +843,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
   const [missedWords, setMissedWords] = useState<string[]>([]);
   const [questReviewWords, setQuestReviewWords] = useState<string[]>([]);
   const [answeredWord, setAnsweredWord] = useState<string | null>(null);
-  const [flyingGems, setFlyingGems] = useState<FlyingGem[]>([]);
+  const { flyingGems, launchGemBurst } = useRewardGemBurst(".word-quest-page");
   const [detectiveIndex, setDetectiveIndex] = useState(0);
   const [detectivePhase, setDetectivePhase] = useState<"choose" | "spell" | "done">("choose");
   const [detectiveFeedback, setDetectiveFeedback] = useState("");
@@ -1018,36 +1009,6 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
     }).catch(() => undefined);
   }
 
-  function launchFlyingGems(amount: number, source: HTMLElement | null) {
-    const now = Date.now();
-    const activeBoard = document.querySelector<HTMLElement>(
-      ".whack-board, .detective-board, .sentence-forge-board, .passage-quest-board"
-    );
-    const sourceElement = source && source !== gemCounterRef.current ? source : activeBoard;
-    const sourceRect = sourceElement?.getBoundingClientRect();
-    const globalGemCounter = document.querySelector<HTMLElement>('[data-gem-counter="global"]');
-    const targetRect = globalGemCounter?.getBoundingClientRect() ?? gemCounterRef.current?.getBoundingClientRect();
-    const startX = sourceRect ? sourceRect.left + sourceRect.width / 2 : window.innerWidth / 2;
-    const startY = sourceRect ? sourceRect.top + sourceRect.height * 0.42 : window.innerHeight * 0.66;
-    const targetX = targetRect ? targetRect.left + targetRect.width / 2 : window.innerWidth / 2;
-    const targetY = targetRect ? targetRect.top + targetRect.height / 2 : window.innerHeight * 0.28;
-    const gems = Array.from({ length: amount }, (_, index) => {
-      const fan = (index - (amount - 1) / 2) * 14;
-      return {
-        id: `${now}-${index}`,
-        index,
-        startX: startX + fan,
-        startY: startY + Math.abs(fan) * 0.18,
-        deltaX: targetX - startX - fan * 0.22,
-        deltaY: targetY - startY - 10
-      };
-    });
-    setFlyingGems((items) => [...items, ...gems]);
-    window.setTimeout(() => {
-      setFlyingGems((items) => items.filter((item) => !gems.some((gem) => gem.id === item.id)));
-    }, 1100);
-  }
-
   async function whack(choice: RoundWord, source: HTMLElement | null) {
     if (!current || answeredWord) return;
     const correct = choice.word === current.word;
@@ -1064,7 +1025,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
       setFeedback(nextStreak === 1 ? `Hit! x1 combo · +1 gem` : `Combo x${nextStreak}! +${gems} gems`);
       setFeedbackKind("good");
       playWhackSound(nextStreak >= 5 ? "bonus" : "hit");
-      launchFlyingGems(gems, source);
+      launchGemBurst(gems, source);
       window.setTimeout(() => speakWhackReaction("correct"), 280);
       await applyGems(gems, `word-whack-hit-${roundIndex}-${questionIndex}-${current.word}-${Date.now()}`, `Whack-a-Word hit: ${current.word}`);
     } else {
@@ -1181,7 +1142,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
       setDetectiveFeedback(`Case solved! +${gems} gems.`);
       setDetectiveFeedbackKind("good");
       playWhackSound(gems >= 5 ? "bonus" : "hit");
-      launchFlyingGems(gems, gemCounterRef.current);
+      launchGemBurst(gems);
       await applyGems(gems, `word-detective-${detectiveCurrent.word}-${detectiveIndex}`, `Word Detective solved: ${detectiveCurrent.word}`);
       window.setTimeout(() => {
         const nextIndex = detectiveIndex + 1;
@@ -1257,7 +1218,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
       setSentenceGems((value) => value + gems);
       setSentenceFeedback(`Context forged. +${gems} gems.`);
       playSentenceForgeSound("context");
-      launchFlyingGems(gems, gemCounterRef.current);
+      launchGemBurst(gems);
       await applyGems(gems, `sentence-forge-${sentenceCurrent.word.word}-${sentenceIndex}`, `Sentence Forge solved: ${sentenceCurrent.word.word}`);
       return;
     }
@@ -1349,7 +1310,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
     if (score.gems > 0) {
       setSentenceGems((value) => value + score.gems);
       playSentenceForgeSound(score.stars >= 5 ? "writing-high" : score.stars >= 3 ? "writing-mid" : "writing-low");
-      launchFlyingGems(score.gems, gemCounterRef.current);
+      launchGemBurst(score.gems);
       await applyGems(score.gems, `sentence-forge-writing-${sentenceCurrent.word.word}-${sentenceIndex}`, `Sentence Forge writing: ${sentenceCurrent.word.word}`);
     } else {
       playSentenceForgeSound("wrong");
@@ -1377,7 +1338,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
       setPassageGems((value) => value + gems);
       setPassageFeedback(`Passage complete. +${gems} gems.`);
       playSentenceForgeSound(gems >= 18 ? "writing-high" : "context");
-      launchFlyingGems(Math.min(gems, 10), gemCounterRef.current);
+      launchGemBurst(gems);
       await applyGems(gems, `passage-quest-${passageCurrent.title}-${passageIndex}`, `Passage Quest solved: ${passageCurrent.title}`);
       return;
     }
@@ -1493,23 +1454,7 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
           )}
         </div>
       </section>
-      <div className="whack-flying-gems" aria-hidden="true">
-        {flyingGems.map((gem) => (
-          <span
-            key={gem.id}
-            style={{
-              "--gem-delay": `${gem.index * 0.045}s`,
-              "--gem-start-x": `${gem.startX}px`,
-              "--gem-start-y": `${gem.startY}px`,
-              "--gem-delta-x": `${gem.deltaX}px`,
-              "--gem-delta-y": `${gem.deltaY}px`,
-              "--gem-pop": `${(gem.index - 2) * 10}px`
-            } as CSSProperties & Record<string, string>}
-          >
-            ◆
-          </span>
-        ))}
-      </div>
+      <RewardGemBurst gems={flyingGems} />
 
       {gameMode === "detective" ? (
         !detectiveComplete && detectiveCurrent ? (

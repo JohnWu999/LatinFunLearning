@@ -6217,7 +6217,8 @@ button.player-stat:hover {
   font-weight: 800;
 }
 
-.whack-flying-gems {
+.whack-flying-gems,
+.reward-gem-burst {
   position: fixed;
   left: 0;
   top: 0;
@@ -6227,7 +6228,8 @@ button.player-stat:hover {
   pointer-events: none;
 }
 
-.whack-flying-gems span {
+.whack-flying-gems span,
+.reward-gem-burst span {
   position: absolute;
   left: var(--gem-start-x);
   top: var(--gem-start-y);

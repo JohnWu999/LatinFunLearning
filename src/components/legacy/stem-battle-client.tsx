@@ -3,6 +3,7 @@
 import Link from "next/link";
 import type { DragEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { RewardGemBurst, useRewardGemBurst } from "@/components/reward-gem-burst";
 
 type Stem = {
   id: string;
@@ -1918,6 +1919,7 @@ function makeJeopardyQuestion(cell: JeopardyCell, stems: Stem[], stemIndex?: num
 }
 
 export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, userName, stems, levels, buildQuestions }: Props) {
+  const { flyingGems, launchGemBurst } = useRewardGemBurst(".battle-page");
   const [screen, setScreen] = useState<Screen>("select");
   const [activeLevel, setActiveLevel] = useState<GameLevel | null>(null);
   const [questions, setQuestions] = useState<GameQuestion[]>([]);
@@ -2052,6 +2054,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
   async function applyGameReward(amount: number, source: string, sourceKey: string, reason: string) {
     if (!isLoggedIn) {
       setBuildRewardPoints((points) => Math.max(0, points + amount));
+      if (amount > 0) launchGemBurst(amount);
       return amount;
     }
 
@@ -2072,9 +2075,12 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       if (typeof payload.data?.gems === "number") {
         updateBuildRewardDisplay(payload.data.gems, payload.data.rank ?? null);
       }
-      return payload.data?.awarded ?? amount;
+      const awarded = payload.data?.awarded ?? amount;
+      if (awarded > 0) launchGemBurst(awarded);
+      return awarded;
     } catch {
       setBuildRewardPoints((points) => Math.max(0, points + amount));
+      if (amount > 0) launchGemBurst(amount);
       return amount;
     }
   }
@@ -3621,6 +3627,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
 
   return (
     <main className="battle-page">
+      <RewardGemBurst gems={flyingGems} />
       <Link className="legacy-back battle-home-link" href={`/courses/${courseSlug}`} onClick={stopRootMatchMusic}>
         ← 返回学习中心首页
       </Link>

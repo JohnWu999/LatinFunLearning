@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { RewardGemBurst, useRewardGemBurst } from "@/components/reward-gem-burst";
 
 type LegacyExercise = {
   id: string;
@@ -201,6 +202,7 @@ async function refreshRewardHeader(courseId: string) {
 }
 
 export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons, practiceType }: Props) {
+  const { flyingGems, launchGemBurst } = useRewardGemBurst(".legacy-page");
   const matchingAreaRef = useRef<HTMLDivElement | null>(null);
   const matchItemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
   const [activeLessonId, setActiveLessonId] = useState<string | null>(null);
@@ -566,6 +568,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
     const sectionAward = await applyStageReward(3, `${sourcePrefix}-section-${activeLesson.id}-${group}`, `Completed ${group} in ${productName} ${activeLesson.title}`);
     if (sectionAward > 0) {
       setAwardedSections((prev) => ({ ...prev, [group]: sectionAward }));
+      launchGemBurst(sectionAward);
       playRootRewardSound();
       setSectionFeedback((prev) => ({ ...prev, [group]: `Recte! +${sectionAward} gemmae.` }));
     }
@@ -574,6 +577,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
     if (activeGroups.every((item) => nextCompleted[item])) {
       const lessonAward = await applyStageReward(8, `${sourcePrefix}-lesson-${activeLesson.id}`, `Completed all quests in ${productName} ${activeLesson.title}`);
       if (lessonAward > 0) {
+        launchGemBurst(lessonAward);
         playRootRewardSound();
         notify(`Macte! +${lessonAward} gemmae.`);
       }
@@ -584,6 +588,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
   if (!activeLesson) {
     return (
       <main className={pageClassName}>
+        <RewardGemBurst gems={flyingGems} />
         <section className="legacy-cover">
           <div className="legacy-label">Caesar&apos;s English II</div>
           <h1>{copy.title}</h1>
@@ -628,6 +633,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
 
   return (
     <main className={pageClassName}>
+      <RewardGemBurst gems={flyingGems} />
       <section className="legacy-cover compact">
         <div className="legacy-label">Caesar&apos;s English II</div>
         <h1>{copy.title}</h1>

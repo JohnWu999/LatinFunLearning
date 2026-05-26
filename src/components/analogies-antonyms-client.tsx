@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { RewardGemBurst, useRewardGemBurst } from "@/components/reward-gem-burst";
 import type { AnalogiesAntonymsLesson, MultipleChoiceQuestion } from "@/lib/analogies-antonyms";
 
 type InteractiveQuestion = MultipleChoiceQuestion & {
@@ -126,6 +127,7 @@ async function applyLessonReward(courseId: string, lessonName: string, amount: n
 }
 
 export function AnalogiesAntonymsClient({ courseId, lesson }: Props) {
+  const { flyingGems, launchGemBurst } = useRewardGemBurst(".interactive-aa");
   const questions = useMemo<InteractiveQuestion[]>(
     () => [
       ...lesson.analogies.map((question) => ({ ...question, kind: "analogy" as const })),
@@ -162,11 +164,13 @@ export function AnalogiesAntonymsClient({ courseId, lesson }: Props) {
       playEncouragementSound();
       speakFeedback("Good effort! Review the answers and try again!", "encouragement");
     }
-    await applyLessonReward(courseId, lesson.lesson, totalCorrect + bonus, allCorrect);
+    const awarded = await applyLessonReward(courseId, lesson.lesson, totalCorrect + bonus, allCorrect);
+    if (awarded && awarded > 0) launchGemBurst(awarded);
   }
 
   return (
     <div className="interactive-aa">
+      <RewardGemBurst gems={flyingGems} />
       <div className="interactive-aa-status">
         <span>{answeredCount}/{questions.length} selected</span>
         {submitted ? <strong>{correctCount}/{questions.length} correct</strong> : null}
