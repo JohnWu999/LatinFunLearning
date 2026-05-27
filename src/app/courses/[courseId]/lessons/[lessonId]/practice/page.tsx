@@ -1,6 +1,4 @@
-import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { PracticeClient } from "@/components/practice-client";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
@@ -10,7 +8,13 @@ type Props = {
   params: Promise<{ courseId: string; lessonId: string }>;
 };
 
-export default async function LessonPracticePage({ params }: Props) {
+function practiceTypeForLesson(lesson: { kind: string | null; order: number }) {
+  if (lesson.kind === "LATIN_STEMS" || lesson.order % 2 === 1) return "latin-stems";
+  if (lesson.kind === "CLASSIC_WORDS" || lesson.order % 2 === 0) return "classic-words";
+  return "all";
+}
+
+export default async function LessonPracticeRedirectPage({ params }: Props) {
   const { courseId, lessonId } = await params;
   const [user, lesson] = await Promise.all([
     getCurrentUser(),
@@ -19,41 +23,13 @@ export default async function LessonPracticePage({ params }: Props) {
         OR: [{ id: lessonId }, { slug: lessonId }],
         course: { OR: [{ id: courseId }, { slug: courseId }] }
       },
-      include: {
-        course: true,
-        exercises: { orderBy: { order: "asc" } },
-        vocabulary: { orderBy: { sourceOrder: "asc" } }
-      }
+      include: { course: true }
     })
   ]);
 
   if (!lesson) notFound();
-  if (!user) redirect(`/login?next=/courses/${lesson.course.slug}/lessons/${lesson.slug}/practice`);
 
-  return (
-    <main className="main">
-      <div className="crumbs">
-        <Link href={`/courses/${lesson.course.slug}`}>{lesson.course.title}</Link>
-        <span>/</span>
-        <span>{lesson.title}</span>
-      </div>
-      <h1 className="page-title">{lesson.title}</h1>
-      <p className="lede">本次答题会自动同步到你的学习记录与错题本。</p>
-
-      <section className="section">
-        <h2>本课词汇</h2>
-        <div className="vocab-strip">
-          {lesson.vocabulary.slice(0, 12).map((item) => (
-            <span key={item.id}>
-              <strong>{item.word}</strong> {item.definition}
-            </span>
-          ))}
-        </div>
-      </section>
-
-      <section className="section">
-        <PracticeClient courseId={lesson.courseId} exercises={lesson.exercises} isLoggedIn={true} lessonId={lesson.id} />
-      </section>
-    </main>
-  );
+  const target = `/courses/${lesson.course.slug}/vocab-practice?type=${practiceTypeForLesson(lesson)}&lesson=${lesson.slug}`;
+  if (!user) redirect(`/login?next=${encodeURIComponent(target)}`);
+  redirect(target);
 }

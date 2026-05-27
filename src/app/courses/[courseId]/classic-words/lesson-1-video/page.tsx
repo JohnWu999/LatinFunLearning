@@ -6,5 +6,5 @@ type Props = {
 
 export default async function LessonOneVideoRedirectPage({ params }: Props) {
   const { courseId } = await params;
-  redirect(`/courses/${courseId}/classic-words`);
+  redirect(`/courses/${courseId}`);
 }
