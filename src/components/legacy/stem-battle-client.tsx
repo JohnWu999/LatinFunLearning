@@ -1981,6 +1981,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
   const audioRef = useRef<AudioContext | null>(null);
   const musicTimerRef = useRef<number | null>(null);
   const fillRevealTimersRef = useRef<number[]>([]);
+  const fillWrongAttemptsRef = useRef<Record<string, number>>({});
   const buildReturnTimerRef = useRef<number | null>(null);
   const buildReviewTimersRef = useRef<number[]>([]);
   const buildVoiceRef = useRef<SpeechSynthesisVoice | null>(null);
@@ -3100,6 +3101,8 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     const isCorrect = buildWordAnswer.join("") === activeBuildChallenge.warmup.answer;
     setBuildWordFeedback(isCorrect ? activeBuildChallenge.warmup.success : "Iterum! Read the meaning and reorder the parts.");
     if (isCorrect) {
+      const stem = stemByKey(activeBuildChallenge.id);
+      if (stem) markStemBattleMistakeMastered(stem).catch(() => undefined);
       const firstCompletion = !completedBuildStems.includes(activeBuildChallenge.id);
       if (firstCompletion) {
         applyBuildReward(2, `build-word-warmup-${activeBuildChallenge.id}`, `Built ${activeBuildChallenge.warmup.answer}`).then((awarded) => {
@@ -3118,6 +3121,8 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
         }, 420);
       });
     } else {
+      const stem = stemByKey(activeBuildChallenge.id);
+      if (stem) recordBuildWordMistake(stem, "Build-a-Word Warmup", buildWordAnswer.join("")).catch(() => undefined);
       playAnswerWrongSound();
     }
   }
@@ -3280,6 +3285,8 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       const completedWords = new Set(activeBuildChallenge.familyWords.map((item) => normalize(item.word)));
       const everyRowSpellsAFamilyWord = builtFamilyWords().every(({ built }) => built && completedWords.has(normalize(built)));
       if (everyRowSpellsAFamilyWord) {
+        const stem = stemByKey(activeBuildChallenge.id);
+        if (stem) recordBuildWordMistake(stem, "Build-a-Word Family", builtFamilyWords()).catch(() => undefined);
         setSelectedFamilyRow(firstIncorrect.id);
         setBuildFamilyFeedback("Iterum! The words are spelled, but one is matched to the wrong meaning.");
         setBuildFamilyWrongCount((count) => count + 1);
@@ -3287,6 +3294,8 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
         return;
       }
       const { hintWord, ending, clueNumber } = familyEndingClue(buildFamilyWrongCount);
+      const stem = stemByKey(activeBuildChallenge.id);
+      if (stem) recordBuildWordMistake(stem, "Build-a-Word Family", builtFamilyWords()).catch(() => undefined);
       setSelectedFamilyRow(hintWord.id);
       setBuildFamilyFeedback(`Iterum! Ending clue ${clueNumber}/3: "${hintWord.meaning}" ends with "-${ending}".`);
       setBuildFamilyWrongCount((count) => count + 1);
@@ -3294,6 +3303,8 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       return;
     }
     setBuildFamilyBuilt(true);
+    const stem = stemByKey(activeBuildChallenge.id);
+    if (stem) markStemBattleMistakeMastered(stem).catch(() => undefined);
     setBuildFamilyWrongCount(0);
     setSelectedFamilyWord(null);
     const firstCompletion = !completedBuildStems.includes(activeBuildChallenge.id);
@@ -3320,6 +3331,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     const isCorrect = option === jeopardyQuestion.answer;
     setJeopardyFeedback(isCorrect ? "Recte!" : "Non recte!");
     if (isCorrect) {
+      if (currentStem) markStemBattleMistakeMastered(currentStem).catch(() => undefined);
       playAnswerCorrectSound();
       setJeopardyScore((score) => score + (jeopardyCellRun ? Math.round(cell.value / cell.stems.length) : cell.value));
       if (currentStem) {
@@ -3331,6 +3343,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
         );
       }
     } else {
+      if (currentStem) recordJeopardyMistake(currentStem, jeopardyQuestion, option).catch(() => undefined);
       playAnswerWrongSound();
     }
 
@@ -3403,6 +3416,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     clearSavedSession();
     initAudio();
     const nextQuestions = generateQuestions(level, asWrongPractice);
+    fillWrongAttemptsRef.current = {};
     setActiveLevel(level);
     setWrongMode(asWrongPractice);
     setQuestions(nextQuestions);
@@ -3419,7 +3433,12 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
   }
 
   async function recordQuestion(question: GameQuestion, isCorrect: boolean, value: unknown) {
-    if ("stem" in question) {
+    const stem = "stem" in question ? question.stem : undefined;
+    const deferFillMistake = question.type === "fill" && !isCorrect && fillWrongAttemptCount(question) < 3;
+
+    if (question.type === "fill" && isCorrect) clearFillWrongAttempts(question);
+
+    if ("stem" in question && !deferFillMistake) {
       setWrongStemIds((prev) => {
         const next = new Set(prev);
         if (isCorrect) next.delete(question.stem.id);
@@ -3428,6 +3447,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       });
     }
 
+    if (deferFillMistake) return;
     if (!isLoggedIn) return;
     const knowledgePointId =
       "stem" in question && !question.stem.id.startsWith("latin-stem-") ? question.stem.id : undefined;
@@ -3444,6 +3464,123 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       })
     });
     if (response.ok && isCorrect) await refreshBuildRewards();
+    if (stem) {
+      if (isCorrect) {
+        markStemBattleMistakeMastered(stem).catch(() => undefined);
+      } else {
+        recordStemBattleMistake(question, stem, value).catch(() => undefined);
+      }
+    }
+  }
+
+  function fillAttemptKey(question: Extract<GameQuestion, { type: "fill" }>) {
+    return `${activeLevel?.id ?? "complete-stem"}:${run.qi}:${question.stem.id}`;
+  }
+
+  function fillWrongAttemptCount(question: Extract<GameQuestion, { type: "fill" }>) {
+    const key = fillAttemptKey(question);
+    const count = (fillWrongAttemptsRef.current[key] ?? 0) + 1;
+    fillWrongAttemptsRef.current = { ...fillWrongAttemptsRef.current, [key]: count };
+    return count;
+  }
+
+  function clearFillWrongAttempts(question: Extract<GameQuestion, { type: "fill" }>) {
+    const key = fillAttemptKey(question);
+    if (!(key in fillWrongAttemptsRef.current)) return;
+    const next = { ...fillWrongAttemptsRef.current };
+    delete next[key];
+    fillWrongAttemptsRef.current = next;
+  }
+
+  function stemBattleMistakeType(question: GameQuestion) {
+    if (question.type === "fill") return "Complete the Stem";
+    if (question.type === "find") return "Example Word";
+    if (question.type === "tf") return "True or False";
+    if (question.type === "pick") return question.boss ? "Boss Recall" : "Root Matching";
+    if (question.type === "boss-type") return "Boss Typing";
+    return "Stem Battle";
+  }
+
+  function stemBattleSourceModule(question: GameQuestion) {
+    if (screen === "boss" || question.type === "boss-type" || (question.type === "pick" && question.boss)) return "Boss Challenge";
+    if (screen === "jeopardy") return "Jeopardy";
+    if (activeLevel?.type === "fill") return "Complete the Stem";
+    if (activeLevel?.type === "root-match" || activeLevel?.type === "root-match-menu") return "Root Matching";
+    return activeLevel?.title ?? "Stem Battle";
+  }
+
+  function stemByKey(key: string) {
+    return stems.find((stem) => normalize(stem.key) === normalize(key));
+  }
+
+  async function recordBuildWordMistake(stem: Stem, mistakeType: string, value: unknown) {
+    await fetch(appPath("/api/mistakes"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        courseId,
+        knowledgePointId: stem.id.startsWith("latin-stem-") ? null : stem.id,
+        category: "Latin Stems",
+        itemKey: stem.key,
+        itemLabel: `${stem.key} = ${stem.meaning ?? ""}`.trim(),
+        mistakeType,
+        sourceModule: "Build-a-Word",
+        prompt: `${activeBuildChallenge.label}: ${activeBuildChallenge.warmup.meaning}`,
+        userAnswer: value,
+        correctAnswer: activeBuildChallenge.warmup.answer
+      })
+    }).catch(() => undefined);
+  }
+
+  async function recordJeopardyMistake(stem: Stem, question: JeopardyQuestion, value: unknown) {
+    await fetch(appPath("/api/mistakes"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        courseId,
+        knowledgePointId: stem.id.startsWith("latin-stem-") ? null : stem.id,
+        category: "Latin Stems",
+        itemKey: stem.key,
+        itemLabel: `${stem.key} = ${stem.meaning ?? ""}`.trim(),
+        mistakeType: "Jeopardy",
+        sourceModule: "Jeopardy",
+        prompt: question.prompt,
+        userAnswer: value,
+        correctAnswer: question.answer
+      })
+    }).catch(() => undefined);
+  }
+
+  async function recordStemBattleMistake(question: GameQuestion, stem: Stem, value: unknown) {
+    await fetch(appPath("/api/mistakes"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        courseId,
+        knowledgePointId: stem.id.startsWith("latin-stem-") ? null : stem.id,
+        category: "Latin Stems",
+        itemKey: stem.key,
+        itemLabel: `${stem.key} = ${stem.meaning ?? ""}`.trim(),
+        mistakeType: stemBattleMistakeType(question),
+        sourceModule: stemBattleSourceModule(question),
+        prompt: question.type === "fill" ? question.masked : question.type === "find" ? question.exWord : question.type === "tf" ? question.text : stem.meaning,
+        userAnswer: value,
+        correctAnswer: "answer" in question ? question.answer : stem.key
+      })
+    }).catch(() => undefined);
+  }
+
+  async function markStemBattleMistakeMastered(stem: Stem) {
+    await fetch(appPath("/api/mistakes"), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        courseId,
+        category: "Latin Stems",
+        itemKey: stem.key,
+        itemLabel: `${stem.key} = ${stem.meaning ?? ""}`.trim()
+      })
+    }).catch(() => undefined);
   }
 
   function applyResult(isCorrect: boolean, question: GameQuestion, value: unknown) {

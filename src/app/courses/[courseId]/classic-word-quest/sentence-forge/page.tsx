@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ courseId: string }>;
-  searchParams?: Promise<{ target?: string }>;
+  searchParams?: Promise<{ target?: string; targets?: string; returnTo?: string; reviewCategory?: string }>;
 };
 
 export default async function SentenceForgePage({ params, searchParams }: Props) {
@@ -22,7 +22,8 @@ export default async function SentenceForgePage({ params, searchParams }: Props)
   ]);
 
   if (!course) notFound();
-  const targetQuery = query?.target ? `?target=${encodeURIComponent(query.target)}` : "";
+  const reviewWordKeys = reviewKeysFromQuery(query);
+  const targetQuery = reviewQueryString(query);
   if (!user) redirect(`/login?next=${encodeURIComponent(`/courses/${course.slug}/classic-word-quest/sentence-forge${targetQuery}`)}`);
 
   const words = Object.entries(lessonVocabulary).flatMap(([lesson, items]) =>
@@ -35,8 +36,31 @@ export default async function SentenceForgePage({ params, searchParams }: Props)
       courseSlug={course.slug}
       initialMode="sentence"
       reviewWordKey={query?.target}
+      reviewWordKeys={reviewWordKeys}
+      returnTo={query?.returnTo}
+      reviewCategory={reviewCategoryFromQuery(query)}
       userName={user.profile?.displayName ?? user.name}
       words={words}
     />
   );
+}
+
+function reviewKeysFromQuery(query?: { target?: string; targets?: string }) {
+  return [query?.target, ...(query?.targets?.split(",") ?? [])]
+    .map((key) => key?.trim())
+    .filter((key): key is string => Boolean(key));
+}
+
+function reviewQueryString(query?: { target?: string; targets?: string; returnTo?: string; reviewCategory?: string }) {
+  const params = new URLSearchParams();
+  if (query?.target) params.set("target", query.target);
+  if (query?.targets) params.set("targets", query.targets);
+  if (query?.returnTo) params.set("returnTo", query.returnTo);
+  if (query?.reviewCategory) params.set("reviewCategory", query.reviewCategory);
+  const search = params.toString();
+  return search ? `?${search}` : "";
+}
+
+function reviewCategoryFromQuery(query?: { reviewCategory?: string }) {
+  return query?.reviewCategory === "Sentence Writing" ? "Sentence Writing" : "Classic Words";
 }

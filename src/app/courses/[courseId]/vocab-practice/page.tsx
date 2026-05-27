@@ -7,7 +7,7 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ courseId: string }>;
-  searchParams: Promise<{ type?: string }>;
+  searchParams: Promise<{ type?: string; lesson?: string; exercise?: string; target?: string; returnTo?: string; reviewCategory?: string }>;
 };
 
 type PracticeType = "latin-stems" | "classic-words" | "all";
@@ -25,7 +25,7 @@ function lessonMatchesPracticeType(lesson: { kind: string | null; order: number 
 
 export default async function VocabPracticePage({ params, searchParams }: Props) {
   const { courseId } = await params;
-  const { type } = await searchParams;
+  const { type, lesson, exercise, target, returnTo, reviewCategory } = await searchParams;
   const practiceType = practiceTypeFromParam(type);
   const [user, course] = await Promise.all([
     getCurrentUser(),
@@ -53,6 +53,11 @@ export default async function VocabPracticePage({ params, searchParams }: Props)
       isLoggedIn={Boolean(user)}
       lessons={lessons}
       practiceType={practiceType}
+      initialLessonSlug={lesson}
+      initialExerciseId={exercise}
+      reviewTarget={target}
+      returnTo={returnTo}
+      reviewCategory={reviewCategory}
     />
   );
 }

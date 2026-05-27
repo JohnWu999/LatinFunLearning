@@ -19,6 +19,16 @@ const mistakeSchema = z.object({
   correctAnswer: z.unknown().optional().nullable()
 });
 
+const masterMistakeSchema = z.object({
+  courseId: z.string().min(1),
+  category: z.enum(["Latin Stems", "Classic Words", "Analogies & Antonyms", "Sentence Writing"]).optional(),
+  itemKey: z.string().min(1).max(120).optional(),
+  itemLabel: z.string().min(1).max(160).optional(),
+  sourceModule: z.string().min(1).max(100).optional()
+}).refine((body) => body.itemKey || body.itemLabel, {
+  message: "itemKey or itemLabel is required"
+});
+
 function toJson(value: unknown): Prisma.InputJsonValue | undefined {
   if (value === undefined || value === null) return undefined;
   return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
@@ -102,6 +112,37 @@ export async function POST(request: Request) {
         });
 
     return ok(mistake, { status: 201 });
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+export async function PATCH(request: Request) {
+  try {
+    const user = await requireUser();
+    const body = masterMistakeSchema.parse(await request.json());
+    const identity = [
+      body.itemKey ? { itemKey: body.itemKey } : undefined,
+      body.itemLabel ? { itemLabel: body.itemLabel } : undefined
+    ].filter((item): item is { itemKey: string } | { itemLabel: string } => Boolean(item));
+
+    const result = await prisma.mistakeRecord.updateMany({
+      where: {
+        userId: user.id,
+        courseId: body.courseId,
+        mastered: false,
+        ...(body.category ? { category: body.category } : {}),
+        ...(body.sourceModule ? { sourceModule: body.sourceModule } : {}),
+        OR: identity
+      },
+      data: {
+        mastered: true,
+        correctAfterWrongCount: { increment: 1 },
+        lastSeenAt: new Date()
+      }
+    });
+
+    return ok({ mastered: result.count });
   } catch (error) {
     return handleApiError(error);
   }

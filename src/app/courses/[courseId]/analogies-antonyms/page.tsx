@@ -9,10 +9,12 @@ export const dynamic = "force-dynamic";
 
 type Props = {
   params: Promise<{ courseId: string }>;
+  searchParams?: Promise<{ target?: string; returnTo?: string; reviewCategory?: string }>;
 };
 
-export default async function AnalogiesAntonymsPage({ params }: Props) {
+export default async function AnalogiesAntonymsPage({ params, searchParams }: Props) {
   const { courseId } = await params;
+  const query = await searchParams;
   const [user, course] = await Promise.all([
     getCurrentUser(),
     prisma.course.findFirst({
@@ -22,6 +24,13 @@ export default async function AnalogiesAntonymsPage({ params }: Props) {
 
   if (!course) notFound();
   if (!user) redirect(`/login?next=/courses/${course.slug}/analogies-antonyms`);
+  const reviewTarget = query?.target ? safeDecode(query.target).trim().toLowerCase().replace(/\s+/g, " ") : "";
+  const visibleLessons = reviewTarget
+    ? analogiesAntonymsLessons.filter((lesson) =>
+        [...lesson.analogies.map((question) => ({ ...question, kind: "analogy" })), ...lesson.antonyms.map((question) => ({ ...question, kind: "antonym" }))]
+          .some((question) => `${lesson.lesson}:${question.kind}:${question.prompt}`.trim().toLowerCase().replace(/\s+/g, " ") === reviewTarget || question.prompt.trim().toLowerCase().replace(/\s+/g, " ") === reviewTarget)
+      )
+    : analogiesAntonymsLessons;
 
   return (
     <main className="legacy-page">
@@ -37,7 +46,7 @@ export default async function AnalogiesAntonymsPage({ params }: Props) {
         <Link className="legacy-back" href={`/courses/${course.slug}`}>← 返回学习中心首页</Link>
 
         <div className="analogy-lesson-list">
-          {analogiesAntonymsLessons.map((lesson) => (
+          {visibleLessons.map((lesson) => (
             <section className="learning-lesson analogy-lesson" key={lesson.lesson}>
               <header>
                 <div>
@@ -45,11 +54,24 @@ export default async function AnalogiesAntonymsPage({ params }: Props) {
                 </div>
               </header>
 
-              <AnalogiesAntonymsClient courseId={course.id} lesson={lesson} />
+              <AnalogiesAntonymsClient
+                courseId={course.id}
+                lesson={lesson}
+                reviewTarget={query?.target}
+                returnTo={query?.returnTo}
+              />
             </section>
           ))}
         </div>
       </div>
     </main>
   );
+}
+
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
 }

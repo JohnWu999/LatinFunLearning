@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RewardGemBurst, useRewardGemBurst } from "@/components/reward-gem-burst";
+import { latinStemLessons } from "@/lib/latin-stem-lessons";
 
 type LegacyExercise = {
   id: string;
@@ -29,6 +30,11 @@ type Props = {
   isLoggedIn: boolean;
   lessons: LegacyLesson[];
   practiceType: PracticeType;
+  initialLessonSlug?: string;
+  initialExerciseId?: string;
+  reviewTarget?: string;
+  returnTo?: string;
+  reviewCategory?: string;
 };
 
 type PracticeType = "latin-stems" | "classic-words" | "all";
@@ -42,6 +48,29 @@ const labels: Record<string, string> = {
   synonym: "同义",
   antonym: "反义"
 };
+
+const latinStemPracticeLookup = new Map<string, { stem: string; meaning: string; exampleWord: string }>();
+Object.values(latinStemLessons).forEach((lesson) => {
+  lesson.newStems.forEach((card) => {
+    const words = [card.nonfiction.word, ...card.examples];
+    words.forEach((word) => {
+      latinStemPracticeLookup.set(normalizePracticeWord(word), {
+        stem: card.stem,
+        meaning: card.meaning,
+        exampleWord: card.nonfiction.word
+      });
+    });
+  });
+  lesson.reviewStems.forEach((card) => {
+    card.examples.forEach((word) => {
+      latinStemPracticeLookup.set(normalizePracticeWord(word), {
+        stem: card.stem,
+        meaning: card.meaning,
+        exampleWord: word
+      });
+    });
+  });
+});
 
 const practiceCopy: Record<PracticeType, { title: string; subtitle: string; description: string; lessonHint: string; empty: string }> = {
   "latin-stems": {
@@ -81,6 +110,23 @@ function normalize(value: unknown) {
     .trim()
     .toLowerCase()
     .replace(/\s+/g, " ");
+}
+
+function normalizePracticeWord(value: unknown) {
+  return normalize(String(value ?? "").replace(/^[a-z]\.\s*/i, ""));
+}
+
+function exerciseMatchesReviewTarget(exercise: LegacyExercise, target?: string) {
+  const normalizedTarget = normalizePracticeWord(target);
+  if (!normalizedTarget) return false;
+  return [
+    exercise.prompt,
+    asAnswer(exercise.correctAnswer),
+    ...asOptions(exercise.options)
+  ].some((value) => {
+    const normalizedValue = normalizePracticeWord(value);
+    return Boolean(normalizedValue) && (normalizedValue.includes(normalizedTarget) || normalizedTarget.includes(normalizedValue));
+  });
 }
 
 function optionLetter(option: string) {
@@ -201,7 +247,7 @@ async function refreshRewardHeader(courseId: string) {
   }
 }
 
-export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons, practiceType }: Props) {
+export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons, practiceType, initialLessonSlug, initialExerciseId, reviewTarget, returnTo }: Props) {
   const { flyingGems, launchGemBurst } = useRewardGemBurst(".legacy-page");
   const matchingAreaRef = useRef<HTMLDivElement | null>(null);
   const matchItemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -218,6 +264,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
   const [completedLessonIds, setCompletedLessonIds] = useState<string[]>([]);
   const [hasLoadedStageProgress, setHasLoadedStageProgress] = useState(!["latin-stems", "classic-words"].includes(practiceType));
   const [climberJumpStage, setClimberJumpStage] = useState<number | null>(null);
+  const [reviewFocusExerciseId, setReviewFocusExerciseId] = useState<string | null>(initialExerciseId ?? null);
   const [rootsMapMessage, setRootsMapMessage] = useState("");
   const [matchLines, setMatchLines] = useState<MatchLine[]>([]);
   const [toast, setToast] = useState("");
@@ -229,6 +276,8 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
   const isRootsPower = practiceType === "latin-stems";
   const isClassicTreasure = practiceType === "classic-words";
   const isStagePractice = isRootsPower || isClassicTreasure;
+  const isSingleMistakeReview = isStagePractice && Boolean(initialExerciseId);
+  const safeReturnTo = returnTo && returnTo.startsWith("/") && !returnTo.startsWith("//") ? returnTo : undefined;
   const pageClassName = `legacy-page ${isRootsPower ? "roots-power-page" : ""} ${isClassicTreasure ? "classic-treasure-page" : ""}`;
   const completedLessonSet = useMemo(() => new Set(completedLessonIds), [completedLessonIds]);
   const highestCompletedIndex = lessons.reduce((highest, lesson, index) => completedLessonSet.has(lesson.id) ? Math.max(highest, index) : highest, -1);
@@ -238,6 +287,33 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
   function lessonNumber(lesson: LegacyLesson, index: number) {
     return practiceType === "all" ? lesson.order : index + 1;
   }
+
+  useEffect(() => {
+    if (!initialLessonSlug || activeLessonId) return;
+    const lesson = lessons.find((item) => item.slug === initialLessonSlug || item.id === initialLessonSlug);
+    if (!lesson) return;
+    openLesson(lesson.id);
+  }, [activeLessonId, initialLessonSlug, lessons]);
+
+  useEffect(() => {
+    if (!activeLesson || (!initialExerciseId && !reviewTarget)) return;
+    const targetExercise =
+      activeLesson.exercises.find((exercise) => exercise.id === initialExerciseId) ??
+      activeLesson.exercises.find((exercise) => exerciseMatchesReviewTarget(exercise, reviewTarget));
+    if (!targetExercise) return;
+    setReviewFocusExerciseId(targetExercise.id);
+    const timer = window.setTimeout(() => {
+      document.getElementById(`practice-exercise-${targetExercise.id}`)?.scrollIntoView({
+        behavior: "smooth",
+        block: "center"
+      });
+    }, 220);
+    const clearTimer = window.setTimeout(() => setReviewFocusExerciseId(null), 4200);
+    return () => {
+      window.clearTimeout(timer);
+      window.clearTimeout(clearTimer);
+    };
+  }, [activeLesson, initialExerciseId, reviewTarget]);
 
   useEffect(() => {
     if (!isStagePractice || typeof window === "undefined") return;
@@ -286,6 +362,9 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
   const correctCount = Object.values(answered).filter((value) => value === "correct").length;
   const score = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
   const activeGroups = (["matching", "context", "synonym", "antonym"] as PracticeGroup[]).filter((group) => grouped[group].length > 0);
+  const singleReviewExercise = isSingleMistakeReview && activeLesson
+    ? activeLesson.exercises.find((exercise) => exercise.id === initialExerciseId) ?? null
+    : null;
 
   useEffect(() => {
     if (!isStagePractice || !matchingAreaRef.current) {
@@ -343,6 +422,59 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
       })
     });
     if (response.ok && isCorrect) await refreshRewardHeader(courseId);
+    if (isRootsPower) {
+      if (isCorrect) {
+        markLatinStemPracticeMastered(exercise).catch(() => undefined);
+      } else {
+        recordLatinStemPracticeMistake(exercise, answer).catch(() => undefined);
+      }
+    }
+  }
+
+  function stemMistakeFromExercise(exercise: LegacyExercise) {
+    const answerWord = normalizePracticeWord(asAnswer(exercise.correctAnswer));
+    const promptWord = normalizePracticeWord(exercise.prompt);
+    return latinStemPracticeLookup.get(answerWord) ?? latinStemPracticeLookup.get(promptWord);
+  }
+
+  async function recordLatinStemPracticeMistake(exercise: LegacyExercise, answer: string) {
+    if (!isLoggedIn || !activeLesson) return;
+    const stem = stemMistakeFromExercise(exercise);
+    if (!stem) return;
+    await fetch(appPath("/api/mistakes"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        courseId,
+        lessonId: activeLesson.id,
+        exerciseId: exercise.id,
+        category: "Latin Stems",
+        itemKey: stem.stem,
+        itemLabel: `${stem.stem} = ${stem.meaning}`,
+        mistakeType: labels[exercise.group ?? ""] ?? "Stem Practice",
+        sourceModule: "Roots of Power",
+        prompt: exercise.prompt,
+        userAnswer: answer,
+        correctAnswer: asAnswer(exercise.correctAnswer)
+      })
+    }).catch(() => undefined);
+  }
+
+  async function markLatinStemPracticeMastered(exercise: LegacyExercise) {
+    if (!isLoggedIn) return;
+    const stem = stemMistakeFromExercise(exercise);
+    if (!stem) return;
+    await fetch(appPath("/api/mistakes"), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        courseId,
+        category: "Latin Stems",
+        itemKey: stem.stem,
+        itemLabel: `${stem.stem} = ${stem.meaning}`,
+        sourceModule: "Roots of Power"
+      })
+    }).catch(() => undefined);
   }
 
   async function applyStageReward(amount: number, sourceKey: string, reason: string) {
@@ -482,6 +614,46 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
       return next;
     });
     playRootClickSound();
+  }
+
+  function returnToMistakeBook() {
+    const category = isRootsPower ? "Latin%20Stems" : "Classic%20Words";
+    window.location.href = appPath(safeReturnTo ?? `/mistakes?category=${category}`);
+  }
+
+  async function checkSingleMistakeExercise(exercise: LegacyExercise) {
+    if (!activeLesson) return;
+    const group = exercise.group as PracticeGroup | null;
+    const answer = group === "matching" ? matchingSelections[exercise.id] : choiceSelections[exercise.id];
+    const isCorrect = group === "matching" ? answer === exercise.id : normalize(answer) === normalize(asAnswer(exercise.correctAnswer));
+
+    if (!isCorrect) {
+      if (group === "matching") {
+        setMatchingSelections((prev) => {
+          const next = { ...prev };
+          delete next[exercise.id];
+          return next;
+        });
+      } else {
+        setCheckedChoiceStatus((prev) => ({ ...prev, [exercise.id]: answer ? "wrong" : "wrong" }));
+      }
+      setAnswered((prev) => ({ ...prev, [exercise.id]: "wrong" }));
+      await recordAttempt(exercise, answer ?? "", false, true);
+      setSectionFeedback((prev) => ({ ...prev, [group ?? "context"]: "Iterum! Hanc quaestionem tantum inspice." }));
+      playRootWrongSound();
+      return;
+    }
+
+    if (group === "matching") {
+      setMatched((prev) => ({ ...prev, [exercise.id]: true }));
+    } else if (group) {
+      setCheckedChoiceStatus((prev) => ({ ...prev, [exercise.id]: "correct" }));
+    }
+    setAnswered((prev) => ({ ...prev, [exercise.id]: "correct" }));
+    await recordAttempt(exercise, group === "matching" ? asAnswer(exercise.correctAnswer) : answer ?? "", true, true);
+    playRootCorrectSound();
+    setSectionFeedback((prev) => ({ ...prev, [group ?? "context"]: "Recte! Haec quaestio correcta est." }));
+    window.setTimeout(returnToMistakeBook, 850);
   }
 
   async function completeStageSection(group: PracticeGroup) {
@@ -676,7 +848,8 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
                 <h4>{isStagePractice ? "Meaning Clues" : "英文释义"}</h4>
                 {grouped.matching.map((exercise) => (
                   <button
-                    className={`legacy-match-item ${selectedMatch === exercise.id ? "selected" : ""} ${matchingSelections[exercise.id] ? "assigned" : ""} ${matched[exercise.id] ? "matched" : ""}`}
+                    className={`legacy-match-item ${reviewFocusExerciseId === exercise.id ? "review-focus" : ""} ${selectedMatch === exercise.id ? "selected" : ""} ${matchingSelections[exercise.id] ? "assigned" : ""} ${matched[exercise.id] ? "matched" : ""}`}
+                    id={`practice-exercise-${exercise.id}`}
                     key={exercise.id}
                     onClick={() => chooseMatch(exercise.id)}
                     ref={(node) => {
@@ -705,7 +878,15 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
                 ))}
               </div>
             </div>
-            {isStagePractice ? (
+            {isSingleMistakeReview && singleReviewExercise?.group === "matching" ? (
+              <div className="roots-single-review-row">
+                <span>Review this question only. Other questions stay as context.</span>
+                <button className="roots-check-button" onClick={() => checkSingleMistakeExercise(singleReviewExercise)} type="button">
+                  Check This One
+                </button>
+                {sectionFeedback.matching ? <span className={`roots-section-feedback ${answered[singleReviewExercise.id] === "correct" ? "correct" : "wrong"}`}>{sectionFeedback.matching}</span> : null}
+              </div>
+            ) : isStagePractice && !isSingleMistakeReview ? (
               <div className="roots-check-row">
                 <button className="roots-check-button" onClick={() => completeStageSection("matching")} type="button">
                   Check Quest
@@ -724,7 +905,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
                 const status = answered[exercise.id];
                 const correctAnswer = asAnswer(exercise.correctAnswer);
                 return (
-                  <div className="legacy-mcq" key={exercise.id}>
+                  <div className={`legacy-mcq ${reviewFocusExerciseId === exercise.id ? "review-focus" : ""}`} id={`practice-exercise-${exercise.id}`} key={exercise.id}>
                     <div className="legacy-mcq-q">{exerciseIndex + 1}. {exercise.prompt}</div>
                     <div className="legacy-options">
                       {asOptions(exercise.options).map((option) => {
@@ -748,7 +929,16 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
                   </div>
                 );
               })}
-              {isStagePractice ? (
+              {isSingleMistakeReview && singleReviewExercise?.group === group ? (
+                <div className="roots-single-review-row">
+                  <span>Review this question only. Other questions stay as context.</span>
+                  <button className="roots-check-button" onClick={() => checkSingleMistakeExercise(singleReviewExercise)} type="button">
+                    Check This One
+                  </button>
+                  {sectionFeedback[group] ? <span className={`roots-section-feedback ${answered[singleReviewExercise.id] === "correct" ? "correct" : "wrong"}`}>{sectionFeedback[group]}</span> : null}
+                </div>
+              ) : null}
+              {isStagePractice && !isSingleMistakeReview ? (
                 <div className="roots-check-row">
                   <button className="roots-check-button" onClick={() => completeStageSection(group)} type="button">
                     Check Quest

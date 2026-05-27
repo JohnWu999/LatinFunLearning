@@ -11,6 +11,8 @@ type InteractiveQuestion = MultipleChoiceQuestion & {
 type Props = {
   courseId: string;
   lesson: AnalogiesAntonymsLesson;
+  reviewTarget?: string;
+  returnTo?: string;
 };
 type RewardPayload = { data?: { gems?: number; rank?: number | null; awarded?: number } };
 
@@ -126,7 +128,58 @@ async function applyLessonReward(courseId: string, lessonName: string, amount: n
   return payload.data?.awarded ?? 0;
 }
 
-export function AnalogiesAntonymsClient({ courseId, lesson }: Props) {
+function questionKey(lessonName: string, question: InteractiveQuestion) {
+  return `${lessonName}:${question.kind}:${question.prompt}`.trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function safeDecode(value?: string) {
+  if (!value) return "";
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function safeReturnPath(value?: string) {
+  const decoded = safeDecode(value).trim();
+  if (!decoded.startsWith("/") || decoded.startsWith("//")) return undefined;
+  return decoded;
+}
+
+async function recordAnalogyMistake(courseId: string, lessonName: string, question: InteractiveQuestion, selectedIndex?: number) {
+  await fetch(appPath("/api/mistakes"), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      courseId,
+      category: "Analogies & Antonyms",
+      itemKey: questionKey(lessonName, question),
+      itemLabel: question.prompt,
+      mistakeType: question.kind === "analogy" ? "Analogy Question" : "Antonym Question",
+      sourceModule: "Analogies & Antonyms",
+      prompt: question.prompt,
+      userAnswer: typeof selectedIndex === "number" ? question.options[selectedIndex] : "",
+      correctAnswer: typeof question.correctAnswerIndex === "number" ? question.options[question.correctAnswerIndex] : ""
+    })
+  }).catch(() => undefined);
+}
+
+async function markAnalogyMastered(courseId: string, lessonName: string, question: InteractiveQuestion) {
+  await fetch(appPath("/api/mistakes"), {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      courseId,
+      category: "Analogies & Antonyms",
+      itemKey: questionKey(lessonName, question),
+      itemLabel: question.prompt,
+      sourceModule: "Analogies & Antonyms"
+    })
+  }).catch(() => undefined);
+}
+
+export function AnalogiesAntonymsClient({ courseId, lesson, reviewTarget, returnTo }: Props) {
   const { flyingGems, launchGemBurst } = useRewardGemBurst(".interactive-aa");
   const questions = useMemo<InteractiveQuestion[]>(
     () => [
@@ -135,14 +188,23 @@ export function AnalogiesAntonymsClient({ courseId, lesson }: Props) {
     ],
     [lesson]
   );
+  const decodedReviewTarget = safeDecode(reviewTarget).trim().toLowerCase().replace(/\s+/g, " ");
+  const reviewQuestionIndex = decodedReviewTarget
+    ? questions.findIndex((question) => questionKey(lesson.lesson, question) === decodedReviewTarget || question.prompt.trim().toLowerCase().replace(/\s+/g, " ") === decodedReviewTarget)
+    : -1;
+  const singleReviewMode = Boolean(decodedReviewTarget);
+  const visibleQuestions = singleReviewMode && reviewQuestionIndex >= 0 ? [questions[reviewQuestionIndex]] : questions;
+  const safeReturnTo = safeReturnPath(returnTo);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [submitted, setSubmitted] = useState(false);
 
   const answeredCount = Object.keys(answers).length;
-  const readyToSubmit = answeredCount === questions.length;
-  const correctCount = questions.reduce((total, question, index) => {
+  const readyToSubmit = answeredCount === visibleQuestions.length;
+  const correctCount = visibleQuestions.reduce((total, question, index) => {
     return total + (submitted && answers[index] === question.correctAnswerIndex ? 1 : 0);
   }, 0);
+
+  if (singleReviewMode && reviewQuestionIndex < 0) return null;
 
   function choose(questionIndex: number, optionIndex: number) {
     if (submitted) return;
@@ -153,10 +215,17 @@ export function AnalogiesAntonymsClient({ courseId, lesson }: Props) {
   async function submit() {
     if (!readyToSubmit || submitted) return;
 
-    const allCorrect = questions.every((question, index) => answers[index] === question.correctAnswerIndex);
-    const totalCorrect = questions.reduce((sum, question, index) => sum + (answers[index] === question.correctAnswerIndex ? 1 : 0), 0);
-    const bonus = allCorrect ? 4 : totalCorrect >= Math.ceil(questions.length / 2) ? 2 : 0;
+    const allCorrect = visibleQuestions.every((question, index) => answers[index] === question.correctAnswerIndex);
+    const totalCorrect = visibleQuestions.reduce((sum, question, index) => sum + (answers[index] === question.correctAnswerIndex ? 1 : 0), 0);
+    const bonus = allCorrect ? 4 : totalCorrect >= Math.ceil(visibleQuestions.length / 2) ? 2 : 0;
     setSubmitted(true);
+    visibleQuestions.forEach((question, index) => {
+      if (answers[index] === question.correctAnswerIndex) {
+        if (singleReviewMode) void markAnalogyMastered(courseId, lesson.lesson, question);
+      } else {
+        void recordAnalogyMistake(courseId, lesson.lesson, question, answers[index]);
+      }
+    });
     if (allCorrect) {
       playCelebrationSound();
       speakFeedback("Excellent work! Perfect score!", "celebration");
@@ -166,54 +235,79 @@ export function AnalogiesAntonymsClient({ courseId, lesson }: Props) {
     }
     const awarded = await applyLessonReward(courseId, lesson.lesson, totalCorrect + bonus, allCorrect);
     if (awarded && awarded > 0) launchGemBurst(awarded);
+    if (singleReviewMode && allCorrect && safeReturnTo) {
+      window.setTimeout(() => {
+        window.location.href = appPath(safeReturnTo);
+      }, 850);
+    }
   }
 
   return (
     <div className="interactive-aa">
       <RewardGemBurst gems={flyingGems} />
       <div className="interactive-aa-status">
-        <span>{answeredCount}/{questions.length} selected</span>
-        {submitted ? <strong>{correctCount}/{questions.length} correct</strong> : null}
+        <span>{answeredCount}/{visibleQuestions.length} selected</span>
+        {submitted ? <strong>{correctCount}/{visibleQuestions.length} correct</strong> : null}
       </div>
 
-      <div className="analogy-section">
-        <h4>Analogies</h4>
-        <div className="analogy-question-grid">
-          {questions.slice(0, lesson.analogies.length).map((question, index) => (
-            <InteractiveCard
-              answer={answers[index]}
-              index={index}
-              key={question.prompt}
-              onChoose={choose}
-              question={question}
-              submitted={submitted}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="analogy-section">
-        <h4>Antonyms</h4>
-        <div className="analogy-question-grid">
-          {questions.slice(lesson.analogies.length).map((question, index) => {
-            const questionIndex = lesson.analogies.length + index;
-            return (
+      {singleReviewMode ? (
+        <div className="analogy-section">
+          <h4>{visibleQuestions[0]?.kind === "analogy" ? "Analogy Review" : "Antonym Review"}</h4>
+          <div className="analogy-question-grid">
+            {visibleQuestions.map((question, index) => (
               <InteractiveCard
-                answer={answers[questionIndex]}
-                index={questionIndex}
+                answer={answers[index]}
+                index={index}
                 key={question.prompt}
                 onChoose={choose}
                 question={question}
                 submitted={submitted}
               />
-            );
-          })}
+            ))}
+          </div>
         </div>
-      </div>
+      ) : (
+        <>
+          <div className="analogy-section">
+            <h4>Analogies</h4>
+            <div className="analogy-question-grid">
+              {questions.slice(0, lesson.analogies.length).map((question, index) => (
+                <InteractiveCard
+                  answer={answers[index]}
+                  index={index}
+                  key={question.prompt}
+                  onChoose={choose}
+                  question={question}
+                  submitted={submitted}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="analogy-section">
+            <h4>Antonyms</h4>
+            <div className="analogy-question-grid">
+              {questions.slice(lesson.analogies.length).map((question, index) => {
+                const questionIndex = lesson.analogies.length + index;
+                return (
+                  <InteractiveCard
+                    answer={answers[questionIndex]}
+                    index={questionIndex}
+                    key={question.prompt}
+                    onChoose={choose}
+                    question={question}
+                    submitted={submitted}
+                  />
+                );
+              })}
+            </div>
+          </div>
+        </>
+      )}
 
       <div className="interactive-aa-actions">
         <button disabled={!readyToSubmit || submitted} onClick={submit} type="button">
-          提交查看答案
+          {singleReviewMode ? "Check This One" : "提交查看答案"}
         </button>
         {submitted ? (
           <button

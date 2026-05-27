@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RewardGemBurst, useRewardGemBurst } from "@/components/reward-gem-burst";
@@ -13,6 +14,9 @@ type Props = {
   userName: string | null | undefined;
   initialMode?: "whack" | "detective" | "sentence" | "passage";
   reviewWordKey?: string;
+  reviewWordKeys?: string[];
+  returnTo?: string;
+  reviewCategory?: "Classic Words" | "Sentence Writing";
 };
 
 type RoundWord = LessonVocabularyCard & { lesson: number };
@@ -291,7 +295,7 @@ function sentenceWritingGemReward(stars: number) {
   return 2 ** stars;
 }
 
-function makeSentenceChallenges(allWords: RoundWord[], stats: Record<string, WordErrorStat>, reviewWordKey?: string) {
+function makeSentenceChallenges(allWords: RoundWord[], stats: Record<string, WordErrorStat>, reviewWordKeys: string[] = []) {
   const highErrorWords = allWords
     .filter((word) => (stats[getWordStatKey(word.word)]?.wrong ?? 0) > 0)
     .sort((left, right) => {
@@ -308,8 +312,10 @@ function makeSentenceChallenges(allWords: RoundWord[], stats: Record<string, Wor
     selected.push(word);
     seen.add(key);
   };
-  const reviewWord = reviewWordKey ? wordByKey(allWords, reviewWordKey) : undefined;
-  if (reviewWord) addWord(reviewWord);
+  reviewWordKeys.forEach((reviewKey) => {
+    const reviewWord = wordByKey(allWords, reviewKey);
+    if (reviewWord) addWord(reviewWord);
+  });
   highErrorWords.forEach(addWord);
   c1Words.forEach(addWord);
   allWords.forEach(addWord);
@@ -345,7 +351,35 @@ function makeSentenceChallenges(allWords: RoundWord[], stats: Record<string, Wor
 }
 
 function wordByKey(words: RoundWord[], key: string) {
-  return words.find((word) => getWordStatKey(word.word) === key);
+  return words.find((word) => getWordStatKey(word.word) === getWordStatKey(safeDecode(key)));
+}
+
+function safeDecode(value: string) {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+function normalizeReviewKeys(keys: Array<string | undefined>) {
+  const seen = new Set<string>();
+  return keys
+    .map((key) => key?.trim())
+    .filter((key): key is string => Boolean(key))
+    .map((key) => getWordStatKey(safeDecode(key)))
+    .filter((key) => {
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+}
+
+function normalizeReturnTo(value?: string) {
+  if (!value) return undefined;
+  const decoded = safeDecode(value).trim();
+  if (!decoded.startsWith("/") || decoded.startsWith("//")) return undefined;
+  return decoded;
 }
 
 function makePassageOptions(allWords: RoundWord[], target: RoundWord, seed: string) {
@@ -362,7 +396,7 @@ function makePassageOptions(allWords: RoundWord[], target: RoundWord, seed: stri
   return stableShuffle([target, ...options], `${seed}-options`, (word) => word.word);
 }
 
-function makePassageChallenges(allWords: RoundWord[], stats: Record<string, WordErrorStat>, reviewWordKey?: string) {
+function makePassageChallenges(allWords: RoundWord[], stats: Record<string, WordErrorStat>, reviewWordKeys: string[] = []) {
   const blueprints = [
     {
       title: "Caesar Plans the Campaign",
@@ -561,12 +595,12 @@ function makePassageChallenges(allWords: RoundWord[], stats: Record<string, Word
       })
   );
 
-  const reviewKey = reviewWordKey ? getWordStatKey(reviewWordKey) : "";
-  const reviewFirstBlueprints = reviewKey
+  const reviewSet = new Set(reviewWordKeys);
+  const reviewFirstBlueprints = reviewSet.size
     ? [...orderedBlueprints].sort((left, right) => {
-        const leftHas = left.keys.includes(reviewKey) ? 0 : 1;
-        const rightHas = right.keys.includes(reviewKey) ? 0 : 1;
-        return leftHas - rightHas;
+        const leftHits = left.keys.filter((key) => reviewSet.has(key)).length;
+        const rightHits = right.keys.filter((key) => reviewSet.has(key)).length;
+        return rightHits - leftHits;
       })
     : orderedBlueprints;
 
@@ -575,7 +609,16 @@ function makePassageChallenges(allWords: RoundWord[], stats: Record<string, Word
       .filter((key) => (stats[key]?.wrong ?? 0) > 0)
       .sort((left, right) => (stats[right]?.wrong ?? 0) - (stats[left]?.wrong ?? 0));
     const activeKeys = new Set(blueprint.activeKeys);
+    reviewSet.forEach((key) => {
+      if (blueprint.keys.includes(key)) activeKeys.add(key);
+    });
+    if (reviewSet.size === 1) {
+      const reviewKey = [...reviewSet][0];
+      activeKeys.clear();
+      if (blueprint.keys.includes(reviewKey)) activeKeys.add(reviewKey);
+    }
     highErrorKeys.forEach((key) => {
+      if (reviewSet.size === 1) return;
       if (activeKeys.has(key) || activeKeys.size >= PASSAGE_ACTIVE_BLANKS) return;
       const keyIndex = blueprint.keys.indexOf(key);
       const adjacentUsed = [...activeKeys].some((activeKey) => Math.abs(blueprint.keys.indexOf(activeKey) - keyIndex) <= 1);
@@ -783,7 +826,24 @@ function playSentenceForgeSound(kind: "context" | "wrong" | "writing-low" | "wri
   window.setTimeout(() => context.close().catch(() => undefined), 1200);
 }
 
-export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, initialMode = "whack", reviewWordKey }: Props) {
+export function ClassicWordQuestClient({
+  courseId,
+  courseSlug,
+  words,
+  userName,
+  initialMode = "whack",
+  reviewWordKey,
+  reviewWordKeys,
+  returnTo,
+  reviewCategory = "Classic Words"
+}: Props) {
+  const router = useRouter();
+  const requestedReviewKeys = useMemo(
+    () => normalizeReviewKeys([reviewWordKey, ...(reviewWordKeys ?? [])]),
+    [reviewWordKey, reviewWordKeys]
+  );
+  const requestedReviewKeySet = useMemo(() => new Set(requestedReviewKeys), [requestedReviewKeys]);
+  const safeReturnTo = useMemo(() => normalizeReturnTo(returnTo), [returnTo]);
   const allWords = useMemo(() => {
     const seen = new Set<string>();
     const uniqueWords: RoundWord[] = [];
@@ -793,12 +853,13 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
       seen.add(key);
       uniqueWords.push(word);
     });
-    if (!reviewWordKey) return uniqueWords;
-    const targetKey = getWordStatKey(reviewWordKey);
-    const target = uniqueWords.find((word) => getWordStatKey(word.word) === targetKey);
-    if (!target) return uniqueWords;
-    return [target, ...uniqueWords.filter((word) => getWordStatKey(word.word) !== targetKey)];
-  }, [reviewWordKey, words]);
+    if (!requestedReviewKeys.length) return uniqueWords;
+    const reviewWords = requestedReviewKeys
+      .map((targetKey) => uniqueWords.find((word) => getWordStatKey(word.word) === targetKey))
+      .filter((word): word is RoundWord => Boolean(word));
+    const reviewSet = new Set(reviewWords.map((word) => getWordStatKey(word.word)));
+    return [...reviewWords, ...uniqueWords.filter((word) => !reviewSet.has(getWordStatKey(word.word)))];
+  }, [requestedReviewKeys, words]);
   const [wordErrorStats, setWordErrorStats] = useState<Record<string, WordErrorStat>>({});
   const detectiveWords = useMemo(() => {
     const highErrorWords = allWords
@@ -819,16 +880,18 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
       selected.push(word);
       seen.add(key);
     };
-    const reviewWord = reviewWordKey ? wordByKey(allWords, reviewWordKey) : undefined;
-    if (reviewWord) addWord(reviewWord);
+    requestedReviewKeys.forEach((reviewKey) => {
+      const reviewWord = wordByKey(allWords, reviewKey);
+      if (reviewWord) addWord(reviewWord);
+    });
     highErrorWords.forEach(addWord);
     c1Words.forEach(addWord);
     allWords.forEach(addWord);
     return selected;
-  }, [allWords, reviewWordKey, wordErrorStats]);
+  }, [allWords, requestedReviewKeys, wordErrorStats]);
   const initialRound = useMemo(() => makeRound(allWords, [], 0), [allWords]);
-  const sentenceChallenges = useMemo(() => makeSentenceChallenges(allWords, wordErrorStats, reviewWordKey), [allWords, reviewWordKey, wordErrorStats]);
-  const passageChallenges = useMemo(() => makePassageChallenges(allWords, wordErrorStats, reviewWordKey), [allWords, reviewWordKey, wordErrorStats]);
+  const sentenceChallenges = useMemo(() => makeSentenceChallenges(allWords, wordErrorStats, requestedReviewKeys), [allWords, requestedReviewKeys, wordErrorStats]);
+  const passageChallenges = useMemo(() => makePassageChallenges(allWords, wordErrorStats, requestedReviewKeys), [allWords, requestedReviewKeys, wordErrorStats]);
   const [gameMode] = useState<"whack" | "detective" | "sentence" | "passage">(initialMode);
   const [roundIndex, setRoundIndex] = useState(0);
   const [roundWords, setRoundWords] = useState<RoundWord[]>(initialRound.roundWords);
@@ -1009,6 +1072,39 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
     }).catch(() => undefined);
   }
 
+  async function markReviewWordMastered(word: string, category: "Classic Words" | "Sentence Writing" = "Classic Words") {
+    const itemKey = getWordStatKey(word);
+    if (!requestedReviewKeySet.has(itemKey)) return;
+    await fetch(appPath("/api/mistakes"), {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        courseId,
+        category,
+        itemKey,
+        itemLabel: word
+      })
+    }).catch(() => undefined);
+  }
+
+  function shouldReturnAfterSingleReview(word: string, category: "Classic Words" | "Sentence Writing" = "Classic Words") {
+    return Boolean(
+      safeReturnTo &&
+        category === reviewCategory &&
+        requestedReviewKeys.length === 1 &&
+        requestedReviewKeySet.has(getWordStatKey(word))
+    );
+  }
+
+  async function finishReviewWord(word: string, category: "Classic Words" | "Sentence Writing" = "Classic Words", delay = 900) {
+    const shouldReturn = shouldReturnAfterSingleReview(word, category);
+    await markReviewWordMastered(word, category);
+    if (shouldReturn && safeReturnTo) {
+      window.setTimeout(() => router.push(safeReturnTo), delay);
+    }
+    return shouldReturn;
+  }
+
   async function whack(choice: RoundWord, source: HTMLElement | null) {
     if (!current || answeredWord) return;
     const correct = choice.word === current.word;
@@ -1027,7 +1123,10 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
       playWhackSound(nextStreak >= 5 ? "bonus" : "hit");
       launchGemBurst(gems, source);
       window.setTimeout(() => speakWhackReaction("correct"), 280);
+      const shouldReturn = shouldReturnAfterSingleReview(current.word, "Classic Words");
+      void finishReviewWord(current.word);
       await applyGems(gems, `word-whack-hit-${roundIndex}-${questionIndex}-${current.word}-${Date.now()}`, `Whack-a-Word hit: ${current.word}`);
+      if (shouldReturn) return;
     } else {
       recordWordOutcome(current.word, true);
       void recordGameMistake({
@@ -1143,7 +1242,10 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
       setDetectiveFeedbackKind("good");
       playWhackSound(gems >= 5 ? "bonus" : "hit");
       launchGemBurst(gems);
+      const shouldReturn = shouldReturnAfterSingleReview(detectiveCurrent.word, "Classic Words");
+      void finishReviewWord(detectiveCurrent.word);
       await applyGems(gems, `word-detective-${detectiveCurrent.word}-${detectiveIndex}`, `Word Detective solved: ${detectiveCurrent.word}`);
+      if (shouldReturn) return;
       window.setTimeout(() => {
         const nextIndex = detectiveIndex + 1;
         if (nextIndex >= detectiveWords.length) {
@@ -1219,7 +1321,10 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
       setSentenceFeedback(`Context forged. +${gems} gems.`);
       playSentenceForgeSound("context");
       launchGemBurst(gems);
+      const shouldReturn = shouldReturnAfterSingleReview(sentenceCurrent.word.word, "Classic Words");
+      void finishReviewWord(sentenceCurrent.word.word);
       await applyGems(gems, `sentence-forge-${sentenceCurrent.word.word}-${sentenceIndex}`, `Sentence Forge solved: ${sentenceCurrent.word.word}`);
+      if (shouldReturn) return;
       return;
     }
 
@@ -1307,6 +1412,9 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
         correctAnswer: sentenceCurrent.word.definition
       });
     }
+    if (score.stars >= 4 && wordUseStars >= 4) {
+      void finishReviewWord(sentenceCurrent.word.word, "Sentence Writing", 1400);
+    }
     if (score.gems > 0) {
       setSentenceGems((value) => value + score.gems);
       playSentenceForgeSound(score.stars >= 5 ? "writing-high" : score.stars >= 3 ? "writing-mid" : "writing-low");
@@ -1333,7 +1441,10 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
       .filter((index) => index >= 0);
 
     if (wrongIndexes.length === 0) {
-      passageCurrent.blanks.filter((blank) => blank.active).forEach((blank) => recordWordOutcome(blank.word.word, false));
+      passageCurrent.blanks.filter((blank) => blank.active).forEach((blank) => {
+        recordWordOutcome(blank.word.word, false);
+        void finishReviewWord(blank.word.word, "Classic Words", 1200);
+      });
       const gems = passageAttempts === 0 ? 18 : passageAttempts === 1 ? 10 : 6;
       setPassageGems((value) => value + gems);
       setPassageFeedback(`Passage complete. +${gems} gems.`);
@@ -1453,6 +1564,11 @@ export function ClassicWordQuestClient({ courseId, courseSlug, words, userName, 
             </>
           )}
         </div>
+        {requestedReviewKeys.length > 1 ? (
+          <div className="word-quest-review-banner">
+            Mistake Review · {requestedReviewKeys.length} words
+          </div>
+        ) : null}
       </section>
       <RewardGemBurst gems={flyingGems} />
 

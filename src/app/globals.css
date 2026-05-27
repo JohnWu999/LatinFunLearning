@@ -3567,6 +3567,13 @@ button.player-stat:hover {
   color: #1f6f3d;
 }
 
+.roots-power-page .legacy-match-item.review-focus,
+.roots-power-page .legacy-mcq.review-focus {
+  animation: rootsReviewPulse 1.05s ease-in-out 4;
+  border-color: #e85d04;
+  box-shadow: 0 0 0 5px rgba(232, 93, 4, 0.16), 0 20px 38px rgba(38, 87, 111, 0.18);
+}
+
 .roots-power-page .legacy-opt.checked-correct {
   border-color: #39a862;
   background: rgba(81, 163, 111, 0.16);
@@ -3599,6 +3606,17 @@ button.player-stat:hover {
   font-size: 17px;
 }
 
+@keyframes rootsReviewPulse {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px) scale(1.01);
+  }
+}
+
 .roots-power-page .legacy-reveal {
   background: var(--legacy-primary);
   box-shadow: 0 12px 26px rgba(38, 87, 111, 0.18);
@@ -3610,6 +3628,23 @@ button.player-stat:hover {
   flex-wrap: wrap;
   gap: 14px;
   margin-top: 18px;
+}
+
+.roots-single-review-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  border: 1px solid rgba(232, 93, 4, 0.2);
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(232, 93, 4, 0.08), rgba(81, 163, 111, 0.08));
+  margin-top: 18px;
+  padding: 12px 14px 12px 18px;
+}
+
+.roots-single-review-row > span:first-child {
+  color: #26576f;
+  font-weight: 900;
 }
 
 .roots-check-button {
@@ -6215,6 +6250,23 @@ button.player-stat:hover {
 .word-quest-stats span {
   color: var(--legacy-muted);
   font-weight: 800;
+}
+
+.word-quest-review-banner {
+  width: fit-content;
+  margin: 16px auto 0;
+  border: 1px solid rgba(24, 119, 137, 0.16);
+  border-radius: 999px;
+  background:
+    radial-gradient(circle at 18% 16%, rgba(63, 208, 224, 0.2), transparent 34%),
+    rgba(255, 255, 255, 0.86);
+  box-shadow: 0 14px 28px rgba(38, 87, 111, 0.1);
+  color: #15586a;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 18px;
+  font-weight: 950;
+  letter-spacing: 0.4px;
+  padding: 9px 18px;
 }
 
 .whack-flying-gems,

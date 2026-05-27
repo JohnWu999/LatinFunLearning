@@ -1,10 +1,43 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/auth";
+import { latinStemLessons } from "@/lib/latin-stem-lessons";
 import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 const CATEGORY_ORDER = ["Latin Stems", "Classic Words", "Analogies & Antonyms", "Sentence Writing"];
+
+const latinStemPracticeLookup = new Map<string, { stem: string; meaning: string; exampleWord: string }>();
+Object.values(latinStemLessons).forEach((lesson) => {
+  lesson.newStems.forEach((card) => {
+    latinStemPracticeLookup.set(normalizePracticeWord(card.stem), {
+      stem: card.stem,
+      meaning: card.meaning,
+      exampleWord: card.nonfiction.word
+    });
+    [card.nonfiction.word, ...card.examples].forEach((word) => {
+      latinStemPracticeLookup.set(normalizePracticeWord(word), {
+        stem: card.stem,
+        meaning: card.meaning,
+        exampleWord: card.nonfiction.word
+      });
+    });
+  });
+  lesson.reviewStems.forEach((card) => {
+    latinStemPracticeLookup.set(normalizePracticeWord(card.stem), {
+      stem: card.stem,
+      meaning: card.meaning,
+      exampleWord: card.examples[0] ?? card.stem
+    });
+    card.examples.forEach((word) => {
+      latinStemPracticeLookup.set(normalizePracticeWord(word), {
+        stem: card.stem,
+        meaning: card.meaning,
+        exampleWord: word
+      });
+    });
+  });
+});
 
 type Props = {
   searchParams?: Promise<{ category?: string }>;
@@ -40,13 +73,13 @@ export default async function MistakesPage({ searchParams }: Props) {
   const primaryCourse = mistakes.find((mistake) => mistake.course.slug === "caesars-english-ii")?.course ?? mistakes[0]?.course;
   const categoryCards = CATEGORY_ORDER.map((category) => ({
     category,
-    count: mistakes.filter((mistake) => (mistake.category ?? inferCategory(mistake.knowledgePoint?.type, mistake.exercise?.group)) === category).length,
+    count: mistakes.filter((mistake) => mistakeCategory(mistake) === category).length,
     href: `/mistakes?category=${encodeURIComponent(category)}`,
     label: reviewLabel(category),
     description: categoryDescription(category)
   }));
   const selectedMistakes = selectedCategory
-    ? mistakes.filter((mistake) => (mistake.category ?? inferCategory(mistake.knowledgePoint?.type, mistake.exercise?.group)) === selectedCategory)
+    ? mistakes.filter((mistake) => mistakeCategory(mistake) === selectedCategory)
     : [];
 
   return (
@@ -78,7 +111,7 @@ export default async function MistakesPage({ searchParams }: Props) {
           <h1 className="page-title">{selectedCategory}</h1>
           <p className="lede">{selectedMistakes.length} accumulated mistake{selectedMistakes.length === 1 ? "" : "s"} in this module.</p>
           <div className="mistake-review-toolbar">
-            <Link className="button primary" href={reviewHref(selectedCategory, primaryCourse?.slug)}>
+            <Link className="button primary" href={reviewSetHref(selectedCategory, selectedMistakes, primaryCourse?.slug)}>
               {reviewLabel(selectedCategory)}
             </Link>
           </div>
@@ -87,8 +120,8 @@ export default async function MistakesPage({ searchParams }: Props) {
               {selectedMistakes.map((mistake) => (
                 <article className="mistake-card" key={mistake.id}>
                   <div className="mistake-card-head">
-                    <strong>{mistake.itemLabel ?? mistake.exercise?.prompt ?? mistake.knowledgePoint?.title ?? "Mistake"}</strong>
-                    <span>{mistake.mistakeType ?? "Practice Error"}</span>
+                    <strong>{mistakeDisplayTitle(mistake, selectedCategory)}</strong>
+                    <span>{mistakeDisplayType(mistake, selectedCategory)}</span>
                   </div>
                   <div className="mistake-card-meta">
                     <div>
@@ -97,7 +130,7 @@ export default async function MistakesPage({ searchParams }: Props) {
                     </div>
                     <div>
                       <small>来源</small>
-                      <b>{mistake.sourceModule ?? mistake.lesson?.title ?? mistake.course.title}</b>
+                      <b>{mistakeDisplaySource(mistake, selectedCategory)}</b>
                     </div>
                   </div>
                   <Link className="button primary" href={originalPracticeHref(mistake, selectedCategory)}>
@@ -118,10 +151,119 @@ export default async function MistakesPage({ searchParams }: Props) {
   );
 }
 
-function inferCategory(type?: string | null, group?: string | null) {
+function mistakeCategory(mistake: {
+  category?: string | null;
+  knowledgePoint?: { type?: string | null } | null;
+  exercise?: { group?: string | null } | null;
+  lesson?: { kind?: string | null } | null;
+}) {
+  return mistake.category ?? inferCategory(mistake.knowledgePoint?.type, mistake.exercise?.group, mistake.lesson?.kind);
+}
+
+function inferCategory(type?: string | null, group?: string | null, lessonKind?: string | null) {
   if (type === "STEM") return "Latin Stems";
+  if (lessonKind === "LATIN_STEMS") return "Latin Stems";
   if (group?.toLowerCase().includes("analog")) return "Analogies & Antonyms";
   return "Classic Words";
+}
+
+function normalizePracticeWord(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/^[a-z]\.\s*/i, "")
+    .replace(/\s+/g, " ");
+}
+
+function answerText(value: unknown) {
+  if (Array.isArray(value)) return String(value[0] ?? "");
+  return String(value ?? "");
+}
+
+function latinStemFromMistake(mistake: {
+  itemKey?: string | null;
+  itemLabel?: string | null;
+  exercise?: { prompt?: string | null; correctAnswer?: unknown } | null;
+}) {
+  const itemKeyHit = latinStemPracticeLookup.get(normalizePracticeWord(mistake.itemKey));
+  if (itemKeyHit) return itemKeyHit;
+  const labelStem = String(mistake.itemLabel ?? "").split("=")[0]?.trim();
+  const labelHit = latinStemPracticeLookup.get(normalizePracticeWord(labelStem));
+  if (labelHit) return labelHit;
+  const answerHit = latinStemPracticeLookup.get(normalizePracticeWord(answerText(mistake.exercise?.correctAnswer)));
+  if (answerHit) return answerHit;
+  return latinStemPracticeLookup.get(normalizePracticeWord(mistake.exercise?.prompt));
+}
+
+function isLatinStemMistake(
+  mistake: {
+    category?: string | null;
+    lesson?: { kind?: string | null } | null;
+    knowledgePoint?: { type?: string | null } | null;
+    exercise?: { group?: string | null } | null;
+  },
+  category?: string
+) {
+  return category === "Latin Stems" || mistakeCategory(mistake) === "Latin Stems";
+}
+
+function mistakeDisplayTitle(
+  mistake: {
+    itemKey?: string | null;
+    itemLabel?: string | null;
+    exercise?: { prompt?: string | null; correctAnswer?: unknown; group?: string | null } | null;
+    knowledgePoint?: { title?: string | null; type?: string | null } | null;
+    lesson?: { kind?: string | null } | null;
+    category?: string | null;
+  },
+  category?: string
+) {
+  if (isLatinStemMistake(mistake, category)) {
+    const stem = latinStemFromMistake(mistake);
+    if (stem) return `${stem.stem} = ${stem.meaning}`;
+    const answer = normalizePracticeWord(answerText(mistake.exercise?.correctAnswer));
+    if (answer) return answer;
+  }
+  return mistake.itemLabel ?? mistake.exercise?.prompt ?? mistake.knowledgePoint?.title ?? "Mistake";
+}
+
+function mistakeDisplayType(
+  mistake: {
+    mistakeType?: string | null;
+    exercise?: { group?: string | null } | null;
+    lesson?: { kind?: string | null } | null;
+    category?: string | null;
+    knowledgePoint?: { type?: string | null } | null;
+  },
+  category?: string
+) {
+  if (mistake.mistakeType) return mistake.mistakeType;
+  if (isLatinStemMistake(mistake, category)) {
+    const labelByGroup: Record<string, string> = {
+      matching: "Stem Meaning",
+      context: "Example Word",
+      synonym: "Word Ally",
+      antonym: "Opposite Word"
+    };
+    return labelByGroup[mistake.exercise?.group ?? ""] ?? "Stem Practice";
+  }
+  return "Practice Error";
+}
+
+function mistakeDisplaySource(
+  mistake: {
+    sourceModule?: string | null;
+    lesson?: { title?: string | null; kind?: string | null } | null;
+    course: { title: string };
+    category?: string | null;
+    knowledgePoint?: { type?: string | null } | null;
+    exercise?: { group?: string | null } | null;
+  },
+  category?: string
+) {
+  if (mistake.sourceModule) return mistake.sourceModule;
+  if (isLatinStemMistake(mistake, category)) return "Roots of Power";
+  return mistake.lesson?.title ?? mistake.course.title;
 }
 
 function reviewHref(category: string, courseSlug?: string) {
@@ -132,19 +274,85 @@ function reviewHref(category: string, courseSlug?: string) {
   return `/courses/${slug}/classic-word-quest`;
 }
 
+function reviewSetHref(
+  category: string,
+  mistakes: Array<{ itemKey?: string | null; itemLabel?: string | null }>,
+  courseSlug?: string
+) {
+  const slug = courseSlug ?? "caesars-english-ii";
+  if (category !== "Classic Words" || mistakes.length === 0) return reviewHref(category, slug);
+  const seen = new Set<string>();
+  const targets = mistakes
+    .map((mistake) => mistake.itemKey ?? mistake.itemLabel ?? "")
+    .filter(Boolean)
+    .filter((target) => {
+      const key = target.toLowerCase().trim();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    })
+    .slice(0, 40)
+    .map(encodeURIComponent)
+    .join(",");
+  return `/courses/${slug}/classic-word-quest/word-detective${targets ? `?targets=${targets}` : ""}`;
+}
+
 function originalPracticeHref(
   mistake: {
     course: { slug: string };
-    lesson?: { slug: string } | null;
+    lesson?: { slug: string; kind?: string | null } | null;
     itemKey?: string | null;
     itemLabel?: string | null;
+    exercise?: { id?: string; prompt?: string | null; correctAnswer?: unknown; group?: string | null } | null;
+    knowledgePoint?: { type?: string | null } | null;
+    category?: string | null;
     sourceModule?: string | null;
   },
   category?: string
 ) {
   const slug = mistake.course.slug;
-  const target = encodeURIComponent(mistake.itemKey ?? mistake.itemLabel ?? "");
-  const targetQuery = target ? `?target=${target}` : "";
+  const targetValue =
+    latinStemFromMistake(mistake)?.stem ??
+    mistake.itemKey ??
+    mistake.itemLabel ??
+    normalizePracticeWord(answerText(mistake.exercise?.correctAnswer)) ??
+    "";
+  const params = new URLSearchParams({
+    returnTo: `/mistakes?category=${category ?? "Classic Words"}`,
+    reviewCategory: category ?? "Classic Words"
+  });
+  if (targetValue) params.set("target", targetValue);
+  const targetQuery = `?${params.toString()}`;
+  if (isLatinStemMistake(mistake, category)) {
+    const rootsParams = new URLSearchParams({
+      type: "latin-stems",
+      returnTo: `/mistakes?category=${category ?? "Latin Stems"}`,
+      reviewCategory: category ?? "Latin Stems"
+    });
+    if (mistake.lesson?.slug) rootsParams.set("lesson", mistake.lesson.slug);
+    if (mistake.exercise?.id) rootsParams.set("exercise", mistake.exercise.id);
+    if (targetValue) rootsParams.set("target", targetValue);
+    return `/courses/${slug}/vocab-practice?${rootsParams.toString()}`;
+  }
+  if (category === "Classic Words" && mistake.lesson?.kind === "CLASSIC_WORDS") {
+    const classicParams = new URLSearchParams({
+      type: "classic-words",
+      returnTo: `/mistakes?category=${category}`,
+      reviewCategory: category
+    });
+    if (mistake.lesson.slug) classicParams.set("lesson", mistake.lesson.slug);
+    if (mistake.exercise?.id) classicParams.set("exercise", mistake.exercise.id);
+    if (targetValue) classicParams.set("target", targetValue);
+    return `/courses/${slug}/vocab-practice?${classicParams.toString()}`;
+  }
+  if (category === "Analogies & Antonyms") {
+    const analogyParams = new URLSearchParams({
+      returnTo: `/mistakes?category=${category}`,
+      reviewCategory: category
+    });
+    if (targetValue) analogyParams.set("target", targetValue);
+    return `/courses/${slug}/analogies-antonyms?${analogyParams.toString()}`;
+  }
   if (mistake.lesson?.slug) return `/courses/${slug}/lessons/${mistake.lesson.slug}/practice`;
   if (mistake.sourceModule === "Whack-a-Word") return `/courses/${slug}/classic-word-quest/whack-a-word${targetQuery}`;
   if (mistake.sourceModule === "Word Detective") return `/courses/${slug}/classic-word-quest/word-detective${targetQuery}`;
