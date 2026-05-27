@@ -3,12 +3,18 @@
 import { useState } from "react";
 
 type AuthMode = "login" | "register";
+type UserRole = "STUDENT" | "TEACHER" | "ADMIN";
 type ApiErrorBody = {
   error?: {
     message?: string;
     details?: {
       fieldErrors?: Record<string, string[] | undefined>;
     };
+  };
+};
+type AuthResponseBody = {
+  data?: {
+    role?: UserRole;
   };
 };
 
@@ -31,9 +37,10 @@ function friendlyError(body: ApiErrorBody | null, mode: AuthMode) {
   return message ?? "请求失败，请稍后再试";
 }
 
-function safeNextPath() {
+function safeNextPath(role?: UserRole) {
   const next = new URLSearchParams(window.location.search).get("next");
-  if (!next || !next.startsWith("/") || next.startsWith("//")) return "/dashboard";
+  if (!next || !next.startsWith("/") || next.startsWith("//")) return role === "ADMIN" ? "/admin" : "/dashboard";
+  if (role === "ADMIN" && next === "/dashboard") return "/admin";
   return next;
 }
 
@@ -72,7 +79,8 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       return;
     }
 
-    window.location.href = appPath(safeNextPath());
+    const body = (await response.json().catch(() => null)) as AuthResponseBody | null;
+    window.location.href = appPath(safeNextPath(body?.data?.role));
   }
 
   return (
