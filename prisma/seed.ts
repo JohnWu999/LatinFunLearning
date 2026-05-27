@@ -229,23 +229,23 @@ async function main() {
   const bcrypt = await import("bcryptjs");
   const passwordHash = await bcrypt.hash("LatinFun123!", 12);
 
-  const adminEmail = "admin@latinfun.local";
-  const admin = await prisma.user.upsert({
-    where: { email: adminEmail },
+  const demoEmail = "admin@latinfun.local";
+  const demoUser = await prisma.user.upsert({
+    where: { email: demoEmail },
     create: {
-      email: adminEmail,
-      name: "LatinFun Admin",
+      email: demoEmail,
+      name: "Demo Learner",
       passwordHash,
-      role: "ADMIN",
+      role: "STUDENT",
       profile: {
         create: {
-          displayName: "LatinFun Admin"
+          displayName: "Demo Learner"
         }
       }
     },
     update: {
-      name: "LatinFun Admin",
-      role: "ADMIN"
+      name: "Demo Learner",
+      role: "STUDENT"
     }
   });
 
@@ -271,7 +271,7 @@ async function main() {
     }
   });
 
-  for (const user of [admin, student]) {
+  for (const user of [demoUser, student]) {
   const existingProgress = await prisma.learningProgress.findFirst({
     where: {
       userId: user.id,
