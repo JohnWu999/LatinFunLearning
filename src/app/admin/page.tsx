@@ -104,6 +104,7 @@ export default async function AdminPage() {
         </div>
         <div className="admin-hero-actions">
           <Link className="button" href="/dashboard">Student View</Link>
+          <Link className="button" href="/admin/reports/weekly">Weekly Report</Link>
           <Link className="button primary" href="/courses/caesars-english-ii">Learning Center</Link>
         </div>
       </section>
@@ -175,6 +176,7 @@ export default async function AdminPage() {
             <span>Gems</span>
             <span>Open Mistakes</span>
             <span>Last Active</span>
+            <span>Report</span>
           </div>
           {studentRows.length ? studentRows.map((student) => (
             <div className="admin-student-row" key={student.id}>
@@ -183,6 +185,7 @@ export default async function AdminPage() {
               <span>{student.gems}</span>
               <span>{student.openMistakes}</span>
               <span>{formatDate(student.lastActiveAt)}</span>
+              <Link href={`/admin/reports/weekly?studentId=${student.id}`}>View</Link>
             </div>
           )) : (
             <p className="admin-empty">No student accounts yet.</p>
