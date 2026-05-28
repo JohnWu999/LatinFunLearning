@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import type { Prisma } from "@prisma/client";
-import type { CSSProperties } from "react";
 import { getCurrentUser } from "@/lib/auth";
 import { GEM_LEDGER_MODE } from "@/lib/rewards";
 import { prisma } from "@/lib/prisma";
@@ -128,6 +127,28 @@ function gradeReference(accuracy: number, activities: number) {
   return "Building toward middle-grade classical vocabulary readiness";
 }
 
+function weeklyLearningMs(attempts: Array<{ createdAt: Date; timeSpentMs: number | null }>) {
+  return attempts.reduce((sum, attempt, index) => {
+    if (attempt.timeSpentMs && attempt.timeSpentMs > 0) {
+      return sum + clamp(attempt.timeSpentMs, 5000, 10 * 60 * 1000);
+    }
+    const previous = attempts[index - 1];
+    if (!previous) return sum + 30 * 1000;
+    const gap = attempt.createdAt.getTime() - previous.createdAt.getTime();
+    if (gap > 0 && gap <= 5 * 60 * 1000) return sum + clamp(gap, 8000, 2 * 60 * 1000);
+    return sum + 30 * 1000;
+  }, 0);
+}
+
+function formatLearningTime(ms: number) {
+  const minutes = Math.max(1, Math.round(ms / 60000));
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  if (hours <= 0) return `${minutes} min`;
+  if (remainingMinutes === 0) return `${hours} hr`;
+  return `${hours} hr ${remainingMinutes} min`;
+}
+
 export default async function WeeklyReportPage({ searchParams }: Props) {
   const [user, query] = await Promise.all([getCurrentUser(), searchParams]);
   if (!user) redirect(`/login?next=${encodeURIComponent("/admin/reports/weekly")}`);
@@ -203,11 +224,7 @@ export default async function WeeklyReportPage({ searchParams }: Props) {
   const scoredAttempts = attempts.filter((attempt) => attempt.gameMode !== GEM_LEDGER_MODE);
   const correctAttempts = scoredAttempts.filter((attempt) => attempt.isCorrect).length;
   const accuracy = percent(correctAttempts, scoredAttempts.length);
-  const weeklyGems = attempts.reduce((sum, attempt) => {
-    if (attempt.gameMode === GEM_LEDGER_MODE) return sum + parseRewardAnswer(attempt.answer).amount;
-    return sum + (attempt.isCorrect ? 1 : 0);
-  }, 0);
-  const mistakesCleared = attempts.filter((attempt) => attempt.isCorrect && attempt.gameMode !== GEM_LEDGER_MODE).length;
+  const learningTime = formatLearningTime(weeklyLearningMs(scoredAttempts));
 
   const dailyCounts = weekDays.map((date) => {
     const next = new Date(date);
@@ -233,6 +250,7 @@ export default async function WeeklyReportPage({ searchParams }: Props) {
       status: statusLabel(moduleAccuracy, moduleAttempts.length)
     };
   });
+  const activeModules = modules.filter((module) => module.attempts > 0).length;
 
   const weeklyGemsByUser = new Map<string, number>();
   allWeeklyAttempts.forEach((attempt) => {
@@ -256,41 +274,45 @@ export default async function WeeklyReportPage({ searchParams }: Props) {
     <main className="main admin-dashboard">
       <div className="admin-report-nav">
         <Link className="button" href="/admin">Back to Admin</Link>
-        <div className="admin-student-switcher">
-          {students.slice(0, 8).map((student) => {
-            const name = student.profile?.displayName ?? student.name ?? student.email.split("@")[0];
-            return (
-              <Link className={student.id === selectedStudent.id ? "active" : ""} href={`/admin/reports/weekly?studentId=${student.id}`} key={student.id}>
-                {name}
-              </Link>
-            );
-          })}
-        </div>
       </div>
 
       <section className="weekly-report-shell">
         <header className="weekly-report-hero">
-          <div>
-            <span>Classic WordLab Weekly Snapshot</span>
-            <h1>{displayName}</h1>
-            <p>{shortDate(weekStart)} - {shortDate(weekEnd)} · Visual learning report</p>
-          </div>
-          <div className="weekly-status-orb" style={{ "--accuracy": `${accuracy * 3.6}deg` } as CSSProperties}>
-            <strong>{accuracy}%</strong>
-            <small>Accuracy</small>
+          <span>{shortDate(weekStart)} - {shortDate(weekEnd)}</span>
+          <h1>{displayName}&apos;s Classic WordLab accomplishments</h1>
+          <div className="weekly-accomplishment-row" aria-label="Weekly accomplishments summary">
+            <div className="weekly-accomplishment-item answered">
+              <i>✎</i>
+              <div>
+                <small>Answered</small>
+                <strong>{scoredAttempts.length.toLocaleString()}</strong>
+                <em>questions</em>
+              </div>
+            </div>
+            <div className="weekly-accomplishment-item time">
+              <i>◷</i>
+              <div>
+                <small>Spent</small>
+                <strong>{learningTime}</strong>
+                <em>learning</em>
+              </div>
+            </div>
+            <div className="weekly-accomplishment-item progress">
+              <i>🧩</i>
+              <div>
+                <small>Made progress in</small>
+                <strong>{activeModules}</strong>
+                <em>modules</em>
+              </div>
+            </div>
           </div>
         </header>
 
         <section className="weekly-kpi-grid">
-          <div className="weekly-kpi-card gem">
-            <span>💎</span>
-            <small>Gems Earned</small>
-            <strong>+{Math.max(0, weeklyGems)}</strong>
-          </div>
           <div className="weekly-kpi-card">
-            <span>🧩</span>
-            <small>Activities</small>
-            <strong>{scoredAttempts.length}</strong>
+            <span>🎯</span>
+            <small>Accuracy</small>
+            <strong>{accuracy}%</strong>
           </div>
           <div className="weekly-kpi-card">
             <span>✅</span>
@@ -371,7 +393,30 @@ export default async function WeeklyReportPage({ searchParams }: Props) {
           </div>
         </section>
 
-        <section className="weekly-chart-grid">
+        <section className="weekly-bottom-grid">
+          <article className="weekly-chart-card">
+            <div className="weekly-card-head">
+              <h2>Words To Revisit</h2>
+              <span>up to 6 focus cards</span>
+            </div>
+            <div className="weekly-word-cloud">
+              {revisitWords.length ? revisitWords.map((word) => <span key={word}>{word}</span>) : <p>No open review words this week.</p>}
+            </div>
+          </article>
+          <article className="weekly-chart-card next-focus">
+            <div className="weekly-card-head">
+              <h2>Next Week Focus</h2>
+              <span>short and actionable</span>
+            </div>
+            <ol>
+              <li>Review the focus words above.</li>
+              <li>Complete one Stem Battle or Classic Word Quest session.</li>
+              <li>Write three original sentences with review words.</li>
+            </ol>
+          </article>
+        </section>
+
+        <section className="weekly-chart-grid weekly-reference-footer">
           <article className="weekly-chart-card">
             <div className="weekly-card-head">
               <h2>Platform Percentile</h2>
@@ -393,29 +438,6 @@ export default async function WeeklyReportPage({ searchParams }: Props) {
               <strong>{gradeReference(accuracy, scoredAttempts.length)}</strong>
               <p>Based on current practice volume, accuracy, and vocabulary difficulty.</p>
             </div>
-          </article>
-        </section>
-
-        <section className="weekly-bottom-grid">
-          <article className="weekly-chart-card">
-            <div className="weekly-card-head">
-              <h2>Words To Revisit</h2>
-              <span>up to 6 focus cards</span>
-            </div>
-            <div className="weekly-word-cloud">
-              {revisitWords.length ? revisitWords.map((word) => <span key={word}>{word}</span>) : <p>No open review words this week.</p>}
-            </div>
-          </article>
-          <article className="weekly-chart-card next-focus">
-            <div className="weekly-card-head">
-              <h2>Next Week Focus</h2>
-              <span>short and actionable</span>
-            </div>
-            <ol>
-              <li>Review the focus words above.</li>
-              <li>Complete one Stem Battle or Classic Word Quest session.</li>
-              <li>Write three original sentences with review words.</li>
-            </ol>
           </article>
         </section>
       </section>

@@ -1671,33 +1671,7 @@ button.player-stat:hover {
 .admin-report-nav {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 18px;
   margin-bottom: 22px;
-}
-
-.admin-student-switcher {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: flex-end;
-}
-
-.admin-student-switcher a {
-  border: 1px solid rgba(38, 87, 111, 0.14);
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.75);
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 900;
-  padding: 9px 13px;
-  text-decoration: none;
-}
-
-.admin-student-switcher a.active {
-  border-color: rgba(223, 93, 34, 0.38);
-  background: rgba(223, 93, 34, 0.12);
-  color: var(--primary);
 }
 
 .weekly-report-shell {
@@ -1719,11 +1693,7 @@ button.player-stat:hover {
 }
 
 .weekly-report-hero {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 24px;
-  padding: 8px 4px 26px;
+  padding: 8px 4px 34px;
 }
 
 .weekly-report-hero span,
@@ -1736,49 +1706,77 @@ button.player-stat:hover {
 }
 
 .weekly-report-hero h1 {
-  margin: 10px 0;
-  color: var(--text);
-  font-size: clamp(44px, 7vw, 86px);
-  line-height: 0.92;
+  margin: 8px 0 34px;
+  color: #66615c;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(34px, 4.5vw, 58px);
+  font-weight: 300;
+  line-height: 1.08;
 }
 
-.weekly-report-hero p {
-  margin: 0;
-  color: var(--muted);
-  font-size: 18px;
-  font-weight: 850;
-}
-
-.weekly-status-orb {
-  position: relative;
+.weekly-accomplishment-row {
   display: grid;
-  width: 164px;
-  height: 164px;
-  flex: 0 0 auto;
-  place-items: center;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at center, #fffdfa 0 54%, transparent 55%),
-    conic-gradient(#2d7f59 var(--accuracy), rgba(38, 87, 111, 0.12) 0);
-  box-shadow: 0 18px 40px rgba(38, 87, 111, 0.14);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  border-top: 1px solid rgba(38, 87, 111, 0.12);
+  border-bottom: 1px solid rgba(38, 87, 111, 0.12);
 }
 
-.weekly-status-orb strong {
-  color: #26576f;
-  font-family: Georgia, "Times New Roman", serif;
-  font-size: 42px;
+.weekly-accomplishment-item {
+  display: grid;
+  grid-template-columns: 76px minmax(0, 1fr);
+  align-items: center;
+  gap: 22px;
+  min-height: 188px;
+  padding: 28px 34px;
+}
+
+.weekly-accomplishment-item + .weekly-accomplishment-item {
+  border-left: 1px solid rgba(38, 87, 111, 0.14);
+}
+
+.weekly-accomplishment-item i {
+  font-style: normal;
+  font-size: 54px;
   line-height: 1;
 }
 
-.weekly-status-orb small {
-  color: var(--muted);
-  font-weight: 900;
-  margin-top: -42px;
+.weekly-accomplishment-item.answered i {
+  color: #80bf20;
+}
+
+.weekly-accomplishment-item.time i {
+  color: #09a8df;
+  filter: drop-shadow(0 8px 14px rgba(9, 168, 223, 0.18));
+}
+
+.weekly-accomplishment-item.progress i {
+  color: #e66a2c;
+}
+
+.weekly-accomplishment-item small,
+.weekly-accomplishment-item em {
+  display: block;
+  color: #6f6b66;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 19px;
+  font-style: normal;
+  font-weight: 750;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.weekly-accomplishment-item strong {
+  display: block;
+  color: #66615c;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: clamp(48px, 5vw, 72px);
+  font-weight: 300;
+  line-height: 1.08;
 }
 
 .weekly-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -1836,6 +1834,10 @@ button.player-stat:hover {
 
 .weekly-chart-grid .wide {
   min-height: 260px;
+}
+
+.weekly-reference-footer {
+  margin-top: 22px;
 }
 
 .weekly-chart-card {
