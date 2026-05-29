@@ -1078,6 +1078,142 @@ button.player-stat:hover {
   display: none;
 }
 
+.auth-page {
+  width: min(1180px, calc(100% - 40px));
+  padding-top: 34px;
+  font-family: "Nunito", "Avenir Next", "Trebuchet MS", system-ui, sans-serif;
+}
+
+.auth-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.05fr) minmax(380px, 0.72fr);
+  gap: 34px;
+  align-items: stretch;
+  min-height: calc(100vh - 190px);
+}
+
+.auth-hero-panel,
+.auth-card-panel {
+  border: 1px solid rgba(38, 87, 111, 0.14);
+  border-radius: 8px;
+  background: rgba(255, 253, 250, 0.94);
+  box-shadow: 0 22px 54px rgba(38, 87, 111, 0.11);
+}
+
+.auth-hero-panel {
+  display: grid;
+  align-content: center;
+  gap: 22px;
+  overflow: hidden;
+  position: relative;
+  padding: clamp(34px, 5vw, 62px);
+}
+
+.auth-hero-panel::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 18% 20%, rgba(34, 156, 215, 0.14), transparent 30%),
+    radial-gradient(circle at 78% 16%, rgba(82, 188, 98, 0.15), transparent 32%),
+    linear-gradient(135deg, rgba(247, 252, 255, 0.96), rgba(255, 249, 235, 0.86));
+  z-index: 0;
+}
+
+.auth-hero-panel::after {
+  content: "word play";
+  position: absolute;
+  right: clamp(20px, 5vw, 64px);
+  bottom: clamp(22px, 6vw, 74px);
+  color: rgba(38, 87, 111, 0.075);
+  font-family: "Nunito", "Avenir Next", system-ui, sans-serif;
+  font-size: clamp(58px, 9vw, 118px);
+  font-weight: 800;
+  letter-spacing: 0;
+  z-index: 0;
+}
+
+.auth-hero-panel > * {
+  position: relative;
+  z-index: 1;
+}
+
+.auth-kicker {
+  display: inline-flex;
+  width: fit-content;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  color: #226a86;
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  padding: 9px 14px;
+  text-transform: uppercase;
+}
+
+.auth-hero-panel h1 {
+  max-width: 680px;
+  margin: 0;
+  color: var(--text);
+  font-family: "Nunito", "Avenir Next", "Trebuchet MS", system-ui, sans-serif;
+  font-size: clamp(44px, 5.3vw, 72px);
+  font-weight: 800;
+  line-height: 1.02;
+  letter-spacing: 0;
+}
+
+.auth-hero-panel p {
+  max-width: 620px;
+  margin: 0;
+  color: #5f574b;
+  font-size: clamp(18px, 1.8vw, 22px);
+  font-weight: 650;
+  line-height: 1.42;
+}
+
+.auth-feature-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  max-width: 620px;
+  margin-top: 10px;
+}
+
+.auth-feature-grid span {
+  display: grid;
+  place-items: center;
+  min-height: 70px;
+  border: 1px solid rgba(38, 87, 111, 0.11);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.78);
+  color: #3c342e;
+  font-weight: 800;
+  box-shadow: 0 10px 22px rgba(38, 87, 111, 0.08);
+}
+
+.auth-card-panel {
+  align-self: center;
+  padding: clamp(26px, 4vw, 42px);
+}
+
+.auth-card-panel h2 {
+  margin: 0;
+  color: var(--text);
+  font-family: "Nunito", "Avenir Next", "Trebuchet MS", system-ui, sans-serif;
+  font-size: clamp(34px, 3.8vw, 46px);
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.auth-card-panel > p {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 1.45;
+}
+
 .home-page {
   width: min(1240px, calc(100% - 40px));
   margin: 0 auto;
@@ -2444,38 +2580,41 @@ button.player-stat:hover {
 
 .form-card {
   display: grid;
-  gap: 18px;
-  margin-top: 30px;
-  border: 1px solid var(--line);
-  border-radius: 8px;
-  background: var(--surface-strong);
-  padding: 24px;
-  box-shadow: var(--shadow);
+  gap: 16px;
+  margin-top: 24px;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  box-shadow: none;
 }
 
 .form-card label {
   display: grid;
   gap: 8px;
   color: var(--muted);
-  font-size: 14px;
-  font-weight: 700;
+  font-size: 13px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 .form-card input,
 .answer-form input {
-  min-height: 46px;
-  border: 1px solid var(--line);
+  min-height: 52px;
+  border: 2px solid rgba(38, 87, 111, 0.13);
   border-radius: 8px;
-  background: white;
+  background: rgba(255, 255, 255, 0.96);
   color: var(--text);
-  padding: 0 14px;
+  font-size: 17px;
+  font-weight: 800;
+  padding: 0 16px;
   outline: none;
 }
 
 .form-card input:focus,
 .answer-form input:focus {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 3px rgba(184, 138, 53, 0.14);
+  border-color: rgba(33, 150, 210, 0.58);
+  box-shadow: 0 0 0 4px rgba(33, 150, 210, 0.12);
 }
 
 .verification-row {
@@ -2485,8 +2624,15 @@ button.player-stat:hover {
 }
 
 .verification-row .button {
-  min-height: 46px;
+  min-height: 52px;
   white-space: nowrap;
+}
+
+.form-card > .button.primary {
+  min-height: 54px;
+  margin-top: 2px;
+  width: 100%;
+  box-shadow: 0 12px 26px rgba(223, 93, 34, 0.18);
 }
 
 .form-notice {
@@ -2502,7 +2648,10 @@ button.player-stat:hover {
 }
 
 .form-note {
+  margin: 18px 0 0;
   color: var(--muted);
+  font-weight: 800;
+  text-align: center;
 }
 
 .form-note a {
@@ -2660,9 +2809,10 @@ button.player-stat:hover {
     flex-direction: column;
   }
 
-  .home-hero,
-  .home-entry-grid,
-  .hero,
+	  .home-hero,
+	  .home-entry-grid,
+	  .auth-layout,
+	  .hero,
   .admin-grid-two,
   .admin-metric-grid,
   .admin-course-list,
@@ -2702,9 +2852,17 @@ button.player-stat:hover {
     height: 140px;
   }
 
-  .home-hero {
-    min-height: 0;
-  }
+	  .home-hero {
+	    min-height: 0;
+	  }
+
+	  .auth-layout {
+	    min-height: 0;
+	  }
+
+	  .auth-card-panel {
+	    align-self: stretch;
+	  }
 
   .home-visual {
     min-height: 460px;
@@ -2712,10 +2870,28 @@ button.player-stat:hover {
 }
 
 @media (max-width: 560px) {
-  .home-page {
-    width: min(100% - 28px, 1240px);
-    padding-top: 32px;
-  }
+	  .home-page {
+	    width: min(100% - 28px, 1240px);
+	    padding-top: 32px;
+	  }
+
+	  .auth-page {
+	    width: min(100% - 28px, 1180px);
+	    padding-top: 24px;
+	  }
+
+	  .auth-hero-panel,
+	  .auth-card-panel {
+	    padding: 22px;
+	  }
+
+	  .auth-feature-grid {
+	    grid-template-columns: repeat(2, minmax(0, 1fr));
+	  }
+
+	  .verification-row {
+	    grid-template-columns: 1fr;
+	  }
 
   .admin-dashboard {
     width: min(100% - 28px, 1240px);

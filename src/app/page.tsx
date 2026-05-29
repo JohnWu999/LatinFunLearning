@@ -1,59 +1,29 @@
 import Link from "next/link";
-import { ArrowRight, BookOpenCheck, Landmark, ShieldCheck, Sparkles } from "lucide-react";
-
-const practiceAreas = ["Classic Words", "Latin Roots", "Analogies", "Antonyms", "Word Games"];
+import { AuthForm } from "@/components/auth-form";
 
 export default function Home() {
   return (
-    <main className="home-page">
-      <section className="home-hero">
-        <div className="home-copy">
-          <span className="home-eyebrow">
-            <Landmark size={18} />
-            Classical Vocabulary Practice
-          </span>
-          <h1>Classic WordLab</h1>
-          <p>Build Vocabulary Through Classical Literature, Latin Roots, and Word Games</p>
-
-          <div className="home-entry-grid" aria-label="Choose an entrance">
-            <Link className="home-entry student" href="/login?next=/dashboard">
-              <span className="home-entry-icon">
-                <BookOpenCheck size={26} />
-              </span>
-              <strong>Student Login</strong>
-              <small>Practice words, roots, analogies, and games with your own progress.</small>
-              <em>
-                Enter Learning Space <ArrowRight size={16} />
-              </em>
-            </Link>
-
-            <Link className="home-entry admin" href="/login?next=/admin">
-              <span className="home-entry-icon">
-                <ShieldCheck size={26} />
-              </span>
-              <strong>Admin Login</strong>
-              <small>Manage authorized users, course materials, and learning records.</small>
-              <em>
-                Enter Admin Space <ArrowRight size={16} />
-              </em>
-            </Link>
+    <main className="main auth-page">
+      <section className="auth-layout">
+        <div className="auth-hero-panel">
+          <span className="auth-kicker">Classic WordLab</span>
+          <h1>Classical words, made playable.</h1>
+          <p>Practice roots, literary vocabulary, analogies, and word games with your progress saved every step of the way.</p>
+          <div className="auth-feature-grid" aria-label="Learning features">
+            <span>📘 Words</span>
+            <span>🌿 Roots</span>
+            <span>💎 Gems</span>
+            <span>🏆 Reports</span>
           </div>
         </div>
-
-        <div className="home-visual" aria-hidden="true">
-          <div className="home-book-mark">
-            <Sparkles size={26} />
-          </div>
-          <div className="home-word-core">
-            <span>verbum</span>
-            <strong>WORD</strong>
-            <small>meaning · roots · usage</small>
-          </div>
-          <div className="home-word-path">
-            {practiceAreas.map((area) => (
-              <span key={area}>{area}</span>
-            ))}
-          </div>
+        <div className="auth-card-panel">
+          <h2>Log in</h2>
+          <p>Students and administrators use the same secure sign-in.</p>
+          <AuthForm mode="login" />
+          <p className="form-note">
+            New student? <Link href="/register">Create a student account</Link>
+          </p>
+          <p className="auth-admin-note">Admin accounts open the management dashboard automatically after login.</p>
         </div>
       </section>
     </main>

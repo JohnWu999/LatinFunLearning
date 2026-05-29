@@ -14,13 +14,28 @@ export default async function LoginPage({ searchParams }: Props) {
   const next = (await searchParams)?.next;
 
   return (
-    <main className="main narrow auth-page">
-      <h1 className="page-title">登录</h1>
-      <p className="lede">登录后，练习记录、错题和课程进度会保存到后端，并支持跨设备同步。</p>
-      <AuthForm mode="login" />
-      <p className="form-note">
-        还没有账号？ <Link href={nextLink("/register", next)}>创建一个学生账号</Link>
-      </p>
+    <main className="main auth-page">
+      <section className="auth-layout">
+        <div className="auth-hero-panel">
+          <span className="auth-kicker">Classic WordLab</span>
+          <h1>Welcome back.</h1>
+          <p>Build classical vocabulary through roots, literature, and word games with progress saved across devices.</p>
+          <div className="auth-feature-grid" aria-label="Learning features">
+            <span>📘 Words</span>
+            <span>🌿 Roots</span>
+            <span>💎 Gems</span>
+            <span>🏆 Reports</span>
+          </div>
+        </div>
+        <div className="auth-card-panel">
+          <h2>Log in</h2>
+          <p>Use your student email to continue learning.</p>
+          <AuthForm mode="login" />
+          <p className="form-note">
+            还没有账号？ <Link href={nextLink("/register", next)}>创建一个学生账号</Link>
+          </p>
+        </div>
+      </section>
     </main>
   );
 }
