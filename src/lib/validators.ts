@@ -3,7 +3,12 @@ import { z } from "zod";
 export const registerSchema = z.object({
   email: z.string().email("请输入有效邮箱"),
   name: z.string().min(1, "请输入昵称").max(80, "昵称不能超过 80 个字符"),
-  password: z.string().min(6, "密码至少需要 6 位").max(128, "密码不能超过 128 位")
+  password: z.string().min(6, "密码至少需要 6 位").max(128, "密码不能超过 128 位"),
+  verificationCode: z.string().regex(/^\d{6}$/, "请输入 6 位邮箱验证码")
+});
+
+export const emailVerificationRequestSchema = z.object({
+  email: z.string().email("请输入有效邮箱")
 });
 
 export const loginSchema = z.object({

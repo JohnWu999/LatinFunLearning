@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { AdminStudentManager } from "@/components/admin-student-manager";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getRewardLeaderboard } from "@/lib/rewards";
@@ -21,6 +22,46 @@ function formatDate(value?: Date | null) {
 function percent(value: number, total: number) {
   if (total <= 0) return 0;
   return Math.round((value / total) * 100);
+}
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
+function learningMs(attempts: Array<{ createdAt: Date; timeSpentMs: number | null }>) {
+  return attempts.reduce((sum, attempt, index) => {
+    if (attempt.timeSpentMs && attempt.timeSpentMs > 0) {
+      return sum + clamp(attempt.timeSpentMs, 5000, 10 * 60 * 1000);
+    }
+    const previous = attempts[index - 1];
+    if (!previous) return sum + 30 * 1000;
+    const gap = attempt.createdAt.getTime() - previous.createdAt.getTime();
+    if (gap > 0 && gap <= 5 * 60 * 1000) return sum + clamp(gap, 8000, 2 * 60 * 1000);
+    return sum + 30 * 1000;
+  }, 0);
+}
+
+function formatLearningTime(ms: number) {
+  if (ms <= 0) return "0 min";
+  const minutes = Math.max(1, Math.round(ms / 60000));
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+  if (hours <= 0) return `${minutes} min`;
+  if (remainingMinutes === 0) return `${hours} hr`;
+  return `${hours} hr ${remainingMinutes} min`;
+}
+
+function shanghaiDayStart(value: Date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Asia/Shanghai",
+    year: "numeric"
+  }).formatToParts(value);
+  const year = parts.find((part) => part.type === "year")?.value ?? "1970";
+  const month = parts.find((part) => part.type === "month")?.value ?? "01";
+  const day = parts.find((part) => part.type === "day")?.value ?? "01";
+  return new Date(`${year}-${month}-${day}T00:00:00+08:00`);
 }
 
 export default async function AdminPage() {
@@ -52,7 +93,8 @@ export default async function AdminPage() {
         userId: true,
         isCorrect: true,
         gameMode: true,
-        createdAt: true
+        createdAt: true,
+        timeSpentMs: true
       }
     }),
     prisma.mistakeRecord.findMany({
@@ -63,6 +105,7 @@ export default async function AdminPage() {
   ]);
 
   const now = Date.now();
+  const todayStart = shanghaiDayStart(new Date(now));
   const oneDayAgo = new Date(now - 24 * 60 * 60 * 1000);
   const oneWeekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
   const activeToday = new Set(attempts.filter((attempt) => attempt.createdAt >= oneDayAgo).map((attempt) => attempt.userId)).size;
@@ -78,21 +121,34 @@ export default async function AdminPage() {
   openMistakes.forEach((mistake) => {
     mistakeCountByUser.set(mistake.userId, (mistakeCountByUser.get(mistake.userId) ?? 0) + 1);
   });
+  const practiceAttemptsByUser = new Map<string, Array<{ createdAt: Date; timeSpentMs: number | null }>>();
+  attempts
+    .filter((attempt) => attempt.gameMode !== "gem-ledger")
+    .forEach((attempt) => {
+      const userAttempts = practiceAttemptsByUser.get(attempt.userId) ?? [];
+      userAttempts.push({ createdAt: attempt.createdAt, timeSpentMs: attempt.timeSpentMs });
+      practiceAttemptsByUser.set(attempt.userId, userAttempts);
+    });
 
-  const studentRows = students
+  const sortableStudentRows = students
     .map((student) => ({
       ...student,
       displayName: student.profile?.displayName ?? student.name ?? student.email.split("@")[0],
       gems: leaderboardByUser.get(student.id)?.gems ?? 0,
       rank: leaderboardByUser.get(student.id)?.rank ?? null,
       openMistakes: mistakeCountByUser.get(student.id) ?? 0,
-      lastActiveAt: lastAttemptByUser.get(student.id) ?? null
+      lastActiveAt: lastAttemptByUser.get(student.id) ?? null,
+      lastActiveLabel: formatDate(lastAttemptByUser.get(student.id) ?? null),
+      todayLearningLabel: formatLearningTime(learningMs((practiceAttemptsByUser.get(student.id) ?? []).filter((attempt) => attempt.createdAt >= todayStart).sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime()))),
+      totalLearningLabel: formatLearningTime(learningMs((practiceAttemptsByUser.get(student.id) ?? []).sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime()))),
+      reportHref: `/admin/reports/weekly?studentId=${student.id}`
     }))
     .sort((left, right) => {
       const leftTime = left.lastActiveAt?.getTime() ?? 0;
       const rightTime = right.lastActiveAt?.getTime() ?? 0;
       return rightTime - leftTime || right.gems - left.gems || left.displayName.localeCompare(right.displayName);
     });
+  const studentRows = sortableStudentRows.map(({ createdAt, lastActiveAt, name, profile, ...student }) => student);
 
   return (
     <main className="main admin-dashboard">
@@ -100,7 +156,7 @@ export default async function AdminPage() {
         <div>
           <span>Super Admin</span>
           <h1>Classic WordLab Admin</h1>
-          <p>Read-only overview for students, practice activity, gems, and open mistakes.</p>
+          <p>Manage student accounts, practice activity, gems, learning time, and open mistakes.</p>
         </div>
         <div className="admin-hero-actions">
           <Link className="button" href="/dashboard">Student View</Link>
@@ -164,34 +220,7 @@ export default async function AdminPage() {
         </div>
       </section>
 
-      <section className="admin-panel">
-        <div className="admin-panel-head">
-          <h2>Students</h2>
-          <span>{students.length} accounts</span>
-        </div>
-        <div className="admin-student-table">
-          <div className="admin-student-row header">
-            <span>Student</span>
-            <span>Email</span>
-            <span>Gems</span>
-            <span>Open Mistakes</span>
-            <span>Last Active</span>
-            <span>Report</span>
-          </div>
-          {studentRows.length ? studentRows.map((student) => (
-            <div className="admin-student-row" key={student.id}>
-              <strong>{student.displayName}</strong>
-              <span>{student.email}</span>
-              <span>{student.gems}</span>
-              <span>{student.openMistakes}</span>
-              <span>{formatDate(student.lastActiveAt)}</span>
-              <Link href={`/admin/reports/weekly?studentId=${student.id}`}>View</Link>
-            </div>
-          )) : (
-            <p className="admin-empty">No student accounts yet.</p>
-          )}
-        </div>
-      </section>
+      <AdminStudentManager students={studentRows} />
 
       <section className="admin-panel">
         <div className="admin-panel-head">

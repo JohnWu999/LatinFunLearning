@@ -34,6 +34,9 @@ function friendlyError(body: ApiErrorBody | null, mode: AuthMode) {
   if (message === "Invalid request payload") return mode === "register" ? "请检查昵称、邮箱和密码是否填写正确" : "请检查邮箱和密码";
   if (message === "Email is already registered") return "这个邮箱已经注册过了，可以直接登录";
   if (message === "Invalid email or password") return "邮箱或密码不正确";
+  if (message === "Verification code is missing or expired") return "验证码已过期，请重新获取";
+  if (message === "Verification code is incorrect") return "验证码不正确，请检查邮箱中的 6 位数字";
+  if (message === "Please wait before requesting another code") return "验证码刚刚已发送，请稍等 1 分钟后再试";
   return message ?? "请求失败，请稍后再试";
 }
 
@@ -46,7 +49,38 @@ function safeNextPath(role?: UserRole) {
 
 export function AuthForm({ mode }: { mode: AuthMode }) {
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [pending, setPending] = useState(false);
+  const [codePending, setCodePending] = useState(false);
+  const [registerEmail, setRegisterEmail] = useState("");
+
+  async function requestVerificationCode() {
+    setError("");
+    setNotice("");
+    const email = registerEmail.trim();
+    if (!email) {
+      setError("请先填写邮箱，再获取验证码");
+      return;
+    }
+
+    setCodePending(true);
+    const response = await fetch(appPath("/api/auth/register-code"), {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email })
+    });
+
+    if (!response.ok) {
+      const body = (await response.json().catch(() => null)) as ApiErrorBody | null;
+      setError(friendlyError(body, mode));
+      setCodePending(false);
+      return;
+    }
+
+    const body = (await response.json().catch(() => null)) as { data?: { delivered?: boolean; message?: string } } | null;
+    setNotice(body?.data?.delivered ? "验证码已发送，请查收邮箱。" : "验证码已生成。本地测试环境请查看终端日志。");
+    setCodePending(false);
+  }
 
   async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -59,7 +93,8 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
         ? {
             name: String(formData.get("name") ?? ""),
             email: String(formData.get("email") ?? ""),
-            password: String(formData.get("password") ?? "")
+            password: String(formData.get("password") ?? ""),
+            verificationCode: String(formData.get("verificationCode") ?? "")
           }
         : {
             email: String(formData.get("email") ?? ""),
@@ -93,8 +128,34 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
       ) : null}
       <label>
         邮箱
-        <input autoComplete="email" name="email" placeholder="student@example.com" required type="email" />
+        <input
+          autoComplete="email"
+          name="email"
+          onChange={(event) => setRegisterEmail(event.target.value)}
+          placeholder="student@example.com"
+          required
+          type="email"
+        />
       </label>
+      {mode === "register" ? (
+        <label>
+          邮箱验证码
+          <span className="verification-row">
+            <input
+              autoComplete="one-time-code"
+              inputMode="numeric"
+              maxLength={6}
+              name="verificationCode"
+              pattern="[0-9]{6}"
+              placeholder="6 位验证码"
+              required
+            />
+            <button className="button" disabled={codePending || pending} onClick={requestVerificationCode} type="button">
+              {codePending ? "发送中..." : "获取验证码"}
+            </button>
+          </span>
+        </label>
+      ) : null}
       <label>
         密码
         <input
@@ -105,6 +166,7 @@ export function AuthForm({ mode }: { mode: AuthMode }) {
           type="password"
         />
       </label>
+      {notice ? <p className="form-notice">{notice}</p> : null}
       {error ? <p className="form-error">{error}</p> : null}
       <button className="button primary" disabled={pending} type="submit">
         {pending ? "处理中..." : mode === "login" ? "登录" : "创建账号"}

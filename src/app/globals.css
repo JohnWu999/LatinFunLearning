@@ -1614,18 +1614,29 @@ button.player-stat:hover {
 .admin-student-row {
   display: grid;
   grid-template-columns: 1.1fr 1.7fr 0.6fr 0.8fr 1fr 0.55fr;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  padding: 14px 16px;
+  font-size: 15px;
+  line-height: 1.25;
+  min-height: 70px;
+  padding: 10px 14px;
+}
+
+.admin-student-row-managed {
+  grid-template-columns: 0.92fr 1.35fr 0.42fr 0.56fr 0.72fr 0.62fr 0.82fr 1.12fr;
 }
 
 .admin-student-row.header {
   background: rgba(38, 87, 111, 0.08);
   color: var(--admin-blue);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 950;
   letter-spacing: 0.05em;
   text-transform: uppercase;
+}
+
+.admin-student-row strong {
+  font-size: 15px;
 }
 
 .admin-student-row span {
@@ -1638,6 +1649,85 @@ button.player-stat:hover {
   color: var(--primary);
   font-weight: 950;
   text-decoration: none;
+}
+
+.admin-create-student {
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) minmax(220px, 1.4fr) minmax(170px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  border: 1px solid rgba(38, 87, 111, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 253, 250, 0.8);
+  margin-bottom: 18px;
+  padding: 16px;
+}
+
+.admin-create-student label {
+  color: var(--muted);
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  font-weight: 950;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.admin-create-student input,
+.admin-student-row input {
+  border: 1px solid rgba(38, 87, 111, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--admin-ink);
+  font: inherit;
+  font-weight: 850;
+  min-width: 0;
+  padding: 11px 12px;
+}
+
+.admin-create-student input:focus,
+.admin-student-row input:focus {
+  border-color: rgba(223, 93, 34, 0.55);
+  box-shadow: 0 0 0 4px rgba(223, 93, 34, 0.1);
+  outline: none;
+}
+
+.admin-student-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.admin-student-actions .button,
+.admin-student-actions a {
+  align-items: center;
+  display: inline-flex;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 12px;
+  min-height: 32px;
+  padding: 7px 9px;
+  white-space: nowrap;
+}
+
+.button.danger {
+  border-color: rgba(183, 53, 43, 0.22);
+  background: rgba(183, 53, 43, 0.08);
+  color: var(--danger);
+}
+
+.button.danger:hover {
+  background: rgba(183, 53, 43, 0.14);
+}
+
+.admin-manager-message {
+  border-radius: 8px;
+  background: rgba(45, 127, 89, 0.12);
+  color: var(--admin-green);
+  font-weight: 950;
+  margin-bottom: 14px;
+  padding: 12px 14px;
 }
 
 .admin-course-list {
@@ -2386,6 +2476,23 @@ button.player-stat:hover {
 .answer-form input:focus {
   border-color: var(--gold);
   box-shadow: 0 0 0 3px rgba(184, 138, 53, 0.14);
+}
+
+.verification-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+}
+
+.verification-row .button {
+  min-height: 46px;
+  white-space: nowrap;
+}
+
+.form-notice {
+  margin: 0;
+  color: var(--success);
+  font-weight: 800;
 }
 
 .form-error {
