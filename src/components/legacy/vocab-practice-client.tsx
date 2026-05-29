@@ -214,6 +214,10 @@ function progressStorageKey(courseId: string, practiceType: PracticeType) {
     : `classic_treasury_completed_${courseId}`;
 }
 
+function sessionStorageKey(courseId: string, practiceType: PracticeType) {
+  return `latinfun_${practiceType}_session_${courseId}`;
+}
+
 function stageTitle(practiceType: PracticeType, stage: number) {
   if (practiceType === "latin-stems") return `Power Stage ${stage}`;
   if (practiceType === "classic-words") return `Treasury Step ${stage}`;
@@ -269,6 +273,7 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
   const [matchLines, setMatchLines] = useState<MatchLine[]>([]);
   const [toast, setToast] = useState("");
   const [showAnswers, setShowAnswers] = useState(false);
+  const sessionLoadedRef = useRef(false);
 
   const activeLesson = lessons.find((lesson) => lesson.id === activeLessonId) ?? null;
   const activeLessonIndex = activeLesson ? lessons.findIndex((lesson) => lesson.id === activeLesson.id) : -1;
@@ -294,6 +299,61 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
     if (!lesson) return;
     openLesson(lesson.id);
   }, [activeLessonId, initialLessonSlug, lessons]);
+
+  useEffect(() => {
+    if (!isStagePractice || initialLessonSlug || initialExerciseId || sessionLoadedRef.current) return;
+    sessionLoadedRef.current = true;
+    try {
+      const raw = window.localStorage.getItem(sessionStorageKey(courseId, practiceType));
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        activeLessonId?: string | null;
+        answered?: AnsweredMap;
+        matched?: Record<string, boolean>;
+        matchingSelections?: Record<string, string>;
+        choiceSelections?: Record<string, string>;
+        checkedChoiceStatus?: Record<string, "correct" | "wrong">;
+        sectionFeedback?: Record<string, string>;
+        completedSections?: Record<string, boolean>;
+        awardedSections?: Record<string, number>;
+      };
+      if (!saved.activeLessonId || !lessons.some((lesson) => lesson.id === saved.activeLessonId)) return;
+      setActiveLessonId(saved.activeLessonId);
+      setAnswered(saved.answered ?? {});
+      setMatched(saved.matched ?? {});
+      setMatchingSelections(saved.matchingSelections ?? {});
+      setChoiceSelections(saved.choiceSelections ?? {});
+      setCheckedChoiceStatus(saved.checkedChoiceStatus ?? {});
+      setSectionFeedback(saved.sectionFeedback ?? {});
+      setCompletedSections(saved.completedSections ?? {});
+      setAwardedSections(saved.awardedSections ?? {});
+    } catch {
+      window.localStorage.removeItem(sessionStorageKey(courseId, practiceType));
+    }
+  }, [courseId, initialExerciseId, initialLessonSlug, isStagePractice, lessons, practiceType]);
+
+  useEffect(() => {
+    if (!isStagePractice || !sessionLoadedRef.current) return;
+    try {
+      if (!activeLessonId) {
+        window.localStorage.removeItem(sessionStorageKey(courseId, practiceType));
+        return;
+      }
+      window.localStorage.setItem(sessionStorageKey(courseId, practiceType), JSON.stringify({
+        activeLessonId,
+        answered,
+        matched,
+        matchingSelections,
+        choiceSelections,
+        checkedChoiceStatus,
+        sectionFeedback,
+        completedSections,
+        awardedSections
+      }));
+    } catch {
+      // Local progress persistence is optional.
+    }
+  }, [activeLessonId, answered, awardedSections, checkedChoiceStatus, choiceSelections, completedSections, courseId, isStagePractice, matched, matchingSelections, practiceType, sectionFeedback]);
 
   useEffect(() => {
     if (!activeLesson || (!initialExerciseId && !reviewTarget)) return;

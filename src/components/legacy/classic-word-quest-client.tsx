@@ -52,6 +52,11 @@ const DETECTIVE_SIZE = 40;
 const SENTENCE_FORGE_SIZE = 65;
 const PASSAGE_QUEST_SIZE = 24;
 const PASSAGE_ACTIVE_BLANKS = 6;
+
+function clamp(value: number, min: number, max: number) {
+  return Math.max(min, Math.min(max, value));
+}
+
 const C1_DETECTIVE_WORDS = new Set([
   "derision",
   "procure",
@@ -931,6 +936,7 @@ export function ClassicWordQuestClient({
   const [passageAttempts, setPassageAttempts] = useState(0);
   const [passageGems, setPassageGems] = useState(0);
   const [passageFeedback, setPassageFeedback] = useState("");
+  const progressLoadedRef = useRef(false);
   const startedAtRef = useRef(Date.now());
   const gemCounterRef = useRef<HTMLDivElement | null>(null);
   const detectiveBoardRef = useRef<HTMLElement | null>(null);
@@ -965,7 +971,144 @@ export function ClassicWordQuestClient({
     ]);
   }, [allWords, detectiveCurrent]);
 
+  function questProgressKey() {
+    return `latinfun_classic_word_quest_${courseId}_${userName ?? "guest"}_${gameMode}`;
+  }
+
+  function clearQuestProgress() {
+    try {
+      window.localStorage.removeItem(questProgressKey());
+    } catch {
+      // Progress persistence is optional.
+    }
+  }
+
   useEffect(() => {
+    if (progressLoadedRef.current) return;
+    progressLoadedRef.current = true;
+    try {
+      const raw = window.localStorage.getItem(questProgressKey());
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        roundIndex?: number;
+        roundWords?: RoundWord[];
+        nextFreshIndex?: number;
+        questionIndex?: number;
+        whackStreak?: number;
+        hitWords?: string[];
+        missedWords?: string[];
+        questReviewWords?: string[];
+        detectiveIndex?: number;
+        detectivePhase?: "choose" | "spell" | "done";
+        detectiveAttempts?: number;
+        detectiveMisses?: string[];
+        sentenceIndex?: number;
+        sentenceSelection?: string;
+        sentenceSubmitted?: boolean;
+        sentenceCorrect?: boolean | null;
+        sentenceAttempts?: number;
+        sentenceStage?: "fill" | "write";
+        passageIndex?: number;
+        passageSelections?: Record<number, string>;
+        passageSubmitted?: boolean;
+        passageAttempts?: number;
+      };
+      if (gameMode === "whack") {
+        if (typeof saved.roundIndex === "number") setRoundIndex(clamp(saved.roundIndex, 0, TOTAL_ROUNDS - 1));
+        if (Array.isArray(saved.roundWords) && saved.roundWords.length) setRoundWords(saved.roundWords);
+        if (typeof saved.nextFreshIndex === "number") setNextFreshIndex(saved.nextFreshIndex);
+        if (typeof saved.questionIndex === "number") setQuestionIndex(Math.max(0, saved.questionIndex));
+        if (typeof saved.whackStreak === "number") setWhackStreak(saved.whackStreak);
+        if (Array.isArray(saved.hitWords)) setHitWords(saved.hitWords);
+        if (Array.isArray(saved.missedWords)) setMissedWords(saved.missedWords);
+        if (Array.isArray(saved.questReviewWords)) setQuestReviewWords(saved.questReviewWords);
+      }
+      if (gameMode === "detective") {
+        if (typeof saved.detectiveIndex === "number") setDetectiveIndex(Math.max(0, saved.detectiveIndex));
+        if (saved.detectivePhase && saved.detectivePhase !== "done") setDetectivePhase(saved.detectivePhase);
+        if (typeof saved.detectiveAttempts === "number") setDetectiveAttempts(saved.detectiveAttempts);
+        if (Array.isArray(saved.detectiveMisses)) setDetectiveMisses(saved.detectiveMisses);
+        setDetectiveSpelling("");
+      }
+      if (gameMode === "sentence") {
+        if (typeof saved.sentenceIndex === "number") setSentenceIndex(Math.max(0, saved.sentenceIndex));
+        if (typeof saved.sentenceSelection === "string") setSentenceSelection(saved.sentenceSelection);
+        if (typeof saved.sentenceSubmitted === "boolean") setSentenceSubmitted(saved.sentenceSubmitted);
+        if (typeof saved.sentenceAttempts === "number") setSentenceAttempts(saved.sentenceAttempts);
+        if (typeof saved.sentenceCorrect === "boolean" || saved.sentenceCorrect === null) setSentenceCorrect(saved.sentenceCorrect);
+        if (saved.sentenceStage) setSentenceStage(saved.sentenceStage);
+        setSentenceDraft("");
+        setSentenceWritingScore(null);
+      }
+      if (gameMode === "passage") {
+        if (typeof saved.passageIndex === "number") setPassageIndex(Math.max(0, saved.passageIndex));
+        if (saved.passageSelections && typeof saved.passageSelections === "object") setPassageSelections(saved.passageSelections);
+        if (typeof saved.passageSubmitted === "boolean") setPassageSubmitted(saved.passageSubmitted);
+        if (typeof saved.passageAttempts === "number") setPassageAttempts(saved.passageAttempts);
+      }
+    } catch {
+      clearQuestProgress();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!progressLoadedRef.current) return;
+    const isComplete =
+      (gameMode === "whack" && questComplete) ||
+      (gameMode === "detective" && detectiveComplete) ||
+      (gameMode === "sentence" && sentenceComplete) ||
+      (gameMode === "passage" && passageComplete);
+    if (isComplete) {
+      clearQuestProgress();
+      return;
+    }
+    try {
+      const progress =
+        gameMode === "whack"
+          ? { roundIndex, roundWords, nextFreshIndex, questionIndex, whackStreak, hitWords, missedWords, questReviewWords }
+          : gameMode === "detective"
+            ? { detectiveIndex, detectivePhase, detectiveAttempts, detectiveMisses }
+            : gameMode === "sentence"
+              ? { sentenceIndex, sentenceSelection, sentenceSubmitted, sentenceCorrect, sentenceAttempts, sentenceStage }
+              : { passageIndex, passageSelections, passageSubmitted, passageAttempts };
+      window.localStorage.setItem(questProgressKey(), JSON.stringify(progress));
+    } catch {
+      // Progress persistence is optional.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    gameMode,
+    roundIndex,
+    roundWords,
+    nextFreshIndex,
+    questionIndex,
+    whackStreak,
+    hitWords,
+    missedWords,
+    questReviewWords,
+    detectiveIndex,
+    detectivePhase,
+    detectiveAttempts,
+    detectiveMisses,
+    sentenceIndex,
+    sentenceSelection,
+    sentenceSubmitted,
+    sentenceCorrect,
+    sentenceAttempts,
+    sentenceStage,
+    passageIndex,
+    passageSelections,
+    passageSubmitted,
+    passageAttempts,
+    questComplete,
+    detectiveComplete,
+    sentenceComplete,
+    passageComplete
+  ]);
+
+  useEffect(() => {
+    if (progressLoadedRef.current) return;
     setRoundIndex(0);
     setRoundWords(initialRound.roundWords);
     setNextFreshIndex(initialRound.nextFreshIndex);
@@ -1008,6 +1151,11 @@ export function ClassicWordQuestClient({
     }, 80);
     return () => window.clearTimeout(id);
   }, [detectiveIndex, detectivePhase, gameMode]);
+
+  useEffect(() => {
+    if (gameMode !== "detective" || detectivePhase !== "spell") return;
+    setDetectiveSpelling("");
+  }, [detectiveCurrent?.word, detectivePhase, gameMode]);
 
   function recordWordOutcome(word: string, wrong: boolean) {
     const key = getWordStatKey(word);
@@ -1602,9 +1750,14 @@ export function ClassicWordQuestClient({
                 <p>No spelling clue yet. Type the complete word.</p>
                 <input
                   autoFocus
+                  autoComplete="off"
+                  autoCorrect="off"
                   id="detective-spelling"
+                  key={`detective-spelling-${detectiveCurrent.word}`}
+                  name={`detective-spelling-${getWordStatKey(detectiveCurrent.word)}`}
                   onChange={(event) => setDetectiveSpelling(event.target.value)}
                   placeholder="type the full word"
+                  spellCheck={false}
                   value={detectiveSpelling}
                 />
                 <button className="battle-main-button" type="submit">Submit Spelling</button>
@@ -1792,12 +1945,17 @@ export function ClassicWordQuestClient({
                 </div>
                 <label htmlFor="sentence-writing-input">Write one original sentence using this word.</label>
                 <textarea
+                  autoComplete="off"
+                  autoCorrect="off"
                   id="sentence-writing-input"
+                  key={`sentence-writing-${sentenceCurrent.word.word}`}
+                  name={`sentence-writing-${getWordStatKey(sentenceCurrent.word.word)}`}
                   onChange={(event) => {
                     setSentenceDraft(event.target.value);
                     if (sentenceWritingScore) setSentenceWritingScore(null);
                   }}
                   placeholder={`Example idea: Use "${sentenceCurrent.word.word}" naturally in a complete sentence.`}
+                  spellCheck={false}
                   value={sentenceDraft}
                 />
                 {sentenceWritingScore ? (

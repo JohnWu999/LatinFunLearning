@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { RewardGemBurst, useRewardGemBurst } from "@/components/reward-gem-burst";
 import type { AnalogiesAntonymsLesson, MultipleChoiceQuestion } from "@/lib/analogies-antonyms";
 
@@ -197,12 +197,39 @@ export function AnalogiesAntonymsClient({ courseId, lesson, reviewTarget, return
   const safeReturnTo = safeReturnPath(returnTo);
   const [answers, setAnswers] = useState<Record<number, number>>({});
   const [submitted, setSubmitted] = useState(false);
+  const progressKey = `latinfun_analogies_antonyms_${courseId}_${lesson.lesson}`;
 
   const answeredCount = Object.keys(answers).length;
   const readyToSubmit = answeredCount === visibleQuestions.length;
   const correctCount = visibleQuestions.reduce((total, question, index) => {
     return total + (submitted && answers[index] === question.correctAnswerIndex ? 1 : 0);
   }, 0);
+
+  useEffect(() => {
+    if (singleReviewMode) return;
+    try {
+      const raw = window.localStorage.getItem(progressKey);
+      if (!raw) return;
+      const saved = JSON.parse(raw) as { answers?: Record<number, number>; submitted?: boolean };
+      setAnswers(saved.answers ?? {});
+      setSubmitted(Boolean(saved.submitted));
+    } catch {
+      window.localStorage.removeItem(progressKey);
+    }
+  }, [progressKey, singleReviewMode]);
+
+  useEffect(() => {
+    if (singleReviewMode) return;
+    try {
+      if (submitted && correctCount === visibleQuestions.length) {
+        window.localStorage.removeItem(progressKey);
+        return;
+      }
+      window.localStorage.setItem(progressKey, JSON.stringify({ answers, submitted }));
+    } catch {
+      // Local progress persistence is optional.
+    }
+  }, [answers, correctCount, progressKey, singleReviewMode, submitted, visibleQuestions.length]);
 
   if (singleReviewMode && reviewQuestionIndex < 0) return null;
 

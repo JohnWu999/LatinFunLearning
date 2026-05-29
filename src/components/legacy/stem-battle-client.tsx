@@ -101,7 +101,7 @@ type SavedBattleSession = {
   activeLevel: GameLevel;
   questions: GameQuestion[];
   run: typeof emptyRun;
-  answer: string;
+  answer?: string;
   wrongMode: boolean;
   timeLeft: number;
   matchedPairs: Record<string, boolean>;
@@ -2013,6 +2013,10 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     return userStorageKey("build_word_progress");
   }
 
+  function buildWordSessionKey() {
+    return userStorageKey("build_word_session");
+  }
+
   function nextBuildMapIndex(completedStems = completedBuildStems) {
     const nextIndex = buildWordMaps.findIndex((map) =>
       map.stems.some((stem) => buildWordChallengeFor(stem.id) && !completedStems.includes(stem.id))
@@ -2272,6 +2276,72 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
   }, [courseId, userId, isLoggedIn]);
 
   useEffect(() => {
+    if (buildWordPreviewState()) return;
+    try {
+      const raw = window.localStorage.getItem(buildWordSessionKey());
+      if (!raw) return;
+      const saved = JSON.parse(raw) as {
+        screen?: Screen;
+        stage?: BuildWordStage;
+        activeStemId?: string;
+        mapIndex?: number;
+        tiles?: string[];
+        answer?: string[];
+        familyTiles?: BuildWordPart[];
+        familyAnswers?: BuildWordFamilyAnswer;
+        familyWrongCount?: number;
+        selectedFamilyRow?: string;
+      };
+      if (saved.screen !== "build-word" || !saved.stage) return;
+      const challenge = buildWordChallengeFor(saved.activeStemId ?? "com");
+      if (!challenge) return;
+      setScreen("build-word");
+      setBuildWordStage(saved.stage);
+      setActiveBuildStemId(challenge.id);
+      if (typeof saved.mapIndex === "number") setActiveBuildMapIndex(saved.mapIndex);
+      setBuildWordTiles(Array.isArray(saved.tiles) ? saved.tiles : challenge.warmup.parts);
+      setBuildWordAnswer(Array.isArray(saved.answer) ? saved.answer : []);
+      setBuildWordFeedback("");
+      setBuildFamilyTiles(Array.isArray(saved.familyTiles) ? saved.familyTiles : shuffle(challenge.familyTiles));
+      setBuildFamilyAnswers(saved.familyAnswers ?? emptyBuildWordFamilyAnswers(challenge));
+      setBuildFamilyFeedback("");
+      setBuildFamilyBuilt(false);
+      setBuildFamilyWrongCount(saved.familyWrongCount ?? 0);
+      setBuildWarmupReviewing(false);
+      setBuildReviewWordId(null);
+      setSelectedFamilyRow(saved.selectedFamilyRow ?? challenge.familyWords[0]?.id ?? "");
+      setSelectedFamilyWord(null);
+      setBuildFamilyMatches({});
+    } catch {
+      window.localStorage.removeItem(buildWordSessionKey());
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [courseId, userId]);
+
+  useEffect(() => {
+    try {
+      if (screen !== "build-word") {
+        window.localStorage.removeItem(buildWordSessionKey());
+        return;
+      }
+      window.localStorage.setItem(buildWordSessionKey(), JSON.stringify({
+        screen,
+        stage: buildWordStage,
+        activeStemId: activeBuildStemId,
+        mapIndex: activeBuildMapIndex,
+        tiles: buildWordTiles,
+        answer: buildWordAnswer,
+        familyTiles: buildFamilyTiles,
+        familyAnswers: buildFamilyAnswers,
+        familyWrongCount: buildFamilyWrongCount,
+        selectedFamilyRow
+      }));
+    } catch {
+      // Local progress persistence is optional.
+    }
+  }, [activeBuildMapIndex, activeBuildStemId, buildFamilyAnswers, buildFamilyTiles, buildFamilyWrongCount, buildWordAnswer, buildWordStage, buildWordTiles, courseId, screen, selectedFamilyRow, userId]);
+
+  useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const preview = params.get("preview");
     const previewState = buildWordPreviewState();
@@ -2330,7 +2400,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       activeLevel,
       questions,
       run,
-      answer,
+      answer: "",
       wrongMode,
       timeLeft,
       matchedPairs,
@@ -2339,7 +2409,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     window.localStorage.setItem(savedSessionKey(), JSON.stringify(session));
     setSavedSession(session);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen, activeLevel, questions, run, answer, wrongMode, timeLeft, matchedPairs, courseId, userId]);
+  }, [screen, activeLevel, questions, run, wrongMode, timeLeft, matchedPairs, courseId, userId]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -2966,7 +3036,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     setActiveLevel(session.activeLevel);
     setQuestions(session.questions);
     setRun(session.run);
-    setAnswer(session.answer ?? "");
+    setAnswer("");
     setWrongMode(session.wrongMode);
     setTimeLeft(session.timeLeft);
     setMatchedPairs(session.matchedPairs ?? {});
@@ -4357,12 +4427,16 @@ function QuestionCard({
   variant: "default" | "root-match";
 }) {
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const inputKey = question && "answer" in question
+    ? `${question.type}-${"stem" in question ? question.stem.id : "word"}-${question.answer}`
+    : "";
 
   useEffect(() => {
     if (!question || locked || !("answer" in question) || question.type === "pick" || question.type === "tf") return;
+    onAnswerChange("");
     const timer = window.setTimeout(() => inputRef.current?.focus(), 0);
     return () => window.clearTimeout(timer);
-  }, [question, locked]);
+  }, [inputKey]);
 
   if (!question) return null;
 
@@ -4480,7 +4554,18 @@ function QuestionCard({
         )}
         <span>{hint}</span>
       </h2>
-      <input ref={inputRef} disabled={locked} onChange={(event) => onAnswerChange(event.target.value)} placeholder="输入答案" value={answer} />
+      <input
+        ref={inputRef}
+        autoComplete="off"
+        autoCorrect="off"
+        disabled={locked}
+        key={inputKey}
+        name={`battle-answer-${inputKey}`}
+        onChange={(event) => onAnswerChange(event.target.value)}
+        placeholder="输入答案"
+        spellCheck={false}
+        value={answer}
+      />
     </form>
   );
 }
