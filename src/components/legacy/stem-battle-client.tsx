@@ -4,6 +4,16 @@ import Link from "next/link";
 import type { DragEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RewardGemBurst, useRewardGemBurst } from "@/components/reward-gem-burst";
+import { fetchProgressState, saveProgressState } from "@/lib/client-progress-state";
+import {
+  playGemSparkle,
+  playKidsCombo,
+  playKidsComplete,
+  playKidsCorrect,
+  playKidsHint,
+  playKidsWrong,
+  speakGameFeedback
+} from "@/lib/sound-effects";
 
 type Stem = {
   id: string;
@@ -2017,6 +2027,22 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
     return userStorageKey("build_word_session");
   }
 
+  function battleProgressServerKey() {
+    return "stem-battle:battle-progress";
+  }
+
+  function savedSessionServerKey() {
+    return "stem-battle:saved-session";
+  }
+
+  function buildWordProgressServerKey() {
+    return "stem-battle:build-word-progress";
+  }
+
+  function buildWordSessionServerKey() {
+    return "stem-battle:build-word-session";
+  }
+
   function nextBuildMapIndex(completedStems = completedBuildStems) {
     const nextIndex = buildWordMaps.findIndex((map) =>
       map.stems.some((stem) => buildWordChallengeFor(stem.id) && !completedStems.includes(stem.id))
@@ -2081,11 +2107,17 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
         updateBuildRewardDisplay(payload.data.gems, payload.data.rank ?? null);
       }
       const awarded = payload.data?.awarded ?? amount;
-      if (awarded > 0) launchGemBurst(awarded);
+      if (awarded > 0) {
+        launchGemBurst(awarded);
+        playGemSparkle(false);
+      }
       return awarded;
     } catch {
       setBuildRewardPoints((points) => Math.max(0, points + amount));
-      if (amount > 0) launchGemBurst(amount);
+      if (amount > 0) {
+        launchGemBurst(amount);
+        playGemSparkle(false);
+      }
       return amount;
     }
   }
@@ -2207,6 +2239,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
   }
 
   useEffect(() => {
+    let cancelled = false;
     const raw = window.localStorage.getItem(battleProgressKey());
     if (raw) {
       try {
@@ -2217,29 +2250,57 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
         setBest({});
       }
     }
-  }, [courseId, userId]);
+    if (isLoggedIn) {
+      fetchProgressState<{ best?: typeof best; unlocked?: number[] }>(courseId, battleProgressServerKey()).then((serverState) => {
+        if (cancelled || !serverState) return;
+        setBest((current) => ({ ...serverState.best, ...current }));
+        if (Array.isArray(serverState.unlocked)) {
+          setUnlocked((current) => [...new Set([...serverState.unlocked!, ...current])]);
+        }
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, userId, isLoggedIn]);
 
   useEffect(() => {
-    const raw = window.localStorage.getItem(savedSessionKey());
-    if (!raw) return;
-
-    try {
-      const parsed = JSON.parse(raw) as SavedBattleSession;
+    let cancelled = false;
+    function restoreSession(parsed: SavedBattleSession) {
       if (parsed.activeLevel && parsed.questions?.length && parsed.run && parsed.run.qi < parsed.questions.length) {
         setSavedSession(parsed);
       }
-    } catch {
-      window.localStorage.removeItem(savedSessionKey());
     }
+
+    const raw = window.localStorage.getItem(savedSessionKey());
+    if (raw) {
+      try {
+        restoreSession(JSON.parse(raw) as SavedBattleSession);
+      } catch {
+        window.localStorage.removeItem(savedSessionKey());
+      }
+    }
+    if (isLoggedIn) {
+      fetchProgressState<SavedBattleSession>(courseId, savedSessionServerKey()).then((serverState) => {
+        if (cancelled || !serverState) return;
+        restoreSession(serverState);
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, userId]);
+  }, [courseId, userId, isLoggedIn]);
 
   useEffect(() => {
-    window.localStorage.setItem(battleProgressKey(), JSON.stringify({ best, unlocked }));
-  }, [best, unlocked, courseId, userId]);
+    const state = { best, unlocked };
+    window.localStorage.setItem(battleProgressKey(), JSON.stringify(state));
+    if (isLoggedIn) void saveProgressState(courseId, battleProgressServerKey(), state);
+  }, [best, unlocked, courseId, userId, isLoggedIn]);
 
   useEffect(() => {
     setBuildProgressLoaded(false);
+    let cancelled = false;
     const previewState = buildWordPreviewState();
     if (previewState) {
       setCompletedBuildStems(previewState.completed);
@@ -2247,28 +2308,46 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       setBuildProgressLoaded(true);
       return;
     }
+    let localCompleted: string[] = [];
     try {
       const raw = window.localStorage.getItem(buildWordProgressKey());
-      if (!raw) {
-        setBuildProgressLoaded(true);
-        return;
+      if (raw) {
+        const parsed = JSON.parse(raw) as { completed?: string[] };
+        localCompleted = Array.isArray(parsed.completed) ? parsed.completed.filter((item): item is string => typeof item === "string") : [];
       }
-      const parsed = JSON.parse(raw) as { completed?: string[] };
-      const completed = Array.isArray(parsed.completed) ? parsed.completed.filter((item): item is string => typeof item === "string") : [];
-      setCompletedBuildStems(completed);
-      setActiveBuildMapIndex(nextBuildMapIndex(completed));
     } catch {
       window.localStorage.removeItem(buildWordProgressKey());
     }
+
+    setCompletedBuildStems(localCompleted);
+    setActiveBuildMapIndex(nextBuildMapIndex(localCompleted));
     setBuildProgressLoaded(true);
+
+    if (isLoggedIn) {
+      fetchProgressState<{ completed?: string[] }>(courseId, buildWordProgressServerKey()).then((serverState) => {
+        if (cancelled || !serverState) return;
+        const serverCompleted = Array.isArray(serverState.completed)
+          ? serverState.completed.filter((item): item is string => typeof item === "string")
+          : [];
+        const merged = [...new Set([...localCompleted, ...serverCompleted])];
+        setCompletedBuildStems(merged);
+        setActiveBuildMapIndex(nextBuildMapIndex(merged));
+        window.localStorage.setItem(buildWordProgressKey(), JSON.stringify({ completed: merged }));
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, userId]);
+  }, [courseId, userId, isLoggedIn]);
 
   useEffect(() => {
     if (!buildProgressLoaded) return;
     if (buildWordPreviewState()) return;
-    window.localStorage.setItem(buildWordProgressKey(), JSON.stringify({ completed: completedBuildStems }));
-  }, [buildProgressLoaded, completedBuildStems, courseId, userId]);
+    const state = { completed: completedBuildStems };
+    window.localStorage.setItem(buildWordProgressKey(), JSON.stringify(state));
+    if (isLoggedIn) void saveProgressState(courseId, buildWordProgressServerKey(), state);
+  }, [buildProgressLoaded, completedBuildStems, courseId, userId, isLoggedIn]);
 
   useEffect(() => {
     refreshBuildRewards();
@@ -2277,21 +2356,19 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
 
   useEffect(() => {
     if (buildWordPreviewState()) return;
-    try {
-      const raw = window.localStorage.getItem(buildWordSessionKey());
-      if (!raw) return;
-      const saved = JSON.parse(raw) as {
-        screen?: Screen;
-        stage?: BuildWordStage;
-        activeStemId?: string;
-        mapIndex?: number;
-        tiles?: string[];
-        answer?: string[];
-        familyTiles?: BuildWordPart[];
-        familyAnswers?: BuildWordFamilyAnswer;
-        familyWrongCount?: number;
-        selectedFamilyRow?: string;
-      };
+    let cancelled = false;
+    function restoreBuildSession(saved: {
+      screen?: Screen;
+      stage?: BuildWordStage;
+      activeStemId?: string;
+      mapIndex?: number;
+      tiles?: string[];
+      answer?: string[];
+      familyTiles?: BuildWordPart[];
+      familyAnswers?: BuildWordFamilyAnswer;
+      familyWrongCount?: number;
+      selectedFamilyRow?: string;
+    }) {
       if (saved.screen !== "build-word" || !saved.stage) return;
       const challenge = buildWordChallengeFor(saved.activeStemId ?? "com");
       if (!challenge) return;
@@ -2312,19 +2389,48 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       setSelectedFamilyRow(saved.selectedFamilyRow ?? challenge.familyWords[0]?.id ?? "");
       setSelectedFamilyWord(null);
       setBuildFamilyMatches({});
+    }
+
+    try {
+      const raw = window.localStorage.getItem(buildWordSessionKey());
+      if (raw) {
+        const saved = JSON.parse(raw) as {
+          screen?: Screen;
+          stage?: BuildWordStage;
+          activeStemId?: string;
+          mapIndex?: number;
+          tiles?: string[];
+          answer?: string[];
+          familyTiles?: BuildWordPart[];
+          familyAnswers?: BuildWordFamilyAnswer;
+          familyWrongCount?: number;
+          selectedFamilyRow?: string;
+        };
+        restoreBuildSession(saved);
+      }
     } catch {
       window.localStorage.removeItem(buildWordSessionKey());
     }
+    if (isLoggedIn) {
+      fetchProgressState<Parameters<typeof restoreBuildSession>[0]>(courseId, buildWordSessionServerKey()).then((serverState) => {
+        if (cancelled || !serverState) return;
+        restoreBuildSession(serverState);
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId, userId]);
+  }, [courseId, userId, isLoggedIn]);
 
   useEffect(() => {
     try {
       if (screen !== "build-word") {
         window.localStorage.removeItem(buildWordSessionKey());
+        if (isLoggedIn) void saveProgressState(courseId, buildWordSessionServerKey(), null);
         return;
       }
-      window.localStorage.setItem(buildWordSessionKey(), JSON.stringify({
+      const state = {
         screen,
         stage: buildWordStage,
         activeStemId: activeBuildStemId,
@@ -2335,11 +2441,13 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
         familyAnswers: buildFamilyAnswers,
         familyWrongCount: buildFamilyWrongCount,
         selectedFamilyRow
-      }));
+      };
+      window.localStorage.setItem(buildWordSessionKey(), JSON.stringify(state));
+      if (isLoggedIn) void saveProgressState(courseId, buildWordSessionServerKey(), state);
     } catch {
       // Local progress persistence is optional.
     }
-  }, [activeBuildMapIndex, activeBuildStemId, buildFamilyAnswers, buildFamilyTiles, buildFamilyWrongCount, buildWordAnswer, buildWordStage, buildWordTiles, courseId, screen, selectedFamilyRow, userId]);
+  }, [activeBuildMapIndex, activeBuildStemId, buildFamilyAnswers, buildFamilyTiles, buildFamilyWrongCount, buildWordAnswer, buildWordStage, buildWordTiles, courseId, screen, selectedFamilyRow, userId, isLoggedIn]);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -2407,9 +2515,10 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       savedAt: Date.now()
     };
     window.localStorage.setItem(savedSessionKey(), JSON.stringify(session));
+    if (isLoggedIn) void saveProgressState(courseId, savedSessionServerKey(), session);
     setSavedSession(session);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [screen, activeLevel, questions, run, wrongMode, timeLeft, matchedPairs, courseId, userId]);
+  }, [screen, activeLevel, questions, run, wrongMode, timeLeft, matchedPairs, courseId, userId, isLoggedIn]);
 
   useEffect(() => {
     if (!isLoggedIn) return;
@@ -2565,55 +2674,28 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
   }
 
   function playMatchCorrectSound() {
-    playToneSequence([
-      [660, 0, 0.07, "triangle", 0.065],
-      [880, 80, 0.09, "triangle", 0.055]
-    ]);
+    playKidsCorrect(false);
   }
 
   function playMatchWrongSound() {
-    playToneSequence([
-      [220, 0, 0.1, "sawtooth", 0.055],
-      [140, 120, 0.14, "sawtooth", 0.045]
-    ]);
+    playKidsWrong(false);
   }
 
   function playAnswerCorrectSound() {
-    playToneSequence([
-      [1046.5, 0, 0.08, "sine", 0.082],
-      [1567.98, 90, 0.08, "sine", 0.074],
-      [2093, 190, 0.1, "triangle", 0.07],
-      [1318.51, 430, 0.09, "sine", 0.052],
-      [1760, 560, 0.1, "triangle", 0.058],
-      [2349.32, 760, 0.13, "triangle", 0.052],
-      [2637.02, 1120, 0.12, "sine", 0.045],
-      [2093, 1480, 0.1, "triangle", 0.04],
-      [3135.96, 1840, 0.1, "sine", 0.034]
-    ]);
+    playKidsCorrect(false);
   }
 
   function playAnswerWrongSound() {
-    playToneSequence([
-      [196, 0, 0.16, "square", 0.058],
-      [155.56, 210, 0.18, "square", 0.054],
-      [130.81, 460, 0.22, "sawtooth", 0.045],
-      [116.54, 820, 0.24, "triangle", 0.04],
-      [98, 1260, 0.3, "sine", 0.036],
-      [130.81, 1740, 0.18, "triangle", 0.03]
-    ]);
+    playKidsWrong(false);
   }
 
   function playRoundCelebrationSound() {
-    playToneSequence([
-      [523.25, 0, 0.1, "triangle", 0.07],
-      [659.25, 110, 0.1, "triangle", 0.07],
-      [783.99, 220, 0.12, "triangle", 0.075],
-      [1046.5, 360, 0.18, "triangle", 0.08],
-      [1318.51, 560, 0.16, "triangle", 0.055]
-    ]);
+    playKidsComplete(false);
   }
 
   function playGroupCelebrationSound() {
+    playKidsComplete(false);
+    return;
     playToneSequence([
       [523.25, 0, 0.11, "square", 0.07],
       [659.25, 140, 0.11, "square", 0.07],
@@ -2638,6 +2720,8 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
   }
 
   function playBuildFinaleSound() {
+    playKidsComplete(true);
+    return;
     playToneSequence([
       [523.25, 0, 0.16, "triangle", 0.078],
       [659.25, 150, 0.16, "triangle", 0.078],
@@ -3026,6 +3110,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
 
   function clearSavedSession() {
     window.localStorage.removeItem(savedSessionKey());
+    if (isLoggedIn) void saveProgressState(courseId, savedSessionServerKey(), null);
     setSavedSession(null);
     setPendingResumeLevel(null);
     setShowResumePrompt(false);
@@ -3278,7 +3363,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       setSelectedFamilyRow(hintWord.id);
       setBuildFamilyFeedback(`Hint ${clueNumber}/3: "${hintWord.meaning}" ends with "-${ending}".`);
       setBuildFamilyWrongCount((count) => count + 1);
-      playAnswerCorrectSound();
+      playKidsHint(true);
       return;
     }
 
@@ -3286,7 +3371,7 @@ export function StemBattleClient({ courseId, courseSlug, isLoggedIn, userId, use
       ? activeBuildChallenge.warmup.parts.find((part) => !buildWordAnswer.includes(part))
       : activeBuildChallenge.warmup.parts[0];
     setBuildWordFeedback(`Hint: try "${nextPart ?? activeBuildChallenge.warmup.parts[0]}" next.`);
-    playAnswerCorrectSound();
+    playKidsHint(true);
   }
 
   function chooseFamilyTile(tile: BuildWordPart) {

@@ -5,7 +5,17 @@ import { useRouter } from "next/navigation";
 import type { FormEvent, KeyboardEvent } from "react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { RewardGemBurst, useRewardGemBurst } from "@/components/reward-gem-burst";
+import { fetchProgressState, saveProgressState } from "@/lib/client-progress-state";
 import type { LessonVocabularyCard } from "@/lib/lesson-vocabulary";
+import {
+  playCalmComplete,
+  playCalmCorrect,
+  playCalmWrong,
+  playKidsCombo,
+  playKidsCorrect,
+  playKidsWrong,
+  speakGameFeedback
+} from "@/lib/sound-effects";
 
 type Props = {
   courseId: string;
@@ -656,6 +666,23 @@ function passageBlankNumber(challenge: PassageChallenge, blankIndex: number) {
   return challenge.blanks.slice(0, blankIndex + 1).filter((blank) => blank.active).length;
 }
 
+function passageAttemptBlankReward(attemptsBeforeSubmit: number) {
+  if (attemptsBeforeSubmit === 0) return 3;
+  if (attemptsBeforeSubmit === 1) return 2;
+  return 1;
+}
+
+function passageCompletionReward(attemptsBeforeSubmit: number) {
+  if (attemptsBeforeSubmit === 0) return 10;
+  if (attemptsBeforeSubmit === 1) return 6;
+  return 3;
+}
+
+function passageRewardKey(title: string, passageIndex: number, runId: string, suffix: string) {
+  const titleKey = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 52);
+  return `passage-quest-${passageIndex + 1}-${titleKey}-${runId}-${suffix}`.slice(0, 150);
+}
+
 function evaluateSentenceWriting(word: RoundWord, draft: string): SentenceWritingScore {
   const cleanDraft = draft.trim().replace(/\s+/g, " ");
   const tokens = sentenceTokens(cleanDraft);
@@ -746,89 +773,29 @@ function speakWord(word: string) {
 }
 
 function speakWhackReaction(kind: "correct" | "wrong") {
-  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
-  const utterance = new SpeechSynthesisUtterance(kind === "correct" ? "Hurray!" : "Oho!");
-  const voices = window.speechSynthesis.getVoices();
-  utterance.voice = voices.find((voice) => voice.lang === "en-US" && /Junior|Samantha|Ava|Alex|US/i.test(voice.name)) ?? voices.find((voice) => voice.lang === "en-US") ?? null;
-  utterance.lang = "en-US";
-  utterance.rate = kind === "correct" ? 0.86 : 0.78;
-  utterance.pitch = kind === "correct" ? 1.38 : 0.72;
-  utterance.volume = 1;
-  window.speechSynthesis.speak(utterance);
+  speakGameFeedback(kind === "correct" ? "Hurray!" : "Oops, try again!", {
+    rate: kind === "correct" ? 1.14 : 0.98,
+    pitch: kind === "correct" ? 1.32 : 1.04,
+    volume: 0.9
+  });
 }
 
 function playWhackSound(kind: "hit" | "miss" | "bonus") {
-  if (typeof window === "undefined") return;
-  const audioWindow = window as Window & { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
-  const AudioContextClass = audioWindow.AudioContext ?? audioWindow.webkitAudioContext;
-  if (!AudioContextClass) return;
-  const context = new AudioContextClass();
-  const tones = kind === "hit" ? [520, 720, 960] : kind === "bonus" ? [523, 659, 784, 1046, 1318] : [190, 128, 90];
-  tones.forEach((frequency, index) => {
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = kind === "miss" ? "sawtooth" : "triangle";
-    oscillator.frequency.value = frequency;
-    gain.gain.setValueAtTime(kind === "miss" ? 0.05 : 0.045, context.currentTime + index * 0.09);
-    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + index * 0.09 + (kind === "miss" ? 0.22 : 0.16));
-    oscillator.connect(gain);
-    gain.connect(context.destination);
-    oscillator.start(context.currentTime + index * 0.09);
-    oscillator.stop(context.currentTime + index * 0.09 + (kind === "miss" ? 0.22 : 0.16));
-  });
-  window.setTimeout(() => context.close().catch(() => undefined), 700);
+  if (kind === "miss") playKidsWrong(false);
+  else if (kind === "bonus") playKidsCombo(false);
+  else playKidsCorrect(false);
 }
 
 function playSentenceForgeSound(kind: "context" | "wrong" | "writing-low" | "writing-mid" | "writing-high") {
-  if (typeof window === "undefined") return;
-  const audioWindow = window as Window & { AudioContext?: typeof AudioContext; webkitAudioContext?: typeof AudioContext };
-  const AudioContextClass = audioWindow.AudioContext ?? audioWindow.webkitAudioContext;
-  if (!AudioContextClass) return;
-  const context = new AudioContextClass();
-  const master = context.createGain();
-  master.gain.value = 0.08;
-  master.connect(context.destination);
-
-  const pattern =
-    kind === "context" ? [392, 523, 659, 784] :
-    kind === "wrong" ? [220, 174, 146] :
-    kind === "writing-high" ? [392, 494, 587, 784, 988, 1175] :
-    kind === "writing-mid" ? [330, 392, 494, 659] :
-    [196, 247, 294];
-  const wave: OscillatorType = kind === "wrong" ? "sawtooth" : kind === "writing-high" ? "triangle" : "sine";
-  const step = kind === "writing-high" ? 0.075 : 0.1;
-  pattern.forEach((frequency, index) => {
-    const oscillator = context.createOscillator();
-    const gain = context.createGain();
-    oscillator.type = wave;
-    oscillator.frequency.value = frequency;
-    gain.gain.setValueAtTime(0.001, context.currentTime + index * step);
-    gain.gain.linearRampToValueAtTime(kind === "wrong" ? 0.04 : 0.06, context.currentTime + index * step + 0.018);
-    gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + index * step + (kind === "writing-high" ? 0.24 : 0.18));
-    oscillator.connect(gain);
-    gain.connect(master);
-    oscillator.start(context.currentTime + index * step);
-    oscillator.stop(context.currentTime + index * step + 0.28);
-  });
-
-  if (kind === "writing-high") {
-    [1568, 1975].forEach((frequency, index) => {
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-      oscillator.type = "sine";
-      oscillator.frequency.value = frequency;
-      const start = context.currentTime + 0.18 + index * 0.08;
-      gain.gain.setValueAtTime(0.001, start);
-      gain.gain.linearRampToValueAtTime(0.035, start + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.001, start + 0.34);
-      oscillator.connect(gain);
-      gain.connect(master);
-      oscillator.start(start);
-      oscillator.stop(start + 0.38);
-    });
+  if (kind === "wrong" || kind === "writing-low") {
+    playCalmWrong();
+    return;
   }
-
-  window.setTimeout(() => context.close().catch(() => undefined), 1200);
+  if (kind === "writing-high") {
+    playCalmComplete();
+    return;
+  }
+  playCalmCorrect();
 }
 
 export function ClassicWordQuestClient({
@@ -936,6 +903,8 @@ export function ClassicWordQuestClient({
   const [passageAttempts, setPassageAttempts] = useState(0);
   const [passageGems, setPassageGems] = useState(0);
   const [passageFeedback, setPassageFeedback] = useState("");
+  const [passageRewardedBlankIndexes, setPassageRewardedBlankIndexes] = useState<number[]>([]);
+  const [passageRunId, setPassageRunId] = useState(() => `run-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`);
   const progressLoadedRef = useRef(false);
   const startedAtRef = useRef(Date.now());
   const gemCounterRef = useRef<HTMLDivElement | null>(null);
@@ -975,9 +944,14 @@ export function ClassicWordQuestClient({
     return `latinfun_classic_word_quest_${courseId}_${userName ?? "guest"}_${gameMode}`;
   }
 
+  function questProgressServerKey() {
+    return `classic-word-quest:${gameMode}`;
+  }
+
   function clearQuestProgress() {
     try {
       window.localStorage.removeItem(questProgressKey());
+      if (userName) void saveProgressState(courseId, questProgressServerKey(), null);
     } catch {
       // Progress persistence is optional.
     }
@@ -986,10 +960,7 @@ export function ClassicWordQuestClient({
   useEffect(() => {
     if (progressLoadedRef.current) return;
     progressLoadedRef.current = true;
-    try {
-      const raw = window.localStorage.getItem(questProgressKey());
-      if (!raw) return;
-      const saved = JSON.parse(raw) as {
+    type SavedQuestProgress = {
         roundIndex?: number;
         roundWords?: RoundWord[];
         nextFreshIndex?: number;
@@ -1012,7 +983,10 @@ export function ClassicWordQuestClient({
         passageSelections?: Record<number, string>;
         passageSubmitted?: boolean;
         passageAttempts?: number;
+        passageRewardedBlankIndexes?: number[];
+        passageRunId?: string;
       };
+    function restoreProgress(saved: SavedQuestProgress) {
       if (gameMode === "whack") {
         if (typeof saved.roundIndex === "number") setRoundIndex(clamp(saved.roundIndex, 0, TOTAL_ROUNDS - 1));
         if (Array.isArray(saved.roundWords) && saved.roundWords.length) setRoundWords(saved.roundWords);
@@ -1045,10 +1019,27 @@ export function ClassicWordQuestClient({
         if (saved.passageSelections && typeof saved.passageSelections === "object") setPassageSelections(saved.passageSelections);
         if (typeof saved.passageSubmitted === "boolean") setPassageSubmitted(saved.passageSubmitted);
         if (typeof saved.passageAttempts === "number") setPassageAttempts(saved.passageAttempts);
+        if (Array.isArray(saved.passageRewardedBlankIndexes)) setPassageRewardedBlankIndexes(saved.passageRewardedBlankIndexes);
+        if (typeof saved.passageRunId === "string" && saved.passageRunId) setPassageRunId(saved.passageRunId);
       }
+    }
+    let cancelled = false;
+    try {
+      const raw = window.localStorage.getItem(questProgressKey());
+      if (raw) restoreProgress(JSON.parse(raw) as SavedQuestProgress);
     } catch {
       clearQuestProgress();
     }
+    if (userName) {
+      fetchProgressState<SavedQuestProgress>(courseId, questProgressServerKey()).then((serverState) => {
+        if (cancelled || !serverState) return;
+        restoreProgress(serverState);
+        window.localStorage.setItem(questProgressKey(), JSON.stringify(serverState));
+      });
+    }
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1071,8 +1062,9 @@ export function ClassicWordQuestClient({
             ? { detectiveIndex, detectivePhase, detectiveAttempts, detectiveMisses }
             : gameMode === "sentence"
               ? { sentenceIndex, sentenceSelection, sentenceSubmitted, sentenceCorrect, sentenceAttempts, sentenceStage }
-              : { passageIndex, passageSelections, passageSubmitted, passageAttempts };
+              : { passageIndex, passageSelections, passageSubmitted, passageAttempts, passageRewardedBlankIndexes, passageRunId };
       window.localStorage.setItem(questProgressKey(), JSON.stringify(progress));
+      if (userName) void saveProgressState(courseId, questProgressServerKey(), progress);
     } catch {
       // Progress persistence is optional.
     }
@@ -1101,6 +1093,8 @@ export function ClassicWordQuestClient({
     passageSelections,
     passageSubmitted,
     passageAttempts,
+    passageRewardedBlankIndexes,
+    passageRunId,
     questComplete,
     detectiveComplete,
     sentenceComplete,
@@ -1584,21 +1578,49 @@ export function ClassicWordQuestClient({
     }
 
     setPassageSubmitted(true);
+    const rewardedBlankSet = new Set(passageRewardedBlankIndexes);
+    const correctIndexes = passageCurrent.blanks
+      .map((blank, index) => (blank.active && passageSelections[index] === blank.word.word ? index : -1))
+      .filter((index) => index >= 0);
+    const newlyCorrectIndexes = correctIndexes.filter((index) => !rewardedBlankSet.has(index));
+    const blankGemValue = passageAttemptBlankReward(passageAttempts);
+    const blankGems = newlyCorrectIndexes.length * blankGemValue;
     const wrongIndexes = passageCurrent.blanks
       .map((blank, index) => (!blank.active || passageSelections[index] === blank.word.word ? -1 : index))
       .filter((index) => index >= 0);
+    let awardedThisSubmit = 0;
+
+    if (newlyCorrectIndexes.length > 0) {
+      newlyCorrectIndexes.forEach((index) => {
+        const blank = passageCurrent.blanks[index];
+        recordWordOutcome(blank.word.word, false);
+      });
+      setPassageRewardedBlankIndexes((indexes) => [...new Set([...indexes, ...newlyCorrectIndexes])]);
+      setPassageGems((value) => value + blankGems);
+      awardedThisSubmit += blankGems;
+      launchGemBurst(blankGems);
+      await applyGems(
+        blankGems,
+        passageRewardKey(passageCurrent.title, passageIndex, passageRunId, `blanks-${newlyCorrectIndexes.join("-")}-try-${passageAttempts + 1}`),
+        `Passage Quest blanks: ${passageCurrent.title}`
+      );
+    }
 
     if (wrongIndexes.length === 0) {
       passageCurrent.blanks.filter((blank) => blank.active).forEach((blank) => {
-        recordWordOutcome(blank.word.word, false);
         void finishReviewWord(blank.word.word, "Classic Words", 1200);
       });
-      const gems = passageAttempts === 0 ? 18 : passageAttempts === 1 ? 10 : 6;
-      setPassageGems((value) => value + gems);
-      setPassageFeedback(`Passage complete. +${gems} gems.`);
-      playSentenceForgeSound(gems >= 18 ? "writing-high" : "context");
-      launchGemBurst(gems);
-      await applyGems(gems, `passage-quest-${passageCurrent.title}-${passageIndex}`, `Passage Quest solved: ${passageCurrent.title}`);
+      const completionGems = passageCompletionReward(passageAttempts);
+      setPassageGems((value) => value + completionGems);
+      awardedThisSubmit += completionGems;
+      setPassageFeedback(`Passage complete. +${awardedThisSubmit} gems.`);
+      playSentenceForgeSound(completionGems >= 10 ? "writing-high" : "context");
+      launchGemBurst(completionGems);
+      await applyGems(
+        completionGems,
+        passageRewardKey(passageCurrent.title, passageIndex, passageRunId, `complete-try-${passageAttempts + 1}`),
+        `Passage Quest solved: ${passageCurrent.title}`
+      );
       return;
     }
 
@@ -1617,8 +1639,11 @@ export function ClassicWordQuestClient({
       });
     });
     setPassageAttempts((value) => value + 1);
-    setPassageFeedback(`${wrongIndexes.length} blank${wrongIndexes.length === 1 ? "" : "s"} need another look. Use the meaning clues below.`);
-    playSentenceForgeSound("wrong");
+    const progressNote = newlyCorrectIndexes.length > 0
+      ? `${newlyCorrectIndexes.length} new blank${newlyCorrectIndexes.length === 1 ? "" : "s"} locked in. +${blankGems} gems. `
+      : "";
+    setPassageFeedback(`${progressNote}${wrongIndexes.length} blank${wrongIndexes.length === 1 ? "" : "s"} need another look. Use the meaning clues below.`);
+    playSentenceForgeSound(newlyCorrectIndexes.length > 0 ? "context" : "wrong");
   }
 
   function revisePassageQuest() {
@@ -1631,6 +1656,8 @@ export function ClassicWordQuestClient({
     setPassageSelections({});
     setPassageSubmitted(false);
     setPassageAttempts(0);
+    setPassageRewardedBlankIndexes([]);
+    setPassageRunId(`run-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`);
     setPassageFeedback("");
   }
 
@@ -1639,6 +1666,8 @@ export function ClassicWordQuestClient({
     setPassageSelections({});
     setPassageSubmitted(false);
     setPassageAttempts(0);
+    setPassageRewardedBlankIndexes([]);
+    setPassageRunId(`run-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`);
     setPassageGems(0);
     setPassageFeedback("");
   }

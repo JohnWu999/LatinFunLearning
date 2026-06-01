@@ -58,6 +58,7 @@ model User {
   attempts     AnswerAttempt[]
   mistakes     MistakeRecord[]
   progress     LearningProgress[]
+  gameStates   GameProgressState[]
   createdAt    DateTime           @default(now())
   updatedAt    DateTime           @updatedAt
 }
@@ -103,6 +104,7 @@ model Course {
   attempts       AnswerAttempt[]
   mistakes       MistakeRecord[]
   progress       LearningProgress[]
+  gameStates     GameProgressState[]
   materials      UploadedMaterial[]
   generationJobs GeneratedContentJob[]
   createdAt      DateTime              @default(now())
@@ -251,6 +253,21 @@ model LearningProgress {
   updatedAt        DateTime        @updatedAt
 
   @@unique([userId, courseId, lessonId, knowledgePointId])
+  @@index([userId, courseId])
+}
+
+model GameProgressState {
+  id        String   @id @default(cuid())
+  userId    String
+  courseId  String
+  key       String
+  state     Json
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  course    Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, courseId, key])
   @@index([userId, courseId])
 }
 

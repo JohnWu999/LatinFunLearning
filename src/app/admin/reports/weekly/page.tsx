@@ -127,17 +127,29 @@ function gradeReference(accuracy: number, activities: number) {
   return "Building toward middle-grade classical vocabulary readiness";
 }
 
-function weeklyLearningMs(attempts: Array<{ createdAt: Date; timeSpentMs: number | null }>) {
-  return attempts.reduce((sum, attempt, index) => {
-    if (attempt.timeSpentMs && attempt.timeSpentMs > 0) {
+function weeklyLearningMs(attempts: Array<{ createdAt: Date; timeSpentMs: number | null; gameMode: string | null }>) {
+  const sorted = [...attempts].sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
+  const explicitMs = sorted.reduce((sum, attempt) => {
+    if (attempt.gameMode !== GEM_LEDGER_MODE && attempt.timeSpentMs && attempt.timeSpentMs > 0) {
       return sum + clamp(attempt.timeSpentMs, 5000, 10 * 60 * 1000);
     }
-    const previous = attempts[index - 1];
-    if (!previous) return sum + 30 * 1000;
-    const gap = attempt.createdAt.getTime() - previous.createdAt.getTime();
-    if (gap > 0 && gap <= 5 * 60 * 1000) return sum + clamp(gap, 8000, 2 * 60 * 1000);
-    return sum + 30 * 1000;
+    return sum;
   }, 0);
+
+  let sessionMs = 0;
+  let sessionStartMs: number | null = null;
+  let previousMs: number | null = null;
+  sorted.forEach((attempt) => {
+    const currentMs = attempt.createdAt.getTime();
+    if (sessionStartMs === null || previousMs === null || currentMs - previousMs > 5 * 60 * 1000) {
+      if (sessionStartMs !== null && previousMs !== null) sessionMs += clamp(previousMs - sessionStartMs + 30 * 1000, 30 * 1000, 60 * 60 * 1000);
+      sessionStartMs = currentMs;
+    }
+    previousMs = currentMs;
+  });
+  if (sessionStartMs !== null && previousMs !== null) sessionMs += clamp(previousMs - sessionStartMs + 30 * 1000, 30 * 1000, 60 * 60 * 1000);
+
+  return Math.max(explicitMs, sessionMs);
 }
 
 function formatLearningTime(ms: number) {
@@ -224,7 +236,7 @@ export default async function WeeklyReportPage({ searchParams }: Props) {
   const scoredAttempts = attempts.filter((attempt) => attempt.gameMode !== GEM_LEDGER_MODE);
   const correctAttempts = scoredAttempts.filter((attempt) => attempt.isCorrect).length;
   const accuracy = percent(correctAttempts, scoredAttempts.length);
-  const learningTime = formatLearningTime(weeklyLearningMs(scoredAttempts));
+  const learningTime = formatLearningTime(weeklyLearningMs(attempts));
 
   const dailyCounts = weekDays.map((date) => {
     const next = new Date(date);

@@ -28,17 +28,29 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-function learningMs(attempts: Array<{ createdAt: Date; timeSpentMs: number | null }>) {
-  return attempts.reduce((sum, attempt, index) => {
-    if (attempt.timeSpentMs && attempt.timeSpentMs > 0) {
+function learningMs(attempts: Array<{ createdAt: Date; timeSpentMs: number | null; gameMode: string | null }>) {
+  const sorted = [...attempts].sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime());
+  const explicitMs = sorted.reduce((sum, attempt) => {
+    if (attempt.gameMode !== "gem-ledger" && attempt.timeSpentMs && attempt.timeSpentMs > 0) {
       return sum + clamp(attempt.timeSpentMs, 5000, 10 * 60 * 1000);
     }
-    const previous = attempts[index - 1];
-    if (!previous) return sum + 30 * 1000;
-    const gap = attempt.createdAt.getTime() - previous.createdAt.getTime();
-    if (gap > 0 && gap <= 5 * 60 * 1000) return sum + clamp(gap, 8000, 2 * 60 * 1000);
-    return sum + 30 * 1000;
+    return sum;
   }, 0);
+
+  let sessionMs = 0;
+  let sessionStartMs: number | null = null;
+  let previousMs: number | null = null;
+  sorted.forEach((attempt) => {
+    const currentMs = attempt.createdAt.getTime();
+    if (sessionStartMs === null || previousMs === null || currentMs - previousMs > 5 * 60 * 1000) {
+      if (sessionStartMs !== null && previousMs !== null) sessionMs += clamp(previousMs - sessionStartMs + 30 * 1000, 30 * 1000, 60 * 60 * 1000);
+      sessionStartMs = currentMs;
+    }
+    previousMs = currentMs;
+  });
+  if (sessionStartMs !== null && previousMs !== null) sessionMs += clamp(previousMs - sessionStartMs + 30 * 1000, 30 * 1000, 60 * 60 * 1000);
+
+  return Math.max(explicitMs, sessionMs);
 }
 
 function formatLearningTime(ms: number) {
@@ -121,14 +133,12 @@ export default async function AdminPage() {
   openMistakes.forEach((mistake) => {
     mistakeCountByUser.set(mistake.userId, (mistakeCountByUser.get(mistake.userId) ?? 0) + 1);
   });
-  const practiceAttemptsByUser = new Map<string, Array<{ createdAt: Date; timeSpentMs: number | null }>>();
-  attempts
-    .filter((attempt) => attempt.gameMode !== "gem-ledger")
-    .forEach((attempt) => {
-      const userAttempts = practiceAttemptsByUser.get(attempt.userId) ?? [];
-      userAttempts.push({ createdAt: attempt.createdAt, timeSpentMs: attempt.timeSpentMs });
-      practiceAttemptsByUser.set(attempt.userId, userAttempts);
-    });
+  const activityAttemptsByUser = new Map<string, Array<{ createdAt: Date; timeSpentMs: number | null; gameMode: string | null }>>();
+  attempts.forEach((attempt) => {
+    const userAttempts = activityAttemptsByUser.get(attempt.userId) ?? [];
+    userAttempts.push({ createdAt: attempt.createdAt, timeSpentMs: attempt.timeSpentMs, gameMode: attempt.gameMode });
+    activityAttemptsByUser.set(attempt.userId, userAttempts);
+  });
 
   const sortableStudentRows = students
     .map((student) => ({
@@ -139,8 +149,8 @@ export default async function AdminPage() {
       openMistakes: mistakeCountByUser.get(student.id) ?? 0,
       lastActiveAt: lastAttemptByUser.get(student.id) ?? null,
       lastActiveLabel: formatDate(lastAttemptByUser.get(student.id) ?? null),
-      todayLearningLabel: formatLearningTime(learningMs((practiceAttemptsByUser.get(student.id) ?? []).filter((attempt) => attempt.createdAt >= todayStart).sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime()))),
-      totalLearningLabel: formatLearningTime(learningMs((practiceAttemptsByUser.get(student.id) ?? []).sort((left, right) => left.createdAt.getTime() - right.createdAt.getTime()))),
+      todayLearningLabel: formatLearningTime(learningMs((activityAttemptsByUser.get(student.id) ?? []).filter((attempt) => attempt.createdAt >= todayStart))),
+      totalLearningLabel: formatLearningTime(learningMs(activityAttemptsByUser.get(student.id) ?? [])),
       reportHref: `/admin/reports/weekly?studentId=${student.id}`
     }))
     .sort((left, right) => {

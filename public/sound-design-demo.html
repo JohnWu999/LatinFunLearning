@@ -1,0 +1,774 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Classic WordLab Sound Design Demo</title>
+    <style>
+      :root {
+        --ink: #28231f;
+        --muted: #70685f;
+        --paper: #fbf6ee;
+        --card: rgba(255, 255, 255, 0.86);
+        --line: #eadfcf;
+        --orange: #e9551c;
+        --gold: #d5a326;
+        --teal: #19596a;
+        --green: #27824e;
+        --red: #ba3c31;
+        --blue: #275d87;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        color: var(--ink);
+        background:
+          radial-gradient(circle at 12% 10%, rgba(244, 202, 94, 0.22), transparent 26rem),
+          radial-gradient(circle at 82% 4%, rgba(93, 170, 143, 0.18), transparent 25rem),
+          linear-gradient(135deg, #fffaf2, #f7f1e8);
+        font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      main {
+        width: min(1180px, calc(100vw - 40px));
+        margin: 0 auto;
+        padding: 48px 0 72px;
+      }
+
+      .hero {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr;
+        gap: 28px;
+        align-items: end;
+        padding: 34px;
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        background: rgba(255, 255, 255, 0.72);
+        box-shadow: 0 26px 80px rgba(40, 35, 31, 0.08);
+      }
+
+      .eyebrow {
+        margin: 0 0 12px;
+        color: var(--gold);
+        font: 800 15px/1 ui-serif, Georgia, serif;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+      }
+
+      h1 {
+        margin: 0;
+        font: 760 64px/0.94 ui-serif, Georgia, serif;
+      }
+
+      .lede {
+        margin: 18px 0 0;
+        color: var(--muted);
+        font-size: 20px;
+        line-height: 1.65;
+      }
+
+      .principles {
+        display: grid;
+        gap: 12px;
+      }
+
+      .pill {
+        border-radius: 999px;
+        border: 1px solid rgba(213, 163, 38, 0.28);
+        background: rgba(255, 249, 236, 0.82);
+        padding: 13px 16px;
+        color: #755f2c;
+        font-weight: 800;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+        margin-top: 28px;
+      }
+
+      .card {
+        min-height: 236px;
+        padding: 22px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: var(--card);
+        box-shadow: 0 18px 45px rgba(40, 35, 31, 0.07);
+      }
+
+      .card h2 {
+        margin: 0 0 8px;
+        font: 760 31px/1.05 ui-serif, Georgia, serif;
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        margin-bottom: 16px;
+        padding: 7px 12px;
+        border-radius: 999px;
+        background: rgba(234, 223, 207, 0.46);
+        color: var(--muted);
+        font-size: 14px;
+        font-weight: 800;
+      }
+
+      .card p {
+        min-height: 78px;
+        margin: 0 0 18px;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.58;
+      }
+
+      button {
+        width: 100%;
+        border: 0;
+        border-radius: 999px;
+        padding: 13px 18px;
+        color: white;
+        background: var(--teal);
+        font-size: 17px;
+        font-weight: 900;
+        cursor: pointer;
+        box-shadow: 0 12px 26px rgba(25, 89, 106, 0.22);
+        transition:
+          transform 140ms ease,
+          filter 140ms ease;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        filter: brightness(1.03);
+      }
+
+      .correct button,
+      .combo button,
+      .complete button {
+        background: var(--green);
+        box-shadow: 0 12px 26px rgba(39, 130, 78, 0.2);
+      }
+
+      .wrong button {
+        background: var(--red);
+        box-shadow: 0 12px 26px rgba(186, 60, 49, 0.18);
+      }
+
+      .gem button,
+      .hint button {
+        background: var(--gold);
+        box-shadow: 0 12px 26px rgba(213, 163, 38, 0.2);
+      }
+
+      .map button,
+      .boss button {
+        background: var(--blue);
+        box-shadow: 0 12px 26px rgba(39, 93, 135, 0.19);
+      }
+
+      .voice button {
+        background: #6b4aa0;
+        box-shadow: 0 12px 26px rgba(107, 74, 160, 0.2);
+      }
+
+      .kids button {
+        color: #392511;
+        background: linear-gradient(135deg, #ffd95c, #ff9f43);
+        box-shadow: 0 13px 28px rgba(255, 159, 67, 0.26);
+      }
+
+      .kids {
+        position: relative;
+        overflow: hidden;
+        background:
+          radial-gradient(circle at 18% 12%, rgba(255, 217, 92, 0.2), transparent 7rem),
+          radial-gradient(circle at 86% 28%, rgba(93, 214, 189, 0.14), transparent 8rem),
+          var(--card);
+      }
+
+      .kids::after {
+        content: "✦";
+        position: absolute;
+        right: 20px;
+        top: 14px;
+        color: rgba(233, 85, 28, 0.34);
+        font-size: 32px;
+      }
+
+      .notes {
+        margin-top: 28px;
+        padding: 28px;
+        border-radius: 18px;
+        background: rgba(25, 89, 106, 0.08);
+        border: 1px solid rgba(25, 89, 106, 0.16);
+      }
+
+      .notes h2 {
+        margin: 0 0 14px;
+        font: 760 36px/1 ui-serif, Georgia, serif;
+      }
+
+      .notes ul {
+        margin: 0;
+        padding-left: 22px;
+        color: var(--muted);
+        font-size: 18px;
+        line-height: 1.75;
+      }
+
+      @media (max-width: 900px) {
+        .hero,
+        .grid {
+          grid-template-columns: 1fr;
+        }
+
+        h1 {
+          font-size: 46px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section class="hero">
+        <div>
+          <p class="eyebrow">Classic WordLab Audio System</p>
+          <h1>Sound Design Proposal</h1>
+          <p class="lede">
+            目标不是让音效变多，而是让每一次点击、答对、答错、获得宝石和通关，都形成清晰、温和、上瘾但不吵闹的学习反馈。
+          </p>
+        </div>
+        <div class="principles">
+          <div class="pill">Bright, short, readable</div>
+          <div class="pill">Reward without noise fatigue</div>
+          <div class="pill">Mistakes feel recoverable</div>
+          <div class="pill">Gem moments feel physical</div>
+        </div>
+      </section>
+
+      <section class="grid" aria-label="Sound demo grid">
+        <article class="card correct">
+          <span class="tag">0.35s · answer feedback</span>
+          <h2>Correct</h2>
+          <p>短促上扬，像“小小点亮”。适合选择题、拼写题、连线题每次答对。</p>
+          <button data-sound="correct">Play Correct</button>
+        </article>
+
+        <article class="card wrong">
+          <span class="tag">0.42s · answer feedback</span>
+          <h2>Try Again</h2>
+          <p>低一点、软一点，不刺耳。表达“还没对”，但不让学习者泄气。</p>
+          <button data-sound="wrong">Play Try Again</button>
+        </article>
+
+        <article class="card combo">
+          <span class="tag">0.65s · streak reward</span>
+          <h2>Combo</h2>
+          <p>在正确音效基础上增加一层上升音阶，用于 Whack-a-Word 连击和 Stem Battle 连续正确。</p>
+          <button data-sound="combo">Play Combo</button>
+        </article>
+
+        <article class="card gem">
+          <span class="tag">0.55s · gem animation</span>
+          <h2>Gem Fly</h2>
+          <p>颗粒清脆，和宝石飞向右上角的动画同步。适合所有模块统一奖励反馈。</p>
+          <button data-sound="gem">Play Gem Fly</button>
+        </article>
+
+        <article class="card hint">
+          <span class="tag">0.7s · helper appears</span>
+          <h2>Hint</h2>
+          <p>柔和、聪明，像小助手出现。用于 Build-a-Word、Complete the Stem 的逐级提示。</p>
+          <button data-sound="hint">Play Hint</button>
+        </article>
+
+        <article class="card complete">
+          <span class="tag">1.8s · quest complete</span>
+          <h2>Quest Complete</h2>
+          <p>一个小型庆祝动机，适合一组练习完成、一个 map tile 完成、一个 passage 完成。</p>
+          <button data-sound="complete">Play Complete</button>
+        </article>
+
+        <article class="card map">
+          <span class="tag">1.2s · space transition</span>
+          <h2>Map Unlock</h2>
+          <p>像打开下一扇门。适合 Build-a-Word 地图切换、Roots/Treasury 小人跳级。</p>
+          <button data-sound="map">Play Map Unlock</button>
+        </article>
+
+        <article class="card boss">
+          <span class="tag">1.4s · deeper challenge</span>
+          <h2>Boss Round</h2>
+          <p>更有进入感，但不压迫。适合 Boss Challenge 开始新内容包或进入段落应用阶段。</p>
+          <button data-sound="boss">Play Boss Round</button>
+        </article>
+
+        <article class="card">
+          <span class="tag">15s loop · background</span>
+          <h2>Practice Loop</h2>
+          <p>轻快、低音量、可循环。只在游戏进行中出现，退出或回地图立刻停止。</p>
+          <button data-sound="loop">Play 15s Loop</button>
+        </article>
+
+        <article class="card voice">
+          <span class="tag">voice · positive</span>
+          <h2>Hurray!</h2>
+          <p>用于打地鼠敲对、选择正确、单词拼对。语音短促、有兴奋感，背景音只做托底。</p>
+          <button data-voice="hurray">Play Hurray</button>
+        </article>
+
+        <article class="card voice">
+          <span class="tag">voice · recoverable</span>
+          <h2>Try Again</h2>
+          <p>用于错误反馈。语气要温和，像教练提醒，不像惩罚。背景音低一点、短一点。</p>
+          <button data-voice="tryAgain">Play Try Again</button>
+        </article>
+
+        <article class="card voice">
+          <span class="tag">voice · streak</span>
+          <h2>Great Combo!</h2>
+          <p>用于连续答对和倍率增加。语音加一点上扬，配合 combo 倍数提示。</p>
+          <button data-voice="comboVoice">Play Great Combo</button>
+        </article>
+
+        <article class="card voice">
+          <span class="tag">voice · completion</span>
+          <h2>Quest Complete!</h2>
+          <p>用于一组、一关或一篇 passage 完成。先给语音，再给宝石和庆祝音。</p>
+          <button data-voice="questComplete">Play Quest Complete</button>
+        </article>
+
+        <article class="card voice">
+          <span class="tag">voice · hint helper</span>
+          <h2>Here is a clue.</h2>
+          <p>用于 hint 小助手。语音更轻，不能打断思考，适合拼写提示和词根提示。</p>
+          <button data-voice="clue">Play Clue Voice</button>
+        </article>
+
+        <article class="card voice">
+          <span class="tag">voice · writing</span>
+          <h2>Strong sentence.</h2>
+          <p>用于 Sentence Forge 高分反馈。更像老师认可，而不是游戏喊叫。</p>
+          <button data-voice="strongSentence">Play Writing Voice</button>
+        </article>
+
+        <article class="card kids">
+          <span class="tag">kids mode · correct</span>
+          <h2>Pop Hurray!</h2>
+          <p>更童趣的正确反馈：像弹珠跳起来，亮一点、圆一点，适合低龄玩家的即时奖励。</p>
+          <button data-kids="popHurray">Play Pop Hurray</button>
+        </article>
+
+        <article class="card kids">
+          <span class="tag">kids mode · mistake</span>
+          <h2>Oops, Try Again!</h2>
+          <p>错误音效变成软软的“弹回去”，不沮丧，像游戏里再试一次的小提醒。</p>
+          <button data-kids="oopsTryAgain">Play Oops Try Again</button>
+        </article>
+
+        <article class="card kids">
+          <span class="tag">kids mode · gem</span>
+          <h2>Gem Sparkle</h2>
+          <p>宝石奖励更像彩色糖果飞起来，适合和右上角宝石动画同步。</p>
+          <button data-kids="gemSparkle">Play Gem Sparkle</button>
+        </article>
+
+        <article class="card kids">
+          <span class="tag">kids mode · streak</span>
+          <h2>Super Combo!</h2>
+          <p>连续答对时音高一层层往上跳，制造“我越来越厉害”的兴奋感。</p>
+          <button data-kids="superCombo">Play Super Combo</button>
+        </article>
+
+        <article class="card kids">
+          <span class="tag">kids mode · helper</span>
+          <h2>Little Clue!</h2>
+          <p>Hint 小助手更像悄悄递来线索，声音轻巧、有一点魔法感。</p>
+          <button data-kids="littleClue">Play Little Clue</button>
+        </article>
+
+        <article class="card kids">
+          <span class="tag">kids mode · finish</span>
+          <h2>You Did It!</h2>
+          <p>完成一关时更有动画片结尾感，适合 Passage Quest、Build-a-Word 地图完成。</p>
+          <button data-kids="youDidIt">Play You Did It</button>
+        </article>
+      </section>
+
+      <section class="notes">
+        <h2>落地顺序建议</h2>
+        <ul>
+          <li>第一步：统一 Correct、Try Again、Gem Fly，先覆盖全站奖励和错题反馈。</li>
+          <li>第二步：Whack-a-Word 加 Combo 递进音，和右上角宝石飞行动画严格同步。</li>
+          <li>第三步：Build-a-Word 和 Stem Battle 加 Hint、Map Unlock、Quest Complete。</li>
+          <li>第四步：Passage Quest 和 Sentence Forge 使用更克制的音效，避免阅读和写作时被打扰。</li>
+          <li>第五步：加入全站音量开关、静音偏好保存和移动端触发兼容。</li>
+          <li>第六步：语义反馈只在关键节点使用，避免每题都说话造成疲劳；短音效负责高频反馈，语音负责情绪锚点。</li>
+          <li>童趣版适合游戏模块，写作和长篇阅读仍建议使用克制版，避免影响专注。</li>
+        </ul>
+      </section>
+    </main>
+
+    <script>
+      let audioContext;
+
+      function ctx() {
+        audioContext ||= new (window.AudioContext || window.webkitAudioContext)();
+        return audioContext;
+      }
+
+      function tone(freq, start, duration, options = {}) {
+        const ac = ctx();
+        const osc = ac.createOscillator();
+        const gain = ac.createGain();
+        const filter = ac.createBiquadFilter();
+        const type = options.type || "sine";
+        const volume = options.volume || 0.12;
+        const attack = options.attack || 0.012;
+        const release = options.release || 0.08;
+        const detune = options.detune || 0;
+        const t0 = ac.currentTime + start;
+        const t1 = t0 + duration;
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, t0);
+        osc.detune.setValueAtTime(detune, t0);
+        if (options.to) {
+          osc.frequency.exponentialRampToValueAtTime(options.to, t1);
+        }
+
+        filter.type = options.filter || "lowpass";
+        filter.frequency.setValueAtTime(options.cutoff || 2400, t0);
+
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(volume, t0 + attack);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t1 + release);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(ac.destination);
+        osc.start(t0);
+        osc.stop(t1 + release + 0.04);
+      }
+
+      function noise(start, duration, options = {}) {
+        const ac = ctx();
+        const buffer = ac.createBuffer(1, ac.sampleRate * duration, ac.sampleRate);
+        const data = buffer.getChannelData(0);
+        for (let i = 0; i < data.length; i++) {
+          data[i] = (Math.random() * 2 - 1) * (1 - i / data.length);
+        }
+        const source = ac.createBufferSource();
+        const filter = ac.createBiquadFilter();
+        const gain = ac.createGain();
+        const t0 = ac.currentTime + start;
+        source.buffer = buffer;
+        filter.type = options.filter || "highpass";
+        filter.frequency.setValueAtTime(options.cutoff || 1800, t0);
+        gain.gain.setValueAtTime(options.volume || 0.06, t0);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+        source.connect(filter);
+        filter.connect(gain);
+        gain.connect(ac.destination);
+        source.start(t0);
+        source.stop(t0 + duration);
+      }
+
+      const sounds = {
+        correct() {
+          tone(659, 0, 0.12, { type: "triangle", volume: 0.12 });
+          tone(880, 0.09, 0.16, { type: "sine", volume: 0.11 });
+          tone(1320, 0.17, 0.13, { type: "sine", volume: 0.06 });
+        },
+        wrong() {
+          tone(220, 0, 0.16, { type: "triangle", volume: 0.08, to: 185, cutoff: 1200 });
+          tone(165, 0.15, 0.22, { type: "sine", volume: 0.07, to: 145, cutoff: 900 });
+        },
+        combo() {
+          sounds.correct();
+          tone(988, 0.25, 0.12, { type: "triangle", volume: 0.08 });
+          tone(1175, 0.35, 0.15, { type: "triangle", volume: 0.08 });
+          tone(1568, 0.48, 0.18, { type: "sine", volume: 0.06 });
+        },
+        gem() {
+          noise(0, 0.08, { cutoff: 4200, volume: 0.05 });
+          tone(1568, 0.02, 0.08, { type: "sine", volume: 0.09 });
+          tone(2093, 0.1, 0.08, { type: "sine", volume: 0.08 });
+          tone(2637, 0.18, 0.12, { type: "sine", volume: 0.07 });
+          tone(3136, 0.31, 0.16, { type: "triangle", volume: 0.045 });
+        },
+        hint() {
+          tone(523, 0, 0.24, { type: "sine", volume: 0.07 });
+          tone(659, 0.14, 0.24, { type: "sine", volume: 0.07 });
+          tone(784, 0.28, 0.26, { type: "triangle", volume: 0.06 });
+          noise(0.05, 0.18, { cutoff: 3000, volume: 0.022 });
+        },
+        complete() {
+          [523, 659, 784, 1047, 1175, 1047].forEach((f, i) => {
+            tone(f, i * 0.16, 0.17, { type: "triangle", volume: 0.1 });
+          });
+          tone(1568, 1.02, 0.42, { type: "sine", volume: 0.07 });
+          noise(0.88, 0.28, { cutoff: 3600, volume: 0.045 });
+        },
+        map() {
+          tone(196, 0, 0.35, { type: "sawtooth", volume: 0.035, cutoff: 900 });
+          tone(392, 0.12, 0.28, { type: "triangle", volume: 0.07 });
+          tone(587, 0.34, 0.25, { type: "triangle", volume: 0.07 });
+          tone(880, 0.58, 0.3, { type: "sine", volume: 0.06 });
+          noise(0.45, 0.26, { cutoff: 2400, volume: 0.03 });
+        },
+        boss() {
+          tone(110, 0, 0.5, { type: "sawtooth", volume: 0.035, cutoff: 700 });
+          tone(220, 0.18, 0.26, { type: "triangle", volume: 0.06 });
+          tone(330, 0.38, 0.24, { type: "triangle", volume: 0.06 });
+          tone(494, 0.62, 0.32, { type: "sine", volume: 0.065 });
+          tone(660, 0.88, 0.28, { type: "sine", volume: 0.055 });
+        },
+        loop() {
+          const pattern = [262, 330, 392, 330, 440, 392, 330, 294, 262, 330, 392, 523, 494, 392, 330, 294];
+          for (let bar = 0; bar < 8; bar++) {
+            pattern.forEach((f, i) => {
+              tone(f, bar * 1.8 + i * 0.105, 0.09, {
+                type: i % 4 === 0 ? "triangle" : "square",
+                volume: 0.032,
+                cutoff: 1800,
+              });
+            });
+            tone(bar % 2 ? 147 : 131, bar * 1.8, 0.22, {
+              type: "triangle",
+              volume: 0.026,
+              cutoff: 700,
+            });
+            tone(bar % 2 ? 196 : 175, bar * 1.8 + 0.9, 0.18, {
+              type: "triangle",
+              volume: 0.024,
+              cutoff: 700,
+            });
+          }
+        },
+      };
+
+      const voicePresets = {
+        hurray: {
+          text: "Hurray!",
+          rate: 1.08,
+          pitch: 1.25,
+          volume: 0.92,
+          bed: "correct",
+          delay: 0.02,
+        },
+        tryAgain: {
+          text: "Try again.",
+          rate: 0.94,
+          pitch: 0.92,
+          volume: 0.9,
+          bed: "wrong",
+          delay: 0.04,
+        },
+        comboVoice: {
+          text: "Great combo!",
+          rate: 1.05,
+          pitch: 1.18,
+          volume: 0.9,
+          bed: "combo",
+          delay: 0.06,
+        },
+        questComplete: {
+          text: "Quest complete!",
+          rate: 0.98,
+          pitch: 1.08,
+          volume: 0.9,
+          bed: "complete",
+          delay: 0.08,
+        },
+        clue: {
+          text: "Here is a clue.",
+          rate: 0.9,
+          pitch: 1,
+          volume: 0.82,
+          bed: "hint",
+          delay: 0.08,
+        },
+        strongSentence: {
+          text: "Strong sentence.",
+          rate: 0.92,
+          pitch: 1.04,
+          volume: 0.86,
+          bed: "gem",
+          delay: 0.08,
+        },
+      };
+
+      function boing(start = 0, base = 320, top = 680, volume = 0.08) {
+        tone(base, start, 0.11, {
+          type: "sine",
+          volume,
+          to: top,
+          cutoff: 2600,
+          attack: 0.004,
+          release: 0.04,
+        });
+        tone(top * 0.98, start + 0.1, 0.13, {
+          type: "triangle",
+          volume: volume * 0.8,
+          to: base * 1.4,
+          cutoff: 2400,
+          attack: 0.004,
+          release: 0.05,
+        });
+      }
+
+      function kidsSparkle(start = 0, count = 5) {
+        for (let i = 0; i < count; i++) {
+          tone(1100 + i * 240, start + i * 0.045, 0.07, {
+            type: "sine",
+            volume: 0.04,
+            cutoff: 5000,
+            attack: 0.003,
+            release: 0.04,
+          });
+        }
+        noise(start + 0.02, 0.18, { cutoff: 5200, volume: 0.028 });
+      }
+
+      const kidsSounds = {
+        popHurray() {
+          boing(0, 360, 760, 0.075);
+          tone(880, 0.13, 0.09, { type: "triangle", volume: 0.08 });
+          tone(1175, 0.22, 0.11, { type: "sine", volume: 0.07 });
+          kidsSparkle(0.25, 4);
+          speakKids("Hurray!", 1.22, 1.35, 0.88, 0.08);
+        },
+        oopsTryAgain() {
+          boing(0, 300, 430, 0.055);
+          tone(260, 0.12, 0.11, { type: "triangle", volume: 0.045, to: 220, cutoff: 1100 });
+          tone(392, 0.27, 0.12, { type: "sine", volume: 0.045 });
+          speakKids("Oops, try again!", 0.98, 1.04, 0.86, 0.08);
+        },
+        gemSparkle() {
+          kidsSparkle(0, 8);
+          tone(1568, 0.08, 0.08, { type: "triangle", volume: 0.07 });
+          tone(2093, 0.18, 0.08, { type: "triangle", volume: 0.07 });
+          tone(3136, 0.3, 0.16, { type: "sine", volume: 0.055 });
+          speakKids("Gems!", 1.1, 1.25, 0.78, 0.1);
+        },
+        superCombo() {
+          [523, 659, 784, 988, 1319].forEach((f, i) => {
+            boing(i * 0.085, f * 0.72, f, 0.045);
+          });
+          kidsSparkle(0.38, 6);
+          speakKids("Super combo!", 1.12, 1.28, 0.86, 0.08);
+        },
+        littleClue() {
+          tone(740, 0, 0.14, { type: "sine", volume: 0.045 });
+          tone(988, 0.12, 0.16, { type: "sine", volume: 0.045 });
+          kidsSparkle(0.16, 3);
+          speakKids("Here is a little clue.", 0.94, 1.12, 0.82, 0.08);
+        },
+        youDidIt() {
+          [523, 659, 784, 1047, 1319, 1568].forEach((f, i) => {
+            tone(f, i * 0.12, 0.13, { type: "triangle", volume: 0.07 });
+          });
+          boing(0.55, 420, 840, 0.07);
+          kidsSparkle(0.62, 10);
+          speakKids("You did it!", 1.08, 1.24, 0.9, 0.08);
+        },
+      };
+
+      function pickVoice() {
+        const voices = window.speechSynthesis?.getVoices?.() || [];
+        const preferred = [
+          "Samantha",
+          "Ava",
+          "Nicky",
+          "Karen",
+          "Google US English",
+          "Microsoft Aria",
+          "Alex",
+        ];
+        return (
+          preferred.map((name) => voices.find((voice) => voice.name.includes(name))).find(Boolean) ||
+          voices.find((voice) => voice.lang && voice.lang.toLowerCase().startsWith("en-us")) ||
+          voices.find((voice) => voice.lang && voice.lang.toLowerCase().startsWith("en")) ||
+          null
+        );
+      }
+
+      function speakPreset(key) {
+        const preset = voicePresets[key];
+        if (!preset || !window.speechSynthesis) {
+          return;
+        }
+        sounds[preset.bed]?.();
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(preset.text);
+        const voice = pickVoice();
+        if (voice) {
+          utterance.voice = voice;
+        }
+        utterance.lang = "en-US";
+        utterance.rate = preset.rate;
+        utterance.pitch = preset.pitch;
+        utterance.volume = preset.volume;
+        setTimeout(() => window.speechSynthesis.speak(utterance), preset.delay * 1000);
+      }
+
+      function speakKids(text, rate, pitch, volume, delay) {
+        if (!window.speechSynthesis) {
+          return;
+        }
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(text);
+        const voice = pickVoice();
+        if (voice) {
+          utterance.voice = voice;
+        }
+        utterance.lang = "en-US";
+        utterance.rate = rate;
+        utterance.pitch = pitch;
+        utterance.volume = volume;
+        setTimeout(() => window.speechSynthesis.speak(utterance), delay * 1000);
+      }
+
+      document.querySelectorAll("button[data-sound]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const ac = ctx();
+          if (ac.state === "suspended") {
+            await ac.resume();
+          }
+          sounds[button.dataset.sound]();
+        });
+      });
+
+      document.querySelectorAll("button[data-voice]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const ac = ctx();
+          if (ac.state === "suspended") {
+            await ac.resume();
+          }
+          speakPreset(button.dataset.voice);
+        });
+      });
+
+      document.querySelectorAll("button[data-kids]").forEach((button) => {
+        button.addEventListener("click", async () => {
+          const ac = ctx();
+          if (ac.state === "suspended") {
+            await ac.resume();
+          }
+          kidsSounds[button.dataset.kids]();
+        });
+      });
+
+      if (window.speechSynthesis) {
+        window.speechSynthesis.onvoiceschanged = pickVoice;
+      }
+    </script>
+  </body>
+</html>

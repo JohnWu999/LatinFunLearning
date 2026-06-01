@@ -251,6 +251,15 @@ async function refreshRewardHeader(courseId: string) {
   }
 }
 
+type ProgressPayload = {
+  data?: {
+    practiceLessonProgress?: {
+      rootsOfPower?: string[];
+      classicWordTreasury?: string[];
+    };
+  };
+};
+
 export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons, practiceType, initialLessonSlug, initialExerciseId, reviewTarget, returnTo }: Props) {
   const { flyingGems, launchGemBurst } = useRewardGemBurst(".legacy-page");
   const matchingAreaRef = useRef<HTMLDivElement | null>(null);
@@ -393,6 +402,25 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
   }, [courseId, isStagePractice, practiceType]);
 
   useEffect(() => {
+    if (!isStagePractice || !isLoggedIn) return;
+    let cancelled = false;
+    fetch(appPath(`/api/progress?courseId=${encodeURIComponent(courseId)}`))
+      .then((response) => response.ok ? response.json() as Promise<ProgressPayload> : null)
+      .then((payload) => {
+        if (cancelled || !payload?.data?.practiceLessonProgress) return;
+        const serverIds = practiceType === "latin-stems"
+          ? payload.data.practiceLessonProgress.rootsOfPower ?? []
+          : payload.data.practiceLessonProgress.classicWordTreasury ?? [];
+        if (!serverIds.length) return;
+        setCompletedLessonIds((prev) => Array.from(new Set([...prev, ...serverIds])));
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [courseId, isLoggedIn, isStagePractice, practiceType]);
+
+  useEffect(() => {
     if (!isStagePractice || typeof window === "undefined") return;
     if (!hasLoadedStageProgress) return;
     window.localStorage.setItem(progressStorageKey(courseId, practiceType), JSON.stringify(completedLessonIds));
@@ -422,6 +450,17 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
   const correctCount = Object.values(answered).filter((value) => value === "correct").length;
   const score = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 100) : 0;
   const activeGroups = (["matching", "context", "synonym", "antonym"] as PracticeGroup[]).filter((group) => grouped[group].length > 0);
+  const completedLessonIdsForMeter = useMemo(() => {
+    const ids = new Set(completedLessonIds);
+    if (isStagePractice && activeLesson && activeGroups.length > 0 && activeGroups.every((group) => completedSections[group])) {
+      ids.add(activeLesson.id);
+    }
+    return ids;
+  }, [activeGroups, activeLesson, completedLessonIds, completedSections, isStagePractice]);
+  const stageScore = isStagePractice && lessons.length > 0
+    ? Math.round((completedLessonIdsForMeter.size / lessons.length) * 100)
+    : score;
+  const displayedScore = isStagePractice ? stageScore : score;
   const singleReviewExercise = isSingleMistakeReview && activeLesson
     ? activeLesson.exercises.find((exercise) => exercise.id === initialExerciseId) ?? null
     : null;
@@ -881,9 +920,9 @@ export function VocabPracticeClient({ courseId, courseSlug, isLoggedIn, lessons,
         <div className="legacy-score-bar">
           <span>{isRootsPower ? "Power Meter" : isClassicTreasure ? "Treasury Meter" : "本节得分"}</span>
           <div className="legacy-score-track">
-            <div className="legacy-score-fill" style={{ width: `${score}%` }} />
+            <div className="legacy-score-fill" style={{ width: `${displayedScore}%` }} />
           </div>
-          <strong>{score}%</strong>
+          <strong>{displayedScore}%</strong>
         </div>
 
         {grouped.matching.length > 0 ? (
