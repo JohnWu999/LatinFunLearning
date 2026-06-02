@@ -53,13 +53,43 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
-function parseRewardAnswer(value: Prisma.JsonValue | null | undefined) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return { amount: 0, source: "" };
+function parseRewardAnswer(value: Prisma.JsonValue | null | undefined): { amount: number; source: string; sourceKey: string; reason: string } {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return { amount: 0, source: "", sourceKey: "", reason: "" };
   const record = value as { amount?: unknown; source?: unknown };
   return {
     amount: Number(record.amount ?? 0),
-    source: typeof record.source === "string" ? record.source : ""
+    source: typeof record.source === "string" ? record.source : "",
+    sourceKey: typeof (record as { sourceKey?: unknown }).sourceKey === "string" ? (record as { sourceKey: string }).sourceKey : "",
+    reason: typeof (record as { reason?: unknown }).reason === "string" ? (record as { reason: string }).reason : ""
   };
+}
+
+function countDelimitedItems(value: string) {
+  if (!value) return 0;
+  return value.split("-").filter(Boolean).length;
+}
+
+function rewardPracticeCount(answer: Prisma.JsonValue) {
+  const reward = parseRewardAnswer(answer);
+  const key = reward.sourceKey;
+
+  if (/^word-whack-(hit|miss)-/.test(key)) return 1;
+  if (/^word-detective-/.test(key)) return 1;
+  if (/^sentence-forge-writing-/.test(key)) return 1;
+  if (/^sentence-forge-/.test(key)) return 1;
+  if (/^jeopardy-answer-/.test(key)) return 1;
+  if (/^build-word-warmup-/.test(key)) return 1;
+  if (/^build-word-family-/.test(key)) return 3;
+
+  const passageBlankMatch = key.match(/-blanks-([0-9-]+)-try-\d+$/);
+  if (passageBlankMatch) return countDelimitedItems(passageBlankMatch[1] ?? "");
+
+  return 0;
+}
+
+function attemptPracticeCount(attempt: { answer: Prisma.JsonValue; gameMode: string | null }) {
+  if (attempt.gameMode === GEM_LEDGER_MODE) return rewardPracticeCount(attempt.answer);
+  return 1;
 }
 
 function moduleFromSource(source: string): ModuleKey | null {
@@ -112,7 +142,8 @@ function chartPoints(values: number[], width = 320, height = 88) {
     .join(" ");
 }
 
-function statusLabel(accuracy: number, count: number) {
+function statusLabel(accuracy: number, count: number, unscoredActivity = 0) {
+  if (count === 0 && unscoredActivity > 0) return "Active";
   if (count === 0) return "No Data";
   if (accuracy >= 85) return "Strong";
   if (accuracy >= 65) return "Improving";
@@ -234,6 +265,7 @@ export default async function WeeklyReportPage({ searchParams }: Props) {
   ]);
 
   const scoredAttempts = attempts.filter((attempt) => attempt.gameMode !== GEM_LEDGER_MODE);
+  const practiceActivityCount = attempts.reduce((sum, attempt) => sum + attemptPracticeCount(attempt), 0);
   const correctAttempts = scoredAttempts.filter((attempt) => attempt.isCorrect).length;
   const accuracy = percent(correctAttempts, scoredAttempts.length);
   const learningTime = formatLearningTime(weeklyLearningMs(attempts));
@@ -241,7 +273,9 @@ export default async function WeeklyReportPage({ searchParams }: Props) {
   const dailyCounts = weekDays.map((date) => {
     const next = new Date(date);
     next.setDate(date.getDate() + 1);
-    return scoredAttempts.filter((attempt) => attempt.createdAt >= date && attempt.createdAt < next).length;
+    return attempts
+      .filter((attempt) => attempt.createdAt >= date && attempt.createdAt < next)
+      .reduce((sum, attempt) => sum + attemptPracticeCount(attempt), 0);
   });
   const dailyLearningMs = weekDays.map((date) => {
     const next = new Date(date);
@@ -258,15 +292,17 @@ export default async function WeeklyReportPage({ searchParams }: Props) {
   });
 
   const modules = MODULES.map((module) => {
-    const moduleAttempts = scoredAttempts.filter((attempt) => moduleFromAttempt(attempt) === module.key);
+    const moduleAttempts = attempts.filter((attempt) => moduleFromAttempt(attempt) === module.key);
+    const moduleScoredAttempts = scoredAttempts.filter((attempt) => moduleFromAttempt(attempt) === module.key);
+    const moduleActivityCount = moduleAttempts.reduce((sum, attempt) => sum + attemptPracticeCount(attempt), 0);
     const moduleMistakes = mistakes.filter((mistake) => moduleFromMistake(mistake.sourceModule, mistake.category) === module.key);
-    const moduleAccuracy = percent(moduleAttempts.filter((attempt) => attempt.isCorrect).length, moduleAttempts.length);
+    const moduleAccuracy = percent(moduleScoredAttempts.filter((attempt) => attempt.isCorrect).length, moduleScoredAttempts.length);
     return {
       ...module,
-      attempts: moduleAttempts.length,
+      attempts: moduleActivityCount,
       accuracy: moduleAccuracy,
       mistakes: moduleMistakes.length,
-      status: statusLabel(moduleAccuracy, moduleAttempts.length)
+      status: statusLabel(moduleAccuracy, moduleScoredAttempts.length, moduleActivityCount)
     };
   });
   const activeModules = modules.filter((module) => module.attempts > 0).length;
@@ -304,7 +340,7 @@ export default async function WeeklyReportPage({ searchParams }: Props) {
               <i>✎</i>
               <div>
                 <small>Answered</small>
-                <strong>{scoredAttempts.length.toLocaleString()}</strong>
+                <strong>{practiceActivityCount.toLocaleString()}</strong>
                 <em>questions</em>
               </div>
             </div>
@@ -454,7 +490,7 @@ export default async function WeeklyReportPage({ searchParams }: Props) {
             </div>
             <div className="weekly-reference-card">
               <b>US</b>
-              <strong>{gradeReference(accuracy, scoredAttempts.length)}</strong>
+              <strong>{gradeReference(accuracy, practiceActivityCount)}</strong>
               <p>Based on current practice volume, accuracy, and vocabulary difficulty.</p>
             </div>
           </article>
