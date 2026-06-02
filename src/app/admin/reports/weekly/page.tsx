@@ -243,6 +243,13 @@ export default async function WeeklyReportPage({ searchParams }: Props) {
     next.setDate(date.getDate() + 1);
     return scoredAttempts.filter((attempt) => attempt.createdAt >= date && attempt.createdAt < next).length;
   });
+  const dailyLearningMs = weekDays.map((date) => {
+    const next = new Date(date);
+    next.setDate(date.getDate() + 1);
+    return weeklyLearningMs(attempts.filter((attempt) => attempt.createdAt >= date && attempt.createdAt < next));
+  });
+  const dailyLearningPoints = chartPoints(dailyLearningMs);
+  const dailyLearningPointList = dailyLearningPoints.split(" ");
   const dailyAccuracy = weekDays.map((date) => {
     const next = new Date(date);
     next.setDate(date.getDate() + 1);
@@ -342,18 +349,18 @@ export default async function WeeklyReportPage({ searchParams }: Props) {
           <article className="weekly-chart-card wide">
             <div className="weekly-card-head">
               <h2>7-Day Learning Curve</h2>
-              <span>completed activities</span>
+              <span>learning time line · questions below</span>
             </div>
-            <svg className="weekly-line-chart" viewBox="0 0 320 96" role="img" aria-label="Seven day activity curve">
+            <svg className="weekly-line-chart" viewBox="0 0 320 96" role="img" aria-label="Seven day learning time curve">
               <defs>
                 <linearGradient id="weeklyLine" x1="0" x2="1" y1="0" y2="0">
                   <stop offset="0%" stopColor="#2d7f59" />
                   <stop offset="100%" stopColor="#df5d22" />
                 </linearGradient>
               </defs>
-              <polyline fill="none" points={chartPoints(dailyCounts)} stroke="url(#weeklyLine)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="6" />
-              {dailyCounts.map((value, index) => (
-                <circle cx={Number(chartPoints(dailyCounts).split(" ")[index]?.split(",")[0] ?? 0)} cy={Number(chartPoints(dailyCounts).split(" ")[index]?.split(",")[1] ?? 0)} fill="#fffdfa" key={weekDays[index].toISOString()} r="5" stroke="#26576f" strokeWidth="3" />
+              <polyline fill="none" points={dailyLearningPoints} stroke="url(#weeklyLine)" strokeLinecap="round" strokeLinejoin="round" strokeWidth="6" />
+              {dailyLearningMs.map((value, index) => (
+                <circle cx={Number(dailyLearningPointList[index]?.split(",")[0] ?? 0)} cy={Number(dailyLearningPointList[index]?.split(",")[1] ?? 0)} fill="#fffdfa" key={weekDays[index].toISOString()} r="5" stroke="#26576f" strokeWidth="3" />
               ))}
             </svg>
             <div className="weekly-day-row">
