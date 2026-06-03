@@ -1187,11 +1187,12 @@ export function ClassicWordQuestClient({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ courseId, amount, source: "classic-word-quest", sourceKey, reason })
     });
-    if (!response.ok) return;
+    if (!response.ok) return amount;
     const payload = (await response.json()) as { data?: { gems?: number; rank?: number | null; awarded?: number } };
     if (typeof payload.data?.gems === "number") {
       window.dispatchEvent(new CustomEvent("latinfun:gems-updated", { detail: { gems: payload.data.gems, rank: payload.data.rank ?? null } }));
     }
+    return typeof payload.data?.awarded === "number" ? payload.data.awarded : amount;
   }
 
   async function recordGameMistake(input: {
@@ -1257,17 +1258,21 @@ export function ClassicWordQuestClient({
       const nextStreak = whackStreak + 1;
       const gems = nextStreak;
       setWhackStreak(nextStreak);
-      setLocalGems((value) => value + gems);
-      setTotalGemsThisQuest((value) => value + gems);
       setHitWords((items) => [...items, current.word]);
-      setFeedback(nextStreak === 1 ? `Hit! x1 combo · +1 gem` : `Combo x${nextStreak}! +${gems} gems`);
-      setFeedbackKind("good");
-      playWhackSound(nextStreak >= 5 ? "bonus" : "hit");
-      launchGemBurst(gems, source);
-      window.setTimeout(() => speakWhackReaction("correct"), 280);
       const shouldReturn = shouldReturnAfterSingleReview(current.word, "Classic Words");
       void finishReviewWord(current.word);
-      await applyGems(gems, `word-whack-hit-${roundIndex}-${questionIndex}-${current.word}-${Date.now()}`, `Whack-a-Word hit: ${current.word}`);
+      const awarded = await applyGems(gems, `word-whack-hit-${roundIndex}-${questionIndex}-${current.word}-${Date.now()}`, `Whack-a-Word hit: ${current.word}`);
+      if (awarded > 0) {
+        setLocalGems((value) => value + awarded);
+        setTotalGemsThisQuest((value) => value + awarded);
+        setFeedback(nextStreak === 1 ? `Hit! x1 combo · +${awarded} gem` : `Combo x${nextStreak}! +${awarded} gems`);
+        launchGemBurst(awarded, source);
+      } else {
+        setFeedback(`Combo x${nextStreak} · practice counted`);
+      }
+      setFeedbackKind("good");
+      playWhackSound(awarded > 0 && nextStreak >= 5 ? "bonus" : "hit");
+      window.setTimeout(() => speakWhackReaction("correct"), 280);
       if (shouldReturn) return;
     } else {
       recordWordOutcome(current.word, true);
